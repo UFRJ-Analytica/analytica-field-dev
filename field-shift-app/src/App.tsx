@@ -11,6 +11,7 @@ import { PolygonPanel } from '@/components/PolygonPanel'
 import { SUPPORTING_DATA_PANEL_ID, SupportingDataToggle, useSupportingDataToggle } from '@/components/SupportingDataToggle'
 import { NumbersToggle, NUMBERS_TOGGLE_ATTR } from '@/components/NumbersToggle'
 import { NumbersView } from '@/components/NumbersView'
+import { FieldShiftAIPanel, FieldShiftAIToggle } from '@/components/FieldShiftAI'
 import { useMapStore, type FieldSummary } from '@/lib/map-store'
 import { numbersOpenFromSearch, searchWithNumbers } from '@/lib/numbers'
 import { useLayers } from '@/lib/use-layers'
@@ -563,6 +564,11 @@ function App() {
           </div>
         </div>
       )}
+
+      {/* Field Shift AI (experiment): its own launcher and panel, outside the frozen control strip
+          (block 4 R-41), as direct children of the shell, so `.is-numbers-open` hides them too. */}
+      <FieldShiftAIToggle />
+      <FieldShiftAIPanel selectedField={selectedField} />
 
       {/* Block 6, R-01 and R-02: the numbers surface is a sibling of the map screen. While it is
           open, `.is-numbers-open` hides every other child of the shell (NumbersView.css). */}
