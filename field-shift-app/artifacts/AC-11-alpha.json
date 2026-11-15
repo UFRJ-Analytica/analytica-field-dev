@@ -2,8 +2,8 @@
   "criterion": "AC-11",
   "branch": "block5/one-string-per-state",
   "date": "2026-11-15",
-  "revision": 2,
-  "revision_note": "Revision 2 re-measures the B-uniformity clause. Revision 1 sampled 12 points inside a 21 by 6 px window of one class 41 polygon, so all 12 basemap pixels came from one patch and their sample standard deviation was 1.288, 0.9 and 1.165 against the floor of 5. Revision 2 keeps the fill measurement method and the same camera discipline, but spreads the 12 points across a 130 by 105 px class 41 polygon whose backdrop changes inside it. The revision 1 camera, polygon, method and both readings are kept below under previous_measurement, unedited.",
+  "revision": 3,
+  "revision_note": "Revision 3 re-picks the 12 sample points on the unclipped geometry of the same class 41 polygon. Revision 2 read the rings from a queryRenderedFeatures result clipped to a query box: it recorded 12 rings and a 130.3 by 105.3 px screen box, where the shipped feature has 15 rings (one 553 point outer ring plus 14 holes) and a 244.7 by 149.0 px box, and four of its points sat 3.38 to 3.74 px from the real outer ring, under the 4 px floor. Revision 3 takes the rings from a direct tippecanoe-decode of the z12 tile 1419/2184 of data/polygons/br-mt-detail.pmtiles, re-picks the interior with at least 4.5 px of clearance to every ring edge, and spreads the 12 points across the whole polygon, from x 548 to 777 and y 363 to 489. It also produces the two screenshots the criterion names, and the pixel values read from them match the recorded B and O triples at all 12 points; the files are not versioned because .gitignore excludes artifacts/*.png, see the artifacts block.",
   "camera": {
     "region": "br",
     "center": [
@@ -26,112 +26,153 @@
   },
   "sampled_polygon": {
     "raw_id": 4424563,
-    "rings": 12,
+    "geometry_source": "tippecanoe-decode data/polygons/br-mt-detail.pmtiles 12 1419 2184, feature with properties.Id 4424563 and mbmode24 41; unclipped tile geometry, not a queryRenderedFeatures result",
+    "rings": 15,
+    "ring_point_counts": [
+      553,
+      5,
+      5,
+      5,
+      5,
+      5,
+      5,
+      5,
+      5,
+      5,
+      5,
+      61,
+      5,
+      5,
+      5
+    ],
     "screen_size_px": [
-      130.3,
-      105.3
+      244.7,
+      149.0
     ],
     "screen_bbox": [
-      654.9,
-      397.4,
+      540.4,
+      353.6,
       785.1,
       502.6
     ],
     "point_bbox": [
-      659,
-      403,
+      548,
+      363,
       777,
-      491
+      489
     ],
-    "why_this_polygon": "It is the largest class 41 polygon on the 1440 by 900 px canvas at the camera whose B samples vary across the polygon: it spans a change of crop, dark closed-canopy green at [24, 101, 14] against a bright bare or harvested patch at [68, 119, 32]. The red channel sample standard deviation is 16.12 and the green 7.42, against the floor of 5. With the smap-l3-raster overlay hidden the imagery alone still ranges from [29, 56, 23] to [124, 96, 72] (standard deviation 33.02, 14.97, 16.81), so the variation is in the satellite basemap and not in an app raster.",
+    "min_point_clearance_px": 4.53,
+    "why_this_polygon": "It is a class 41 polygon on the canvas at the camera whose basemap changes inside its own footprint. With the smap-l3-raster overlay hidden the imagery under the 12 points ranges from [31, 56, 27] to [112, 96, 70], a dark closed-canopy green in the west and centre against a bright bare or harvested patch at the south east corner, so the red channel sample standard deviation is 26.90 without any app layer. With the app's own layer stack unchanged and only the polygon layers hidden, B ranges from [19, 98, 12] to [63, 119, 32], sample standard deviation 13.9142 on red, 6.9865 on green and 6.4079 on blue, all three above the floor of 5. The 12 points span the full extent of the polygon, 548 to 777 by 363 to 489 px inside a 540.4 to 785.1 by 353.6 to 502.6 px box, so the spread is across the whole polygon and not one patch.",
     "imagery_only_samples": [
       [
-        34,
+        32,
+        57,
+        27
+      ],
+      [
+        38,
+        63,
+        34
+      ],
+      [
+        44,
         60,
         31
       ],
       [
-        41,
-        60,
-        30
+        43,
+        63,
+        36
       ],
       [
-        124,
+        52,
+        79,
+        44
+      ],
+      [
+        112,
         96,
-        72
+        70
       ],
       [
-        37,
-        62,
-        33
-      ],
-      [
-        29,
-        56,
-        23
-      ],
-      [
-        87,
-        86,
-        56
-      ],
-      [
-        32,
-        57,
-        28
-      ],
-      [
-        35,
-        62,
+        33,
+        58,
         29
       ],
       [
-        44,
-        65,
+        32,
+        55,
+        27
+      ],
+      [
+        39,
+        63,
+        31
+      ],
+      [
+        37,
+        78,
         34
       ],
       [
-        106,
-        94,
-        68
+        98,
+        92,
+        60
       ],
       [
         31,
         56,
         27
-      ],
-      [
-        35,
-        60,
-        31
       ]
     ],
     "imagery_only_stddev": [
-      33.02,
-      14.97,
-      16.81
+      26.9043,
+      14.3104,
+      13.8794
     ]
   },
+  "artifacts": {
+    "basemap_screenshot": "AC-11-basemap-br.png",
+    "polygons_screenshot": "AC-11-polygons-br.png",
+    "screenshots": "both 1440 by 900 px, same camera, taken from the same running page as the pixel reads: AC-11-basemap-br.png with the four polygon layers hidden, AC-11-polygons-br.png with them shown",
+    "screenshot_cross_check": "the RGB value of each of the 12 points was read back out of both PNGs and equals the recorded basemap_rgb in AC-11-basemap-br.png and shown_rgb in AC-11-polygons-br.png at all 12 points, so the screenshots are the same frame the reads came from",
+    "screenshots_not_versioned": "both files were produced by the browser that made the pixel reads, but they are not on this branch: .gitignore line 18 excludes field-shift-app/artifacts/*.png, with the comment that screenshots are produced by the browser at run time and are not versioned. They are attached to the kanban card t_395b7bf6 instead. Sizes and sha256 below identify the exact files."
+  },
+  "artifact_files": [
+    {
+      "name": "AC-11-basemap-br.png",
+      "bytes": 1062906,
+      "sha256": "a82479ea0b14615d75326cd820b968c71db51a97b487c93778ea8bee61dabd1f",
+      "in_repo": false
+    },
+    {
+      "name": "AC-11-polygons-br.png",
+      "bytes": 1199702,
+      "sha256": "2e7bebdf1726f2edfec1d538548d0b56a9ab8e5d63b747cd38f5f9fdea8f1060",
+      "in_repo": false
+    }
+  ],
   "method": [
     "running app at http://localhost:5175/?region=br (backend on :8000, self-hosted detail file br-mt-detail.pmtiles), real MapLibre, canvas 1440 by 900 px, pixel ratio 1",
     "camera jumpTo center [-55.235041, -11.886659], zoom 13, bearing 0, pitch 0; Satellite preset clicked in the .layer-presets control (labels off)",
-    "class 41 feature Id 4424563 projected at the camera; 12 interior points by farthest point sampling on a 1 px grid, each at least 4 px from every ring edge by exact point to segment distance; the points span 659 to 777 by 403 to 491 px, every one ray-cast inside the polygon and confirmed with queryRenderedFeatures returning only Id 4424563, mbmode24 41",
+    "class 41 feature Id 4424563 read from the unclipped z12 tile 1419/2184 by tippecanoe-decode (15 rings: one 553 point outer ring plus 14 holes), projected at the camera to a 244.7 by 149.0 px box at 540.4, 353.6, 785.1, 502.6; 12 interior points by farthest point sampling on a 1 px grid restricted to points at least 4.5 px from every ring edge by exact point to segment distance, spanning 548 to 777 by 363 to 489 px, every one ray cast inside the polygon and confirmed with queryRenderedFeatures returning only Id 4424563, mbmode24 41; feature state had no hover and no selection",
     "B: setLayoutProperty visibility none on polygon-fill, polygon-line, polygon-overview-fill and polygon-overview-line, tiles settled (loaded, areTilesLoaded, no motion for 600 ms), gl.readPixels(1x1) inside a 'render' event, read twice and identical",
     "O: the same 12 points with the four polygon layers visible, same camera, same settle and 'render' read, read twice and identical",
+    "imagery only: the same 12 points with smap-l3-raster hidden as well, same settle and read",
     "implied alpha = (O - B) / (C - B) on the channel with the largest |C - B|, C the table hex #f54ca9; red carried the largest |C - B| at all 12 points"
   ],
   "basemap": {
     "stddev": [
-      16.1179,
-      7.4223,
-      7.5358
+      13.9142,
+      6.9865,
+      6.4079
     ],
     "mean": [
-      33.17,
-      105.0,
-      17.33
+      30.17,
+      104.58,
+      16.83
     ],
-    "largest_channel_stddev": 16.1179,
+    "largest_channel_stddev": 13.9142,
     "largest_channel": "r",
     "floor": 5,
     "uniform": false,
@@ -140,77 +181,152 @@
   "after": {
     "summary": {
       "first": 0.3982,
-      "last": 0.4,
-      "min": 0.3978,
+      "last": 0.4009,
+      "min": 0.3981,
       "max": 0.4018,
       "in_band_0.34_0.46": 12,
       "at_or_above_0.6": 0,
       "points": 12,
       "basemap_stddev": [
-        16.1179,
-        7.4223,
-        7.5358
+        13.9142,
+        6.9865,
+        6.4079
       ]
     },
     "points": [
       {
         "point": [
-          735,
-          439
+          548,
+          363
         ],
+        "clearance_px": 4.67,
         "shown_rgb": [
-          112,
-          91,
-          76
+          109,
+          89,
+          75
         ],
         "basemap_rgb": [
-          24,
-          101,
-          14
+          19,
+          98,
+          12
         ],
         "alpha": 0.3982,
         "channel": "r",
         "per_channel": [
           0.398,
-          0.4,
-          0.4
+          0.409,
+          0.401
         ]
       },
       {
         "point": [
-          659,
-          403
+          777,
+          457
         ],
+        "clearance_px": 4.83,
         "shown_rgb": [
-          113,
+          114,
+          92,
+          77
+        ],
+        "basemap_rgb": [
+          27,
+          103,
+          15
+        ],
+        "alpha": 0.3991,
+        "channel": "r",
+        "per_channel": [
+          0.399,
+          0.407,
+          0.403
+        ]
+      },
+      {
+        "point": [
+          664,
+          406
+        ],
+        "clearance_px": 4.53,
+        "shown_rgb": [
+          114,
           90,
           76
         ],
         "basemap_rgb": [
-          25,
+          27,
           100,
           14
         ],
-        "alpha": 0.4,
+        "alpha": 0.3991,
         "channel": "r",
         "per_channel": [
-          0.4,
+          0.399,
           0.417,
           0.4
         ]
       },
       {
         "point": [
-          748,
-          491
+          722,
+          428
         ],
+        "clearance_px": 4.53,
         "shown_rgb": [
-          139,
+          115,
+          92,
+          77
+        ],
+        "basemap_rgb": [
+          28,
+          102,
+          16
+        ],
+        "alpha": 0.4009,
+        "channel": "r",
+        "per_channel": [
+          0.401,
+          0.385,
+          0.399
+        ]
+      },
+      {
+        "point": [
+          606,
+          384
+        ],
+        "clearance_px": 5.55,
+        "shown_rgb": [
+          115,
+          95,
+          80
+        ],
+        "basemap_rgb": [
+          29,
+          108,
+          20
+        ],
+        "alpha": 0.3981,
+        "channel": "r",
+        "per_channel": [
+          0.398,
+          0.406,
+          0.403
+        ]
+      },
+      {
+        "point": [
+          743,
+          489
+        ],
+        "clearance_px": 4.83,
+        "shown_rgb": [
+          136,
           102,
           87
         ],
         "basemap_rgb": [
-          68,
+          63,
           119,
           32
         ],
@@ -224,209 +340,146 @@
       },
       {
         "point": [
-          777,
-          456
+          751,
+          440
         ],
+        "clearance_px": 5.03,
         "shown_rgb": [
-          114,
-          92,
-          77
+          112,
+          91,
+          75
         ],
         "basemap_rgb": [
-          27,
-          103,
-          15
+          24,
+          101,
+          13
         ],
-        "alpha": 0.3991,
+        "alpha": 0.3982,
         "channel": "r",
         "per_channel": [
-          0.399,
-          0.407,
-          0.403
+          0.398,
+          0.4,
+          0.397
         ]
       },
       {
         "point": [
-          698,
-          419
+          634,
+          398
         ],
+        "clearance_px": 4.96,
         "shown_rgb": [
           111,
-          90,
-          74
+          89,
+          75
         ],
         "basemap_rgb": [
           21,
-          99,
-          10
+          98,
+          12
         ],
         "alpha": 0.4018,
         "channel": "r",
         "per_channel": [
           0.402,
-          0.391,
-          0.403
-        ]
-      },
-      {
-        "point": [
-          757,
-          469
-        ],
-        "shown_rgb": [
-          128,
-          99,
-          83
-        ],
-        "basemap_rgb": [
-          50,
-          114,
-          25
-        ],
-        "alpha": 0.4,
-        "channel": "r",
-        "per_channel": [
-          0.4,
-          0.395,
-          0.403
-        ]
-      },
-      {
-        "point": [
-          758,
-          442
-        ],
-        "shown_rgb": [
-          112,
-          90,
-          75
-        ],
-        "basemap_rgb": [
-          24,
-          100,
-          13
-        ],
-        "alpha": 0.3982,
-        "channel": "r",
-        "per_channel": [
-          0.398,
-          0.417,
-          0.397
-        ]
-      },
-      {
-        "point": [
-          718,
-          426
-        ],
-        "shown_rgb": [
-          112,
-          92,
-          75
-        ],
-        "basemap_rgb": [
-          24,
-          102,
-          13
-        ],
-        "alpha": 0.3982,
-        "channel": "r",
-        "per_channel": [
-          0.398,
-          0.385,
-          0.397
-        ]
-      },
-      {
-        "point": [
-          678,
-          412
-        ],
-        "shown_rgb": [
-          114,
-          92,
-          77
-        ],
-        "basemap_rgb": [
-          27,
-          103,
-          15
-        ],
-        "alpha": 0.3991,
-        "channel": "r",
-        "per_channel": [
-          0.399,
-          0.407,
-          0.403
-        ]
-      },
-      {
-        "point": [
-          741,
-          479
-        ],
-        "shown_rgb": [
-          133,
-          101,
-          86
-        ],
-        "basemap_rgb": [
-          59,
-          118,
-          31
-        ],
-        "alpha": 0.3978,
-        "channel": "r",
-        "per_channel": [
-          0.398,
-          0.405,
-          0.399
-        ]
-      },
-      {
-        "point": [
-          770,
-          446
-        ],
-        "shown_rgb": [
-          112,
-          90,
-          75
-        ],
-        "basemap_rgb": [
-          24,
-          100,
-          12
-        ],
-        "alpha": 0.3982,
-        "channel": "r",
-        "per_channel": [
-          0.398,
-          0.417,
+          0.409,
           0.401
         ]
       },
       {
         "point": [
-          747,
-          437
+          693,
+          417
         ],
+        "clearance_px": 5.17,
         "shown_rgb": [
           113,
-          91,
+          92,
           76
         ],
         "basemap_rgb": [
           25,
-          101,
+          102,
           14
         ],
         "alpha": 0.4,
         "channel": "r",
         "per_channel": [
           0.4,
-          0.4,
+          0.385,
           0.4
+        ]
+      },
+      {
+        "point": [
+          578,
+          371
+        ],
+        "clearance_px": 5.18,
+        "shown_rgb": [
+          111,
+          95,
+          77
+        ],
+        "basemap_rgb": [
+          21,
+          107,
+          15
+        ],
+        "alpha": 0.4018,
+        "channel": "r",
+        "per_channel": [
+          0.402,
+          0.387,
+          0.403
+        ]
+      },
+      {
+        "point": [
+          758,
+          470
+        ],
+        "clearance_px": 4.6,
+        "shown_rgb": [
+          131,
+          101,
+          84
+        ],
+        "basemap_rgb": [
+          55,
+          117,
+          27
+        ],
+        "alpha": 0.4,
+        "channel": "r",
+        "per_channel": [
+          0.4,
+          0.39,
+          0.401
+        ]
+      },
+      {
+        "point": [
+          735,
+          438
+        ],
+        "clearance_px": 4.98,
+        "shown_rgb": [
+          112,
+          90,
+          75
+        ],
+        "basemap_rgb": [
+          23,
+          100,
+          12
+        ],
+        "alpha": 0.4009,
+        "channel": "r",
+        "per_channel": [
+          0.401,
+          0.417,
+          0.401
         ]
       }
     ]
@@ -435,8 +488,8 @@
     "camera": {
       "region": "br",
       "center": [
-        -55.27,
-        -11.91
+        -55.23504137992859,
+        -11.886658811472039
       ],
       "zoom": 13,
       "bearing": 0,
@@ -445,588 +498,1018 @@
     "preset": "Satellite",
     "layer": "polygon-fill",
     "feature": {
-      "raw_id": 4458711,
+      "raw_id": 4424563,
       "class_property": "mbmode24",
       "class_value": 41,
       "class_name": "Other Temporary Crops",
       "table_hex": "#f54ca9",
       "declared_opacity": 0.4
     },
-    "method": [
-      "running app at http://localhost:5175/?region=br (backend on :8000, self-hosted detail file), real MapLibre",
-      "camera jumpTo zoom 13, Satellite preset clicked in the .layer-presets control",
-      "12 interior points of the largest rendered class 41 polygon, ray-cast inside the projected rings and at least 4 px from any edge",
-      "shown (O): gl.readPixels in a 'render' event with the polygon layers visible",
-      "basemap (B): the same 12 points after setLayoutProperty visibility none on polygon-fill and polygon-line, read again after 'idle'",
-      "implied alpha = (O - B) / (C - B) on the channel with the largest |C - B|, C the table hex"
-    ],
-    "cause": {
-      "diagnosis": "the block 1/4 catalog raster layer smap-l3-raster, on at first paint at raster-opacity 0.55 (DEFAULT_ON in src/lib/map-store.ts), was moved to the very top of the style by applyOrder (map.moveLayer with no anchor), so it sat above the polygon fill and above every symbol layer and veiled the fill",
-      "evidence_index_before_fix": {
-        "basemap-raster": 86,
-        "polygon-fill": 89,
-        "smap-l3-raster": 119,
-        "style_layer_count": 120
-      },
-      "evidence_index_after_fix": {
-        "basemap-raster": 61,
-        "smap-l3-raster": 62,
-        "polygon-fill": 65,
-        "first_symbol": 67
-      },
-      "confirmation_on_the_unfixed_page": "map.moveLayer('smap-l3-raster', 'polygon-fill') on the running page changed the implied alpha of the same 12 points from 0.159 to 0.166 to 0.398 to 0.402, with the basemap read unchanged (polygons hidden in both reads)",
-      "not_the_cause": "the opacity constant (0.4 as declared, fill-opacity expression reads 0.4 at rest), a duplicate polygon layer (one fill and one line per tier), the overview tier (its layer range ends below the detail), a blend mode (MapLibre fill layers carry none), a second paint property (fill-antialias true and a zero duration transition, neither changes interior alpha)"
-    },
-    "before": {
-      "summary": {
-        "first": 0.1586,
-        "last": 0.1659,
-        "max": 0.1659,
-        "in_band_0.34_0.46": 0,
-        "points": 12
-      },
-      "points": [
-        {
-          "point": [
-            301,
-            766
-          ],
-          "shown_rgb": [
-            54,
-            108,
-            54
-          ],
-          "basemap_rgb": [
-            18,
-            107,
-            30
-          ],
-          "alpha": 0.1586,
-          "per_channel": [
-            0.159,
-            -0.032,
-            0.173
-          ]
-        },
-        {
-          "point": [
-            304,
-            766
-          ],
-          "shown_rgb": [
-            54,
-            108,
-            54
-          ],
-          "basemap_rgb": [
-            17,
-            107,
-            30
-          ],
-          "alpha": 0.1623,
-          "per_channel": [
-            0.162,
-            -0.032,
-            0.173
-          ]
-        },
-        {
-          "point": [
-            307,
-            766
-          ],
-          "shown_rgb": [
-            55,
-            109,
-            55
-          ],
-          "basemap_rgb": [
-            19,
-            108,
-            32
-          ],
-          "alpha": 0.1593,
-          "per_channel": [
-            0.159,
-            -0.031,
-            0.168
-          ]
-        },
-        {
-          "point": [
-            310,
-            766
-          ],
-          "shown_rgb": [
-            55,
-            108,
-            53
-          ],
-          "basemap_rgb": [
-            18,
-            106,
-            29
-          ],
-          "alpha": 0.163,
-          "per_channel": [
-            0.163,
-            -0.067,
-            0.171
-          ]
-        },
-        {
-          "point": [
-            295,
-            769
-          ],
-          "shown_rgb": [
-            54,
-            108,
-            54
-          ],
-          "basemap_rgb": [
-            17,
-            106,
-            29
-          ],
-          "alpha": 0.1623,
-          "per_channel": [
-            0.162,
-            -0.067,
-            0.179
-          ]
-        },
-        {
-          "point": [
-            298,
-            769
-          ],
-          "shown_rgb": [
-            54,
-            108,
-            54
-          ],
-          "basemap_rgb": [
-            18,
-            107,
-            30
-          ],
-          "alpha": 0.1586,
-          "per_channel": [
-            0.159,
-            -0.032,
-            0.173
-          ]
-        },
-        {
-          "point": [
-            301,
-            769
-          ],
-          "shown_rgb": [
-            55,
-            109,
-            54
-          ],
-          "basemap_rgb": [
-            18,
-            108,
-            31
-          ],
-          "alpha": 0.163,
-          "per_channel": [
-            0.163,
-            -0.031,
-            0.167
-          ]
-        },
-        {
-          "point": [
-            304,
-            769
-          ],
-          "shown_rgb": [
-            54,
-            108,
-            54
-          ],
-          "basemap_rgb": [
-            18,
-            107,
-            30
-          ],
-          "alpha": 0.1586,
-          "per_channel": [
-            0.159,
-            -0.032,
-            0.173
-          ]
-        },
-        {
-          "point": [
-            307,
-            769
-          ],
-          "shown_rgb": [
-            54,
-            108,
-            53
-          ],
-          "basemap_rgb": [
-            16,
-            106,
-            29
-          ],
-          "alpha": 0.1659,
-          "per_channel": [
-            0.166,
-            -0.067,
-            0.171
-          ]
-        },
-        {
-          "point": [
-            310,
-            769
-          ],
-          "shown_rgb": [
-            54,
-            108,
-            53
-          ],
-          "basemap_rgb": [
-            18,
-            106,
-            29
-          ],
-          "alpha": 0.1586,
-          "per_channel": [
-            0.159,
-            -0.067,
-            0.171
-          ]
-        },
-        {
-          "point": [
-            289,
-            772
-          ],
-          "shown_rgb": [
-            53,
-            108,
-            53
-          ],
-          "basemap_rgb": [
-            15,
-            105,
-            28
-          ],
-          "alpha": 0.1652,
-          "per_channel": [
-            0.165,
-            -0.103,
-            0.177
-          ]
-        },
-        {
-          "point": [
-            292,
-            772
-          ],
-          "shown_rgb": [
-            53,
-            108,
-            52
-          ],
-          "basemap_rgb": [
-            15,
-            106,
-            28
-          ],
-          "alpha": 0.1652,
-          "per_channel": [
-            0.165,
-            -0.067,
-            0.17
-          ]
-        }
+    "sampled_polygon": {
+      "raw_id": 4424563,
+      "rings": 12,
+      "screen_size_px": [
+        130.3,
+        105.3
+      ],
+      "screen_bbox": [
+        654.9,
+        397.4,
+        785.1,
+        502.6
+      ],
+      "point_bbox": [
+        659,
+        403,
+        777,
+        491
+      ],
+      "why_this_polygon": "It is the largest class 41 polygon on the 1440 by 900 px canvas at the camera whose B samples vary across the polygon: it spans a change of crop, dark closed-canopy green at [24, 101, 14] against a bright bare or harvested patch at [68, 119, 32]. The red channel sample standard deviation is 16.12 and the green 7.42, against the floor of 5. With the smap-l3-raster overlay hidden the imagery alone still ranges from [29, 56, 23] to [124, 96, 72] (standard deviation 33.02, 14.97, 16.81), so the variation is in the satellite basemap and not in an app raster.",
+      "imagery_only_samples": [
+        [
+          34,
+          60,
+          31
+        ],
+        [
+          41,
+          60,
+          30
+        ],
+        [
+          124,
+          96,
+          72
+        ],
+        [
+          37,
+          62,
+          33
+        ],
+        [
+          29,
+          56,
+          23
+        ],
+        [
+          87,
+          86,
+          56
+        ],
+        [
+          32,
+          57,
+          28
+        ],
+        [
+          35,
+          62,
+          29
+        ],
+        [
+          44,
+          65,
+          34
+        ],
+        [
+          106,
+          94,
+          68
+        ],
+        [
+          31,
+          56,
+          27
+        ],
+        [
+          35,
+          60,
+          31
+        ]
+      ],
+      "imagery_only_stddev": [
+        33.02,
+        14.97,
+        16.81
       ]
+    },
+    "method": [
+      "running app at http://localhost:5175/?region=br (backend on :8000, self-hosted detail file br-mt-detail.pmtiles), real MapLibre, canvas 1440 by 900 px, pixel ratio 1",
+      "camera jumpTo center [-55.235041, -11.886659], zoom 13, bearing 0, pitch 0; Satellite preset clicked in the .layer-presets control (labels off)",
+      "class 41 feature Id 4424563 projected at the camera; 12 interior points by farthest point sampling on a 1 px grid, each at least 4 px from every ring edge by exact point to segment distance; the points span 659 to 777 by 403 to 491 px, every one ray-cast inside the polygon and confirmed with queryRenderedFeatures returning only Id 4424563, mbmode24 41",
+      "B: setLayoutProperty visibility none on polygon-fill, polygon-line, polygon-overview-fill and polygon-overview-line, tiles settled (loaded, areTilesLoaded, no motion for 600 ms), gl.readPixels(1x1) inside a 'render' event, read twice and identical",
+      "O: the same 12 points with the four polygon layers visible, same camera, same settle and 'render' read, read twice and identical",
+      "implied alpha = (O - B) / (C - B) on the channel with the largest |C - B|, C the table hex #f54ca9; red carried the largest |C - B| at all 12 points"
+    ],
+    "basemap": {
+      "stddev": [
+        16.1179,
+        7.4223,
+        7.5358
+      ],
+      "mean": [
+        33.17,
+        105.0,
+        17.33
+      ],
+      "largest_channel_stddev": 16.1179,
+      "largest_channel": "r",
+      "floor": 5,
+      "uniform": false,
+      "passes": true
     },
     "after": {
       "summary": {
         "first": 0.3982,
-        "last": 0.4017,
-        "max": 0.4017,
+        "last": 0.4,
+        "min": 0.3978,
+        "max": 0.4018,
         "in_band_0.34_0.46": 12,
-        "points": 12
+        "at_or_above_0.6": 0,
+        "points": 12,
+        "basemap_stddev": [
+          16.1179,
+          7.4223,
+          7.5358
+        ]
       },
       "points": [
         {
           "point": [
-            301,
-            766
+            735,
+            439
           ],
           "shown_rgb": [
-            109,
-            95,
-            86
+            112,
+            91,
+            76
           ],
           "basemap_rgb": [
-            18,
-            107,
-            30
+            24,
+            101,
+            14
           ],
-          "alpha": 0.4009,
+          "alpha": 0.3982,
+          "channel": "r",
           "per_channel": [
-            0.401,
-            0.387,
-            0.403
+            0.398,
+            0.4,
+            0.4
           ]
         },
         {
           "point": [
-            304,
-            766
+            659,
+            403
           ],
           "shown_rgb": [
-            108,
-            95,
-            86
+            113,
+            90,
+            76
           ],
           "basemap_rgb": [
-            17,
-            107,
-            30
+            25,
+            100,
+            14
           ],
-          "alpha": 0.3991,
+          "alpha": 0.4,
+          "channel": "r",
           "per_channel": [
-            0.399,
-            0.387,
-            0.403
+            0.4,
+            0.417,
+            0.4
           ]
         },
         {
           "point": [
-            307,
-            766
+            748,
+            491
           ],
           "shown_rgb": [
-            109,
-            95,
+            139,
+            102,
             87
           ],
           "basemap_rgb": [
-            19,
-            108,
+            68,
+            119,
             32
           ],
-          "alpha": 0.3982,
+          "alpha": 0.4011,
+          "channel": "r",
           "per_channel": [
-            0.398,
-            0.406,
+            0.401,
+            0.395,
             0.401
           ]
         },
         {
           "point": [
-            310,
-            766
+            777,
+            456
           ],
           "shown_rgb": [
-            109,
-            94,
-            85
+            114,
+            92,
+            77
           ],
           "basemap_rgb": [
-            18,
-            106,
-            29
-          ],
-          "alpha": 0.4009,
-          "per_channel": [
-            0.401,
-            0.4,
-            0.4
-          ]
-        },
-        {
-          "point": [
-            295,
-            769
-          ],
-          "shown_rgb": [
-            108,
-            94,
-            85
-          ],
-          "basemap_rgb": [
-            17,
-            106,
-            29
+            27,
+            103,
+            15
           ],
           "alpha": 0.3991,
+          "channel": "r",
           "per_channel": [
             0.399,
-            0.4,
-            0.4
-          ]
-        },
-        {
-          "point": [
-            298,
-            769
-          ],
-          "shown_rgb": [
-            109,
-            95,
-            86
-          ],
-          "basemap_rgb": [
-            18,
-            107,
-            30
-          ],
-          "alpha": 0.4009,
-          "per_channel": [
-            0.401,
-            0.387,
+            0.407,
             0.403
           ]
         },
         {
           "point": [
-            301,
-            769
+            698,
+            419
           ],
           "shown_rgb": [
-            109,
-            95,
+            111,
+            90,
+            74
+          ],
+          "basemap_rgb": [
+            21,
+            99,
+            10
+          ],
+          "alpha": 0.4018,
+          "channel": "r",
+          "per_channel": [
+            0.402,
+            0.391,
+            0.403
+          ]
+        },
+        {
+          "point": [
+            757,
+            469
+          ],
+          "shown_rgb": [
+            128,
+            99,
+            83
+          ],
+          "basemap_rgb": [
+            50,
+            114,
+            25
+          ],
+          "alpha": 0.4,
+          "channel": "r",
+          "per_channel": [
+            0.4,
+            0.395,
+            0.403
+          ]
+        },
+        {
+          "point": [
+            758,
+            442
+          ],
+          "shown_rgb": [
+            112,
+            90,
+            75
+          ],
+          "basemap_rgb": [
+            24,
+            100,
+            13
+          ],
+          "alpha": 0.3982,
+          "channel": "r",
+          "per_channel": [
+            0.398,
+            0.417,
+            0.397
+          ]
+        },
+        {
+          "point": [
+            718,
+            426
+          ],
+          "shown_rgb": [
+            112,
+            92,
+            75
+          ],
+          "basemap_rgb": [
+            24,
+            102,
+            13
+          ],
+          "alpha": 0.3982,
+          "channel": "r",
+          "per_channel": [
+            0.398,
+            0.385,
+            0.397
+          ]
+        },
+        {
+          "point": [
+            678,
+            412
+          ],
+          "shown_rgb": [
+            114,
+            92,
+            77
+          ],
+          "basemap_rgb": [
+            27,
+            103,
+            15
+          ],
+          "alpha": 0.3991,
+          "channel": "r",
+          "per_channel": [
+            0.399,
+            0.407,
+            0.403
+          ]
+        },
+        {
+          "point": [
+            741,
+            479
+          ],
+          "shown_rgb": [
+            133,
+            101,
             86
           ],
           "basemap_rgb": [
-            18,
-            108,
+            59,
+            118,
             31
           ],
-          "alpha": 0.4009,
+          "alpha": 0.3978,
+          "channel": "r",
           "per_channel": [
-            0.401,
-            0.406,
+            0.398,
+            0.405,
             0.399
           ]
         },
         {
           "point": [
-            304,
-            769
+            770,
+            446
           ],
           "shown_rgb": [
-            109,
-            95,
-            86
+            112,
+            90,
+            75
           ],
           "basemap_rgb": [
-            18,
-            107,
-            30
+            24,
+            100,
+            12
           ],
-          "alpha": 0.4009,
+          "alpha": 0.3982,
+          "channel": "r",
           "per_channel": [
-            0.401,
-            0.387,
-            0.403
+            0.398,
+            0.417,
+            0.401
           ]
         },
         {
           "point": [
-            307,
-            769
+            747,
+            437
           ],
           "shown_rgb": [
-            108,
-            94,
-            85
+            113,
+            91,
+            76
           ],
           "basemap_rgb": [
-            16,
-            106,
-            29
-          ],
-          "alpha": 0.4017,
-          "per_channel": [
-            0.402,
-            0.4,
-            0.4
-          ]
-        },
-        {
-          "point": [
-            310,
-            769
-          ],
-          "shown_rgb": [
-            109,
-            94,
-            85
-          ],
-          "basemap_rgb": [
-            18,
-            106,
-            29
-          ],
-          "alpha": 0.4009,
-          "per_channel": [
-            0.401,
-            0.4,
-            0.4
-          ]
-        },
-        {
-          "point": [
-            289,
-            772
-          ],
-          "shown_rgb": [
-            107,
-            93,
-            84
-          ],
-          "basemap_rgb": [
-            15,
-            105,
-            28
+            25,
+            101,
+            14
           ],
           "alpha": 0.4,
-          "per_channel": [
-            0.4,
-            0.414,
-            0.397
-          ]
-        },
-        {
-          "point": [
-            292,
-            772
-          ],
-          "shown_rgb": [
-            107,
-            94,
-            84
-          ],
-          "basemap_rgb": [
-            15,
-            106,
-            28
-          ],
-          "alpha": 0.4,
+          "channel": "r",
           "per_channel": [
             0.4,
             0.4,
-            0.397
+            0.4
           ]
         }
       ]
     },
-    "why_kept": "Revision 1 is accurate about the fill: the implied alpha was 0.3982 to 0.4017 at its 12 points. It is kept because its cause block documents the layer-order fix, and because its before reading is the evidence that the raster on top of the fill veiled it. Its after points are not reused in revision 2: they sit in a 21 by 6 px window whose basemap is flat."
+    "previous_measurement": {
+      "camera": {
+        "region": "br",
+        "center": [
+          -55.27,
+          -11.91
+        ],
+        "zoom": 13,
+        "bearing": 0,
+        "pitch": 0
+      },
+      "preset": "Satellite",
+      "layer": "polygon-fill",
+      "feature": {
+        "raw_id": 4458711,
+        "class_property": "mbmode24",
+        "class_value": 41,
+        "class_name": "Other Temporary Crops",
+        "table_hex": "#f54ca9",
+        "declared_opacity": 0.4
+      },
+      "method": [
+        "running app at http://localhost:5175/?region=br (backend on :8000, self-hosted detail file), real MapLibre",
+        "camera jumpTo zoom 13, Satellite preset clicked in the .layer-presets control",
+        "12 interior points of the largest rendered class 41 polygon, ray-cast inside the projected rings and at least 4 px from any edge",
+        "shown (O): gl.readPixels in a 'render' event with the polygon layers visible",
+        "basemap (B): the same 12 points after setLayoutProperty visibility none on polygon-fill and polygon-line, read again after 'idle'",
+        "implied alpha = (O - B) / (C - B) on the channel with the largest |C - B|, C the table hex"
+      ],
+      "cause": {
+        "diagnosis": "the block 1/4 catalog raster layer smap-l3-raster, on at first paint at raster-opacity 0.55 (DEFAULT_ON in src/lib/map-store.ts), was moved to the very top of the style by applyOrder (map.moveLayer with no anchor), so it sat above the polygon fill and above every symbol layer and veiled the fill",
+        "evidence_index_before_fix": {
+          "basemap-raster": 86,
+          "polygon-fill": 89,
+          "smap-l3-raster": 119,
+          "style_layer_count": 120
+        },
+        "evidence_index_after_fix": {
+          "basemap-raster": 61,
+          "smap-l3-raster": 62,
+          "polygon-fill": 65,
+          "first_symbol": 67
+        },
+        "confirmation_on_the_unfixed_page": "map.moveLayer('smap-l3-raster', 'polygon-fill') on the running page changed the implied alpha of the same 12 points from 0.159 to 0.166 to 0.398 to 0.402, with the basemap read unchanged (polygons hidden in both reads)",
+        "not_the_cause": "the opacity constant (0.4 as declared, fill-opacity expression reads 0.4 at rest), a duplicate polygon layer (one fill and one line per tier), the overview tier (its layer range ends below the detail), a blend mode (MapLibre fill layers carry none), a second paint property (fill-antialias true and a zero duration transition, neither changes interior alpha)"
+      },
+      "before": {
+        "summary": {
+          "first": 0.1586,
+          "last": 0.1659,
+          "max": 0.1659,
+          "in_band_0.34_0.46": 0,
+          "points": 12
+        },
+        "points": [
+          {
+            "point": [
+              301,
+              766
+            ],
+            "shown_rgb": [
+              54,
+              108,
+              54
+            ],
+            "basemap_rgb": [
+              18,
+              107,
+              30
+            ],
+            "alpha": 0.1586,
+            "per_channel": [
+              0.159,
+              -0.032,
+              0.173
+            ]
+          },
+          {
+            "point": [
+              304,
+              766
+            ],
+            "shown_rgb": [
+              54,
+              108,
+              54
+            ],
+            "basemap_rgb": [
+              17,
+              107,
+              30
+            ],
+            "alpha": 0.1623,
+            "per_channel": [
+              0.162,
+              -0.032,
+              0.173
+            ]
+          },
+          {
+            "point": [
+              307,
+              766
+            ],
+            "shown_rgb": [
+              55,
+              109,
+              55
+            ],
+            "basemap_rgb": [
+              19,
+              108,
+              32
+            ],
+            "alpha": 0.1593,
+            "per_channel": [
+              0.159,
+              -0.031,
+              0.168
+            ]
+          },
+          {
+            "point": [
+              310,
+              766
+            ],
+            "shown_rgb": [
+              55,
+              108,
+              53
+            ],
+            "basemap_rgb": [
+              18,
+              106,
+              29
+            ],
+            "alpha": 0.163,
+            "per_channel": [
+              0.163,
+              -0.067,
+              0.171
+            ]
+          },
+          {
+            "point": [
+              295,
+              769
+            ],
+            "shown_rgb": [
+              54,
+              108,
+              54
+            ],
+            "basemap_rgb": [
+              17,
+              106,
+              29
+            ],
+            "alpha": 0.1623,
+            "per_channel": [
+              0.162,
+              -0.067,
+              0.179
+            ]
+          },
+          {
+            "point": [
+              298,
+              769
+            ],
+            "shown_rgb": [
+              54,
+              108,
+              54
+            ],
+            "basemap_rgb": [
+              18,
+              107,
+              30
+            ],
+            "alpha": 0.1586,
+            "per_channel": [
+              0.159,
+              -0.032,
+              0.173
+            ]
+          },
+          {
+            "point": [
+              301,
+              769
+            ],
+            "shown_rgb": [
+              55,
+              109,
+              54
+            ],
+            "basemap_rgb": [
+              18,
+              108,
+              31
+            ],
+            "alpha": 0.163,
+            "per_channel": [
+              0.163,
+              -0.031,
+              0.167
+            ]
+          },
+          {
+            "point": [
+              304,
+              769
+            ],
+            "shown_rgb": [
+              54,
+              108,
+              54
+            ],
+            "basemap_rgb": [
+              18,
+              107,
+              30
+            ],
+            "alpha": 0.1586,
+            "per_channel": [
+              0.159,
+              -0.032,
+              0.173
+            ]
+          },
+          {
+            "point": [
+              307,
+              769
+            ],
+            "shown_rgb": [
+              54,
+              108,
+              53
+            ],
+            "basemap_rgb": [
+              16,
+              106,
+              29
+            ],
+            "alpha": 0.1659,
+            "per_channel": [
+              0.166,
+              -0.067,
+              0.171
+            ]
+          },
+          {
+            "point": [
+              310,
+              769
+            ],
+            "shown_rgb": [
+              54,
+              108,
+              53
+            ],
+            "basemap_rgb": [
+              18,
+              106,
+              29
+            ],
+            "alpha": 0.1586,
+            "per_channel": [
+              0.159,
+              -0.067,
+              0.171
+            ]
+          },
+          {
+            "point": [
+              289,
+              772
+            ],
+            "shown_rgb": [
+              53,
+              108,
+              53
+            ],
+            "basemap_rgb": [
+              15,
+              105,
+              28
+            ],
+            "alpha": 0.1652,
+            "per_channel": [
+              0.165,
+              -0.103,
+              0.177
+            ]
+          },
+          {
+            "point": [
+              292,
+              772
+            ],
+            "shown_rgb": [
+              53,
+              108,
+              52
+            ],
+            "basemap_rgb": [
+              15,
+              106,
+              28
+            ],
+            "alpha": 0.1652,
+            "per_channel": [
+              0.165,
+              -0.067,
+              0.17
+            ]
+          }
+        ]
+      },
+      "after": {
+        "summary": {
+          "first": 0.3982,
+          "last": 0.4017,
+          "max": 0.4017,
+          "in_band_0.34_0.46": 12,
+          "points": 12
+        },
+        "points": [
+          {
+            "point": [
+              301,
+              766
+            ],
+            "shown_rgb": [
+              109,
+              95,
+              86
+            ],
+            "basemap_rgb": [
+              18,
+              107,
+              30
+            ],
+            "alpha": 0.4009,
+            "per_channel": [
+              0.401,
+              0.387,
+              0.403
+            ]
+          },
+          {
+            "point": [
+              304,
+              766
+            ],
+            "shown_rgb": [
+              108,
+              95,
+              86
+            ],
+            "basemap_rgb": [
+              17,
+              107,
+              30
+            ],
+            "alpha": 0.3991,
+            "per_channel": [
+              0.399,
+              0.387,
+              0.403
+            ]
+          },
+          {
+            "point": [
+              307,
+              766
+            ],
+            "shown_rgb": [
+              109,
+              95,
+              87
+            ],
+            "basemap_rgb": [
+              19,
+              108,
+              32
+            ],
+            "alpha": 0.3982,
+            "per_channel": [
+              0.398,
+              0.406,
+              0.401
+            ]
+          },
+          {
+            "point": [
+              310,
+              766
+            ],
+            "shown_rgb": [
+              109,
+              94,
+              85
+            ],
+            "basemap_rgb": [
+              18,
+              106,
+              29
+            ],
+            "alpha": 0.4009,
+            "per_channel": [
+              0.401,
+              0.4,
+              0.4
+            ]
+          },
+          {
+            "point": [
+              295,
+              769
+            ],
+            "shown_rgb": [
+              108,
+              94,
+              85
+            ],
+            "basemap_rgb": [
+              17,
+              106,
+              29
+            ],
+            "alpha": 0.3991,
+            "per_channel": [
+              0.399,
+              0.4,
+              0.4
+            ]
+          },
+          {
+            "point": [
+              298,
+              769
+            ],
+            "shown_rgb": [
+              109,
+              95,
+              86
+            ],
+            "basemap_rgb": [
+              18,
+              107,
+              30
+            ],
+            "alpha": 0.4009,
+            "per_channel": [
+              0.401,
+              0.387,
+              0.403
+            ]
+          },
+          {
+            "point": [
+              301,
+              769
+            ],
+            "shown_rgb": [
+              109,
+              95,
+              86
+            ],
+            "basemap_rgb": [
+              18,
+              108,
+              31
+            ],
+            "alpha": 0.4009,
+            "per_channel": [
+              0.401,
+              0.406,
+              0.399
+            ]
+          },
+          {
+            "point": [
+              304,
+              769
+            ],
+            "shown_rgb": [
+              109,
+              95,
+              86
+            ],
+            "basemap_rgb": [
+              18,
+              107,
+              30
+            ],
+            "alpha": 0.4009,
+            "per_channel": [
+              0.401,
+              0.387,
+              0.403
+            ]
+          },
+          {
+            "point": [
+              307,
+              769
+            ],
+            "shown_rgb": [
+              108,
+              94,
+              85
+            ],
+            "basemap_rgb": [
+              16,
+              106,
+              29
+            ],
+            "alpha": 0.4017,
+            "per_channel": [
+              0.402,
+              0.4,
+              0.4
+            ]
+          },
+          {
+            "point": [
+              310,
+              769
+            ],
+            "shown_rgb": [
+              109,
+              94,
+              85
+            ],
+            "basemap_rgb": [
+              18,
+              106,
+              29
+            ],
+            "alpha": 0.4009,
+            "per_channel": [
+              0.401,
+              0.4,
+              0.4
+            ]
+          },
+          {
+            "point": [
+              289,
+              772
+            ],
+            "shown_rgb": [
+              107,
+              93,
+              84
+            ],
+            "basemap_rgb": [
+              15,
+              105,
+              28
+            ],
+            "alpha": 0.4,
+            "per_channel": [
+              0.4,
+              0.414,
+              0.397
+            ]
+          },
+          {
+            "point": [
+              292,
+              772
+            ],
+            "shown_rgb": [
+              107,
+              94,
+              84
+            ],
+            "basemap_rgb": [
+              15,
+              106,
+              28
+            ],
+            "alpha": 0.4,
+            "per_channel": [
+              0.4,
+              0.4,
+              0.397
+            ]
+          }
+        ]
+      },
+      "why_kept": "Revision 1 is accurate about the fill: the implied alpha was 0.3982 to 0.4017 at its 12 points. It is kept because its cause block documents the layer-order fix, and because its before reading is the evidence that the raster on top of the fill veiled it. Its after points are not reused in revision 2: they sit in a 21 by 6 px window whose basemap is flat."
+    },
+    "why_kept": "Revision 2 is kept because its pixel reads are sound and its alphas reproduce exactly (0.3978 to 0.4018, 12 of 12 in band), and because it is the first re-measurement that put the B samples above the stddev floor (16.1179, 7.4223, 7.5358). Its sampled_polygon block is wrong: the rings came from a queryRenderedFeatures result clipped to a query box, so it records 12 rings and a 130.3 by 105.3 px box where the shipped feature has 15 rings and a 244.7 by 149.0 px box, and four of its points sit 3.38 to 3.74 px from the real outer ring. Revision 3 reuses neither its points nor its geometry block."
   }
 }
