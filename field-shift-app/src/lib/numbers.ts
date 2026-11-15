@@ -158,19 +158,31 @@ export type SoilSection = {
   as_of: string | null
 }
 
-export type CropYear = { year: number; code: number; product: string; class_name: string }
+/**
+ * One sidecar row of the rotation section. `code` and `class_name` are null when the sidecar row
+ * carries no class (Brazil, CO-B6-01), and the card prints that as not computed, never a name.
+ */
+export type CropYear = {
+  year: number
+  product: string
+  code: number | null
+  class_name: string | null
+  collection?: number | null
+}
 
+/** The payload writes `first_crop` and `second_crop` as null when the sidecar holds no such product. */
 export type RotationSection = {
   state: SectionState
-  first_crop: CropYear[]
-  second_crop: CropYear[]
+  first_crop: CropYear[] | null
+  second_crop: CropYear[] | null
   collection: string
-  collection_year: number
+  collection_year: number | null
   sidecar: string
   basis: 'modelled'
   source: string
   as_of: string | null
   reason?: string | null
+  error?: string | null
   second_crop_state_outside?: string | null
 }
 
