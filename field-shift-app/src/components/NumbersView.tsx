@@ -15,6 +15,8 @@ import {
   interiorPoint,
   METRICS,
   type ClimateSection,
+  type CropYear,
+  type GapRow,
   type NumbersPayload,
   type NumbersRequest,
   type ProvenanceRow,
@@ -26,7 +28,22 @@ import {
   NumbersNetworkError,
   numbersLastReadKey,
 } from '@/lib/numbers-api'
+import {
+  CDL_PRODUCT,
+  cdlHistory,
+  FIRST_CROP_PRODUCT,
+  FIRST_CROP_YEARS,
+  historyRows,
+  SECOND_CROP_PRODUCT,
+  SECOND_CROP_STATES,
+  SECOND_CROP_YEARS,
+  usCdlNameOf,
+  type HistoryRow,
+  type SidecarEntry,
+} from '@/lib/rotation'
+import { falsifierOf } from '@/lib/falsifier'
 import { t } from '@/strings'
+import type { RotationScenario } from './ScenarioCards'
 import './NumbersView.css'
 
 export const NUMBERS_VIEW_ATTR = 'data-numbers-view'
@@ -34,6 +51,8 @@ export const NUMBERS_VIEW_ATTR = 'data-numbers-view'
 type NumbersViewProps = {
   selectedField: FieldSummary | null
   onClose: () => void
+  /** The rotation scenarios of the selected field, for the counter evidence gaps (R-40). */
+  scenarios?: RotationScenario[]
 }
 
 type Load =
@@ -450,41 +469,113 @@ function SoilCard({ soil }: { soil: NumbersPayload['sections']['soil'] }) {
   )
 }
 
-function RotationCard({ rotation }: { rotation: NumbersPayload['sections']['rotation'] }) {
-  const empty = rotation.first_crop.length === 0 && rotation.second_crop.length === 0
+/** One printed class cell of a history row: a Table D name, `unmapped`, `not computed`, or `absent`. */
+function ClassCell({ row }: { row: HistoryRow }) {
+  const cell = row.cell
+  if (cell.kind === 'named') {
+    if (row.product === CDL_PRODUCT) return <span className="numbers-value">{cell.name}</span>
+    const metric = row.product === SECOND_CROP_PRODUCT ? 'mb_second_crop' : 'mb_first_crop'
+    return <PrintedText metric={`${metric}.${row.year}`} text={cell.name} />
+  }
+  if (cell.kind === 'unmapped') {
+    return (
+      <span className="numbers-abstain" data-class="unmapped">
+        {t('numbers.rotation.unmapped', { code: row.code ?? t('numbers.no_value'), product: row.product })}
+      </span>
+    )
+  }
+  if (cell.kind === 'absent') {
+    return <span className="numbers-abstain" data-class="absent">{t('polygon.no_cdl_class', { year: row.year })}</span>
+  }
+  return <span className="numbers-abstain" data-class="not_computed">{t('numbers.rotation.not_computed')}</span>
+}
+
+/** A year-by-year list. Each item carries its product beside its code (R-34) and its class cell. */
+function HistoryList({ rows, history }: { rows: HistoryRow[]; history: 'first' | 'second' | 'cdl' }) {
+  return (
+    <ul className="numbers-years" data-history={history}>
+      {rows.map((row) => (
+        <li key={`${row.product}-${row.year}`} data-year={row.year} data-product={row.product} data-code={row.code ?? ''}>
+          <span className="numbers-year">{t('numbers.rotation.year', { year: row.year })}</span>{' '}
+          <span className="numbers-product">{row.product}</span>{' '}
+          {row.code !== null && <span className="numbers-code">{t('numbers.rotation.code', { code: row.code })}</span>}{' '}
+          <ClassCell row={row} />
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+/** R-33: the years whose class is not computed, named once per product, so the gap names the missing class. */
+function unresolvedSummary(rows: HistoryRow[], product: string): string | null {
+  const count = rows.filter((row) => row.cell.kind === 'not_computed').length
+  return count === 0 ? null : t('numbers.rotation.class_missing', { count, product })
+}
+
+function entriesOf(crops: CropYear[] | null): SidecarEntry[] {
+  return (crops ?? []).map((entry) => ({ year: entry.year, product: entry.product, code: entry.code }))
+}
+
+/**
+ * R-33 to R-36: the MapBiomas first and second crop history of the sidecar, one row per year it
+ * carries, and the CDL history of a United States polygon from its own properties. A row with no
+ * class abstains with its named cause; no row abstains with the R-36 gap. Nothing is filled in.
+ */
+function RotationCard({
+  rotation,
+  cdl,
+}: {
+  rotation: NumbersPayload['sections']['rotation']
+  cdl: HistoryRow[] | null
+}) {
+  const first = historyRows(entriesOf(rotation.first_crop), FIRST_CROP_PRODUCT, FIRST_CROP_YEARS)
+  const second = historyRows(entriesOf(rotation.second_crop), SECOND_CROP_PRODUCT, SECOND_CROP_YEARS)
+  const unavailable = rotation.state === 'unavailable'
+  const noMapBiomasRow = first.length === 0 && second.length === 0
+  const firstSummary = unresolvedSummary(first, FIRST_CROP_PRODUCT)
+  const secondSummary = unresolvedSummary(second, SECOND_CROP_PRODUCT)
   return (
     <Card id="rotation" title={t('numbers.card.rotation')} source={rotation.source} asOf={rotation.as_of} basis={rotation.basis}>
-      <p className="numbers-provenance-line">{t('numbers.rotation.collection', { year: rotation.collection_year })}</p>
-      {empty && <p className="numbers-abstain">{t('numbers.rotation.no_row')}</p>}
-      {rotation.first_crop.length > 0 && (
+      <p className="numbers-provenance-line">
+        {t('numbers.rotation.collection', { year: rotation.collection_year ?? t('numbers.no_value') })}
+      </p>
+      {unavailable && (
+        <p className="numbers-abstain">{t('numbers.rotation.unavailable', { error: rotation.error ?? t('numbers.no_value') })}</p>
+      )}
+      {!unavailable && noMapBiomasRow && <p className="numbers-abstain">{t('numbers.rotation.no_row')}</p>}
+      {first.length > 0 && (
         <>
           <h4>{t('numbers.rotation.first_crop')}</h4>
-          <ul className="numbers-years">
-            {rotation.first_crop.map((entry) => (
-              <li key={`${entry.product}-${entry.year}`}>
-                <span className="numbers-year">{t('numbers.rotation.year', { year: entry.year })}</span>{' '}
-                <PrintedText metric={`mb_first_crop.${entry.year}`} text={entry.class_name} />
-              </li>
-            ))}
-          </ul>
+          <HistoryList rows={first} history="first" />
+          {firstSummary && <p className="numbers-abstain">{firstSummary}</p>}
         </>
       )}
-      {rotation.second_crop.length > 0 && (
+      {first.length === 0 && second.length > 0 && <p className="numbers-abstain">{t('numbers.rotation.first_no_row')}</p>}
+      <h4>{t('numbers.rotation.second_crop')}</h4>
+      <p className="numbers-cell-statement">{t('numbers.rotation.second_states', { states: SECOND_CROP_STATES.join(', ') })}</p>
+      {rotation.second_crop_state_outside ? (
+        <p className="numbers-abstain">{t('numbers.rotation.state_outside', { state: rotation.second_crop_state_outside })}</p>
+      ) : second.length === 0 ? (
+        <p className="numbers-abstain">{t('numbers.rotation.second_no_row')}</p>
+      ) : (
         <>
-          <h4>{t('numbers.rotation.second_crop')}</h4>
-          <ul className="numbers-years">
-            {rotation.second_crop.map((entry) => (
-              <li key={`${entry.product}-${entry.year}`}>
-                <span className="numbers-year">{t('numbers.rotation.year', { year: entry.year })}</span>{' '}
-                <PrintedText metric={`mb_second_crop.${entry.year}`} text={entry.class_name} />
-              </li>
-            ))}
-          </ul>
+          <HistoryList rows={second} history="second" />
+          {secondSummary && <p className="numbers-abstain">{secondSummary}</p>}
         </>
+      )}
+      {cdl !== null && cdl.length > 0 && (
+        <div className="numbers-cdl" data-cdl-block>
+          <h4>
+            {t('numbers.rotation.cdl_heading')} <BasisChip basis="retrieved" />
+          </h4>
+          <p className="numbers-cell-statement">{t('numbers.rotation.cdl_source')}</p>
+          <HistoryList rows={cdl} history="cdl" />
+        </div>
       )}
     </Card>
   )
 }
+
 
 function MunicipalCard({ municipal }: { municipal: NumbersPayload['sections']['municipality'] }) {
   return (
@@ -620,7 +711,7 @@ function GapRegister({ gaps }: { gaps: NumbersPayload['gaps'] }) {
   )
 }
 
-export function NumbersView({ selectedField, onClose }: NumbersViewProps) {
+export function NumbersView({ selectedField, onClose, scenarios = [] }: NumbersViewProps) {
   const regionId = useMapStore((state) => state.regionId)
   const selectedPolygonId = useMapStore((state) => state.selectedPolygonId)
   const polygonRaw = useMapStore((state) => state.polygonRaw)
@@ -748,6 +839,25 @@ export function NumbersView({ selectedField, onClose }: NumbersViewProps) {
   const areaText = isPolygon ? (readout.find((row) => row.key === 'area')?.value ?? '') : t('numbers.header.no_area_source')
   const window = payload?.query.window ?? null
 
+  // R-33 to R-36: a United States polygon's CDL history is read from its own `cdl{Y}` properties.
+  const cdl = isPolygon && regionId === 'us' && polygonRaw?.cdl !== undefined
+    ? cdlHistory(polygonRaw.cdl, usCdlNameOf)
+    : null
+
+  // R-40: a scenario with no falsifier is a gap of the register, with its scenario id and field id.
+  const counterGaps: GapRow[] = !isPolygon && selectedField !== null
+    ? scenarios
+      .filter((scenario) => falsifierOf(scenario) === null)
+      .map((scenario) => ({
+        section: 'counter evidence',
+        cause: t('numbers.gaps.counter', { scenario: scenario.id, field: selectedField.id }),
+        source: 'fixture rotation scenarios of the field (backend/fixtures/field-scenarios.json)',
+        status: 'not recorded',
+        date: chosenDate,
+        remediation: 'CO-B6-02: record a falsifier for this scenario',
+      }))
+    : []
+
   let body: ReactNode
   if (fieldId === null) {
     body = <p className="numbers-empty">{t('numbers.no_field')}</p>
@@ -781,11 +891,11 @@ export function NumbersView({ selectedField, onClose }: NumbersViewProps) {
             <SmapCard smap={s.smap} />
             <NdviCard ndvi={s.ndvi} />
             <SoilCard soil={s.soil} />
-            <RotationCard rotation={s.rotation} />
+            <RotationCard rotation={s.rotation} cdl={cdl} />
             <MunicipalCard municipal={s.municipality} />
           </div>
           <ProvenanceTable rows={payload.provenance} />
-          <GapRegister gaps={payload.gaps} />
+          <GapRegister gaps={[...payload.gaps, ...counterGaps]} />
         </RowsContext.Provider>
       </>
     )
