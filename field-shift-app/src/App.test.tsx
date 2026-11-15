@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { useMapStore } from '@/lib/map-store'
+import { usePanelStore } from '@/lib/panel-store'
 import { en } from './strings/en'
 import { layersResponse } from '@/test/api-fixtures'
 import App, { ZOrder } from './App'
@@ -141,6 +142,7 @@ function mockApi() {
 }
 
 beforeEach(() => {
+  usePanelStore.setState({ open: 'rotation' })
   // Block 5 makes the United States the default region (R-01) and lists only the active
   // region's fixtures (R-24, AM-10). These block 1 to 4 cases exercise the Brazil fixtures,
   // so they run with Brazil active, which `?region=` is the only way to choose.
@@ -377,7 +379,9 @@ describe('field map and rotation scenario selection', () => {
     expect(await screen.findAllByText('Backend request failed (HTTP 500). Retry when it is available.')).not.toHaveLength(0)
     expect(screen.getByRole('region', { name: 'Field map' })).toBeTruthy()
     expect(screen.getByRole('navigation', { name: 'Layers' })).toBeTruthy()
-    expect(screen.getByRole('list', { name: 'Rotation scenarios' })).toBeTruthy()
+    // Block 5.5 B5: with nothing selected the rotation button is disabled and its panel does not
+    // mount, so the cards are absent while the control is still on the strip.
+    expect(screen.getAllByRole('button', { name: /Rotation outlook/ }).length).toBeGreaterThan(0)
     expect(screen.getByRole('region', { name: 'Timeline' })).toBeTruthy()
     expect(screen.queryByRole('combobox', { name: 'Season' })).toBeNull()
     expect(document.querySelector('select')).toBeNull()
@@ -403,7 +407,7 @@ describe('field map and rotation scenario selection', () => {
 
     expect(await screen.findAllByText('Backend is unreachable. Check your connection and retry.')).not.toHaveLength(0)
     expect(screen.getByRole('region', { name: 'Field map' })).toBeTruthy()
-    expect(screen.getByRole('list', { name: 'Rotation scenarios' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Rotation outlook/ })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Supporting data' })).toBeTruthy()
     expect(screen.queryByRole('region', { name: 'Evidence' })).toBeNull()
   })
@@ -601,7 +605,9 @@ describe('block 3 wave 1: toggles and the single coverage readout', () => {
 
     expect(await screen.findByRole('region', { name: 'Field map' })).toBeTruthy()
     expect(screen.getByRole('navigation', { name: 'Layers' })).toBeTruthy()
-    expect(screen.getByRole('list', { name: 'Rotation scenarios' })).toBeTruthy()
+    // Block 5.5 B5: with nothing selected the rotation button is disabled and its panel does not
+    // mount, so the cards are absent while the control is still on the strip.
+    expect(screen.getAllByRole('button', { name: /Rotation outlook/ }).length).toBeGreaterThan(0)
     expect(screen.getByRole('region', { name: 'Timeline' })).toBeTruthy()
     expect(screen.queryByRole('combobox', { name: 'Season' })).toBeNull()
     expect(screen.queryByRole('region', { name: 'Evidence' })).toBeNull()
@@ -1380,8 +1386,10 @@ describe('block 4 wave 4: the dock states, the two toggles and the motion rules'
     await waitFor(() => expect(document.querySelectorAll('.scenario-card[role="option"]')).toHaveLength(0))
     expect(screen.queryByRole('list', { name: 'Rotation scenarios' })).toBeNull()
     expect(document.querySelectorAll('.rotation-card').length).toBe(0)
-    // The heading block stays, because the collapsed panel's height is that header.
-    expect(screen.getByRole('heading', { name: 'Rotation outlook' })).toBeTruthy()
+    // Block 5.5 B4: closing the panel unmounts it whole, heading included, and leaves the map screen
+    // with no empty surface over it.
+    expect(screen.queryByRole('heading', { name: 'Rotation outlook' })).toBeNull()
+    expect(document.querySelector('[data-panel-host]')).toBeNull()
 
     await user.click(screen.getByRole('button', { name: 'Expand Rotation outlook' }))
     await waitFor(() => expect(document.querySelectorAll('.scenario-card[role="option"]')).toHaveLength(3))
@@ -1421,8 +1429,9 @@ describe('block 4 wave 4: the dock states, the two toggles and the motion rules'
     const user = userEvent.setup()
     render(<App />)
 
-    // 780x900 loads with the rotation panel collapsed (R-52), so the cards mount after a press.
-    await user.click(await screen.findByRole('button', { name: 'Expand Rotation outlook' }))
+    // Block 5.5 B4: no panel is open at first paint at any width, so the cards mount after a press.
+    await user.click(await screen.findByRole('button', { name: 'Collapse Rotation outlook' }))
+    await user.click(screen.getByRole('button', { name: 'Expand Rotation outlook' }))
     await waitFor(() => expect(document.querySelectorAll('.scenario-card[role="option"]')).toHaveLength(3))
     const flip = document.querySelector('.scenario-card .flip-overlay') as HTMLElement
     await user.click(flip)
@@ -1453,14 +1462,15 @@ describe('block 4 wave 4: the dock states, the two toggles and the motion rules'
     const children = [...strip.children]
     // Block 6, R-01: the `Field numbers` button is the control block 6 added after Supporting data,
     // and block 7 R-08 adds `Planting calendar` and `Field record` to its right, in that order.
-    expect(children).toHaveLength(7)
+    expect(children).toHaveLength(8)
     expect(children[0].textContent).toBe('FIELD INTELLIGENCE')
     expect(children[1].getAttribute('aria-label')).toBe('Grower profile')
     expect(children[2].textContent).toBe('Command')
     expect(children[3].textContent).toBe('Supporting data')
-    expect(children[4].textContent).toBe('Field numbers')
-    expect(children[5].textContent).toBe('Planting calendar')
-    expect(children[6].textContent).toBe('Field record')
+    expect(children[4].textContent).toBe('Rotation outlook')
+    expect(children[5].textContent).toBe('Field numbers')
+    expect(children[6].textContent).toBe('Planting calendar')
+    expect(children[7].textContent).toBe('Field record')
     expect(document.querySelector('[aria-label="Season"]')).toBeNull()
     expect(document.querySelector('select')).toBeNull()
   })

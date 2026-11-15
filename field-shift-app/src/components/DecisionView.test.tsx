@@ -1,4 +1,4 @@
-import { cleanup, render, screen, within } from '@testing-library/react'
+import { cleanup, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { DecisionView } from './DecisionView'
 import { calendarRows, type SeasonlessPayload, type ZarcWindowRow } from '@/lib/planting-calendar'
@@ -28,7 +28,6 @@ const FIELD = { fieldId: 'mt-santa-carmem-01', ring: [[-55.285, -11.9], [-55.26,
 
 function renderCalendar(overrides: Partial<Parameters<typeof DecisionView>[0]> = {}) {
   const props: Parameters<typeof DecisionView>[0] = {
-    onClose: () => {},
     fieldName: 'Santa Carmem North',
     chosenDate: '2026-11-12',
     place: PLACE,
@@ -37,7 +36,6 @@ function renderCalendar(overrides: Partial<Parameters<typeof DecisionView>[0]> =
     heldSeasons: ['2025/2026', '2026/2027'],
     history: [],
     numbersTarget: null,
-    gaps: [],
     ...overrides,
   }
   return render(<DecisionView {...props} />)
@@ -178,25 +176,13 @@ describe('R-32, the empty season (AC-25)', () => {
   })
 })
 
-describe('R-41 and R-58, a registered field (AC-29)', () => {
-  it('abstains with the missing location and prints one gap naming it', () => {
-    renderCalendar({
-      fieldName: 'North Forty',
-      place: null,
-      gaps: [{
-        surface: 'Planting calendar',
-        cause: 'calendar.abstain_municipality',
-        source: 'fs.fields.v1',
-        status: 'the field carries no municipality',
-        date: '2026-11-12',
-        remediation: 'CO-B7-06',
-      }],
-    })
+describe('R-41, a registered field in the calendar panel (AC-29)', () => {
+  it('abstains with the missing location and prints no gap table of its own', () => {
+    renderCalendar({ fieldName: 'North Forty', place: null })
     expect(document.querySelector('.calendar-table')).toBeNull()
-    expect(screen.getByText(/no municipality/i)).toBeTruthy()
-    const gapsTable = document.querySelector('.gaps-table') as HTMLElement
-    expect(gapsTable).toBeTruthy()
-    expect(within(gapsTable).getByText('CO-B7-06')).toBeTruthy()
+    expect(screen.getByText('No planting window data for this municipality')).toBeTruthy()
+    // Block 7 revision 10 R-58: the calendar panel carries no gap register of its own.
+    expect(document.querySelector('.gaps-table')).toBeNull()
   })
 })
 

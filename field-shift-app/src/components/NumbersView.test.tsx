@@ -1,5 +1,4 @@
 import { act, cleanup, render, screen, within } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -90,19 +89,20 @@ afterEach(() => {
   useMapStore.setState({ selectedFieldId: null, numbersLastRead: {} })
 })
 
-describe('the Field numbers region (R-01, R-03, R-05, AC-01, AC-03, AC-04)', () => {
-  it('mounts exactly one region named Field numbers with a level two heading of that text', async () => {
+describe('the Field numbers panel body (block 6 revision 5 R-01, R-03, R-05, AC-01, AC-03, AC-04)', () => {
+  it('renders the panel body and leaves the landmark and the level two heading to the host', async () => {
     stubNumbersFetch(recordedNumbersPayload())
-    render(<NumbersView selectedField={field} onClose={vi.fn()} />)
-    const regions = screen.getAllByRole('region', { name: 'Field numbers' })
-    expect(regions).toHaveLength(1)
-    expect(within(regions[0]).getByRole('heading', { level: 2, name: 'Field numbers' })).toBeTruthy()
+    const { container } = render(<NumbersView selectedField={field} />)
+    expect(container.querySelector('[data-numbers-view]')).toBeTruthy()
+    // Block 5.5 W4: the panel body carries no landmark and no level two heading of its own.
+    expect(container.querySelector('[role="region"]')).toBeNull()
+    expect(container.querySelector('h2')).toBeNull()
     await screen.findByText('Climate')
   })
 
   it('prints the raw field id in the header with no basis label, and the window with the climate basis', async () => {
     stubNumbersFetch(recordedNumbersPayload())
-    const { container } = render(<NumbersView selectedField={field} onClose={vi.fn()} />)
+    const { container } = render(<NumbersView selectedField={field} />)
     await screen.findByText('Climate')
     const header = container.querySelector('.numbers-header') as HTMLElement
     expect(header).not.toBeNull()
@@ -118,31 +118,21 @@ describe('the Field numbers region (R-01, R-03, R-05, AC-01, AC-03, AC-04)', () 
   it('prints the empty state and no section, number or gap row when no field is selected (AC-03)', () => {
     stubNumbersFetch(recordedNumbersPayload())
     useMapStore.setState({ selectedFieldId: null })
-    render(<NumbersView selectedField={null} onClose={vi.fn()} />)
+    render(<NumbersView selectedField={null} />)
     expect(screen.getByText('No field selected')).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Back to map' })).toBeTruthy()
+    // Block 5.5 W4: no `Back to map` control and no card heading in the empty state.
+    expect(screen.queryByRole('button', { name: 'Back to map' })).toBeNull()
     expect(screen.queryByRole('heading', { level: 3 })).toBeNull()
     expect(printedMetrics()).toEqual([])
     expect(screen.queryByText('Gap register')).toBeNull()
   })
 
-  it('moves focus to Back to map on open and closes on Enter and on Space (R-05, AC-04)', async () => {
-    stubNumbersFetch(recordedNumbersPayload())
-    const onClose = vi.fn()
-    render(<NumbersView selectedField={field} onClose={onClose} />)
-    const back = screen.getByRole('button', { name: 'Back to map' })
-    expect(document.activeElement).toBe(back)
-    const user = userEvent.setup()
-    await user.keyboard('{Enter}')
-    await user.keyboard(' ')
-    expect(onClose).toHaveBeenCalledTimes(2)
-  })
 })
 
 describe('the seven data cards (R-13, R-12, AC-12)', () => {
   it('prints the seven card headings in the frozen order, each with a source line carrying source, as_of and basis', async () => {
     stubNumbersFetch(recordedNumbersPayload())
-    render(<NumbersView selectedField={field} onClose={vi.fn()} />)
+    render(<NumbersView selectedField={field} />)
     await screen.findByText('Climate')
     const headings = Array.from(document.querySelectorAll('[data-card] > h3')).map((node) => node.textContent)
     expect(headings).toEqual(CARD_NAMES)
@@ -159,7 +149,7 @@ describe('the seven data cards (R-13, R-12, AC-12)', () => {
   it('abstains with the spec text on NDVI and rotation instead of a placeholder value (R-12, R-29, R-36)', async () => {
     const payload = recordedNumbersPayload()
     stubNumbersFetch(payload)
-    const { container } = render(<NumbersView selectedField={field} onClose={vi.fn()} />)
+    const { container } = render(<NumbersView selectedField={field} />)
     await screen.findByText('Climate')
     const rotation = container.querySelector('[data-card="rotation"]') as HTMLElement
     expect(within(rotation).getByText('no MapBiomas Collection 11 row for this polygon')).toBeTruthy()
@@ -173,7 +163,7 @@ describe('the seven data cards (R-13, R-12, AC-12)', () => {
 describe('climate, water balance, SMAP and NDVI (R-16 to R-30)', () => {
   it('prints the chart with one point per valid day for rain, T2M_MAX and T2M_MIN (R-21, AC-20)', async () => {
     stubNumbersFetch(recordedNumbersPayload())
-    const { container } = render(<NumbersView selectedField={field} onClose={vi.fn()} />)
+    const { container } = render(<NumbersView selectedField={field} />)
     await screen.findByText('Climate')
     for (const family of ['rain_day', 'tmax_day', 'tmin_day']) {
       const group = container.querySelector(`[data-metric="${family}"]`)
@@ -190,7 +180,7 @@ describe('climate, water balance, SMAP and NDVI (R-16 to R-30)', () => {
       ...payload,
       sections: { ...payload.sections, climate: { ...payload.sections.climate, series: { ...payload.sections.climate.series, tmax_day: tmax, tmin_day: tmin } } },
     })
-    const { container } = render(<NumbersView selectedField={field} onClose={vi.fn()} />)
+    const { container } = render(<NumbersView selectedField={field} />)
     await screen.findByText('Climate')
     const tmaxGroup = container.querySelector('[data-metric="tmax_day"]')
     expect(tmaxGroup?.querySelectorAll('circle')).toHaveLength(41)
@@ -205,7 +195,7 @@ describe('climate, water balance, SMAP and NDVI (R-16 to R-30)', () => {
 
   it('prints exactly three millimetre numbers in the water balance, with the EVLAND statement beside out (R-22, R-24, AC-21, AC-23)', async () => {
     stubNumbersFetch(recordedNumbersPayload())
-    const { container } = render(<NumbersView selectedField={field} onClose={vi.fn()} />)
+    const { container } = render(<NumbersView selectedField={field} />)
     await screen.findByText('Climate')
     const card = container.querySelector('[data-card="water"]') as HTMLElement
     expect(card).not.toBeNull()
@@ -233,7 +223,7 @@ describe('climate, water balance, SMAP and NDVI (R-16 to R-30)', () => {
         },
       },
     })
-    const { container } = render(<NumbersView selectedField={field} onClose={vi.fn()} />)
+    const { container } = render(<NumbersView selectedField={field} />)
     await screen.findByText('Climate')
     const card = container.querySelector('[data-card="water"]') as HTMLElement
     expect(within(card).getByText(/EVLAND is missing on 1 window days/)).toBeTruthy()
@@ -244,7 +234,7 @@ describe('climate, water balance, SMAP and NDVI (R-16 to R-30)', () => {
   it('prints the SMAP disclosure and no physical unit, and the NDVI counts (R-25, R-30, AC-24, AC-29)', async () => {
     const payload = recordedNumbersPayload()
     stubNumbersFetch(payload)
-    const { container } = render(<NumbersView selectedField={field} onClose={vi.fn()} />)
+    const { container } = render(<NumbersView selectedField={field} />)
     await screen.findByText('Climate')
     const smap = container.querySelector('[data-card="smap"]') as HTMLElement
     expect(within(smap).getByText('palette, not a physical unit', { exact: false })).toBeTruthy()
@@ -265,7 +255,7 @@ describe('provenance, gap register and the disclosure (R-07, R-08, R-41, R-42, R
   it('prints each printed metric id once, only ids the payload carries, and every row of the payload (AC-06)', async () => {
     const payload = recordedNumbersPayload()
     stubNumbersFetch(payload)
-    render(<NumbersView selectedField={field} onClose={vi.fn()} />)
+    render(<NumbersView selectedField={field} />)
     await screen.findByText('Climate')
     const printed = printedMetrics()
     expect(new Set(printed).size).toBe(printed.length)
@@ -288,7 +278,7 @@ describe('provenance, gap register and the disclosure (R-07, R-08, R-41, R-42, R
   it('prints the header area and ring area cells with their metric ids (R-03, R-07, AC-03, AC-06)', async () => {
     const payload = recordedNumbersPayload()
     stubNumbersFetch(payload)
-    const { container } = render(<NumbersView selectedField={field} onClose={vi.fn()} />)
+    const { container } = render(<NumbersView selectedField={field} />)
     await screen.findByText('Climate')
     const header = container.querySelector('.numbers-header') as HTMLElement
     // A fixture field carries no block 5 area source, so the area row abstains in the header.
@@ -305,7 +295,7 @@ describe('provenance, gap register and the disclosure (R-07, R-08, R-41, R-42, R
 
   it('lets the Area fact wrap, so the area value prints in full and the ring area keeps its own line (R-03, AC-03)', async () => {
     stubNumbersFetch(recordedNumbersPayload())
-    const { container } = render(<NumbersView selectedField={field} onClose={vi.fn()} />)
+    const { container } = render(<NumbersView selectedField={field} />)
     await screen.findByText('Climate')
     const header = container.querySelector('.numbers-header') as HTMLElement
     const area = header.querySelector<HTMLElement>('[data-metric="area"]')
@@ -326,7 +316,7 @@ describe('provenance, gap register and the disclosure (R-07, R-08, R-41, R-42, R
     const payload = recordedNumbersPayload()
     expect(payload.sections.smap.days).toEqual([])
     stubNumbersFetch(payload)
-    const { container } = render(<NumbersView selectedField={field} onClose={vi.fn()} />)
+    const { container } = render(<NumbersView selectedField={field} />)
     await screen.findByText('Climate')
     const smap = container.querySelector('[data-card="smap"]') as HTMLElement
     for (const metric of ['smap_surface', 'smap_rootzone']) {
@@ -339,7 +329,7 @@ describe('provenance, gap register and the disclosure (R-07, R-08, R-41, R-42, R
   it('prints the two NDVI family rows as abstentions when no point is plotted (R-07, R-12, AC-06)', async () => {
     const payload = recordedNumbersPayload()
     stubNumbersFetch(payload)
-    const { container } = render(<NumbersView selectedField={field} onClose={vi.fn()} />)
+    const { container } = render(<NumbersView selectedField={field} />)
     await screen.findByText('Climate')
     const ndvi = container.querySelector('[data-card="ndvi"]') as HTMLElement
     for (const metric of ['ndvi_mean', 'ndvi_valid_fraction']) {
@@ -357,7 +347,7 @@ describe('provenance, gap register and the disclosure (R-07, R-08, R-41, R-42, R
     expect(payload.sections.municipality.municipality).toBeNull()
     expect(payload.sections.municipality.state_row?.soy_ha).toBe(12788611)
     stubNumbersFetch(payload)
-    const { container } = render(<NumbersView selectedField={field} onClose={vi.fn()} />)
+    const { container } = render(<NumbersView selectedField={field} />)
     await screen.findByText('Climate')
     const municipal = container.querySelector('[data-card="municipal"]') as HTMLElement
     const municipalCell = municipal.querySelector<HTMLElement>('[data-metric="municipality_soy_ha"]')
@@ -372,7 +362,7 @@ describe('provenance, gap register and the disclosure (R-07, R-08, R-41, R-42, R
   it('renders each provenance row in the table with its basis label (R-08, AC-07)', async () => {
     const payload = recordedNumbersPayload()
     stubNumbersFetch(payload)
-    const { container } = render(<NumbersView selectedField={field} onClose={vi.fn()} />)
+    const { container } = render(<NumbersView selectedField={field} />)
     await screen.findByText('Climate')
     const rows = Array.from(container.querySelectorAll<HTMLElement>('[data-provenance-metric]'))
     expect(rows).toHaveLength(payload.provenance.length)
@@ -388,7 +378,7 @@ describe('provenance, gap register and the disclosure (R-07, R-08, R-41, R-42, R
   it('prints one gap row per payload gap, in the payload order, each once (R-41, R-42, AC-41)', async () => {
     const payload = recordedNumbersPayload()
     stubNumbersFetch(payload)
-    const { container } = render(<NumbersView selectedField={field} onClose={vi.fn()} />)
+    const { container } = render(<NumbersView selectedField={field} />)
     await screen.findByText('Climate')
     const rows = Array.from(container.querySelectorAll<HTMLElement>('[data-gap-index]'))
     expect(rows).toHaveLength(payload.gaps.length)
@@ -402,7 +392,7 @@ describe('provenance, gap register and the disclosure (R-07, R-08, R-41, R-42, R
   it('prints the empty text and no row when the payload has no gap (R-41)', async () => {
     const payload = { ...recordedNumbersPayload(), gaps: [] }
     stubNumbersFetch(payload)
-    const { container } = render(<NumbersView selectedField={field} onClose={vi.fn()} />)
+    const { container } = render(<NumbersView selectedField={field} />)
     await screen.findByText('Climate')
     expect(container.querySelectorAll('[data-gap-index]')).toHaveLength(0)
     expect(screen.getByText('No gaps. Every number of this field has its source.')).toBeTruthy()
@@ -410,7 +400,7 @@ describe('provenance, gap register and the disclosure (R-07, R-08, R-41, R-42, R
 
   it('prints the palette disclosure beside the SMAP route 1 values (R-44, AC-43)', async () => {
     stubNumbersFetch(recordedNumbersPayload())
-    const { container } = render(<NumbersView selectedField={field} onClose={vi.fn()} />)
+    const { container } = render(<NumbersView selectedField={field} />)
     await screen.findByText('Climate')
     const smap = container.querySelector('[data-card="smap"]') as HTMLElement
     expect(within(smap).getByText(/palette of the served image, not the physical unit/)).toBeTruthy()
@@ -420,7 +410,7 @@ describe('provenance, gap register and the disclosure (R-07, R-08, R-41, R-42, R
 describe('the request and the states (R-45, R-06, R-48, AC-05, AC-47)', () => {
   it('sends the Table B body for a fixture field: its ring, centroid, a null area and the chosen date', async () => {
     const { bodies } = stubNumbersFetch(recordedNumbersPayload())
-    render(<NumbersView selectedField={field} onClose={vi.fn()} />)
+    render(<NumbersView selectedField={field} />)
     await screen.findByText('Climate')
     expect(bodies).toHaveLength(1)
     expect(bodies[0]).toEqual({
@@ -433,10 +423,11 @@ describe('the request and the states (R-45, R-06, R-48, AC-05, AC-47)', () => {
 
   it('keeps the open state, the field, the payload and the window through a real resize, with no new request (R-06, AC-05)', async () => {
     const { fetchMock } = stubNumbersFetch(recordedNumbersPayload())
-    render(<NumbersView selectedField={field} onClose={vi.fn()} />)
+    render(<NumbersView selectedField={field} />)
     await screen.findByText('Climate')
     const before = document.querySelector('[data-numbers-view]')?.textContent
-    const region = screen.getByRole('region', { name: 'Field numbers' })
+    // Block 5.5 W4: the scroller is the panel body, which is the element the offset is measured on.
+    const region = document.querySelector('[data-numbers-view]') as HTMLElement
     // jsdom has no layout, so the offset is a plain property here; the browser run measures the real one.
     Object.defineProperty(region, 'scrollTop', { configurable: true, writable: true, value: 120 })
     for (const width of [780, 360, 1440]) {
@@ -444,9 +435,9 @@ describe('the request and the states (R-45, R-06, R-48, AC-05, AC-47)', () => {
         Object.defineProperty(window, 'innerWidth', { configurable: true, value: width })
         window.dispatchEvent(new Event('resize'))
       })
-      expect(screen.getByRole('region', { name: 'Field numbers' })).toBe(region)
+      // Block 5.5: the panel body is not remounted by a resize, so the node and its offset stay.
+      expect(document.querySelector('[data-numbers-view]')).toBe(region)
       expect(document.querySelector('[data-numbers-view]')?.textContent).toBe(before)
-      expect(screen.getByRole('heading', { level: 2, name: 'Field numbers' })).toBeTruthy()
       expect(region.scrollTop).toBe(120)
     }
     expect(fetchMock).toHaveBeenCalledTimes(1)
@@ -456,7 +447,7 @@ describe('the request and the states (R-45, R-06, R-48, AC-05, AC-47)', () => {
     const payload = recordedNumbersPayload()
     useMapStore.setState({ numbersLastRead: { [`${field.id}|2026-11-12`]: payload } })
     stubNumbersFetch(() => Promise.reject(new TypeError('Failed to fetch')))
-    render(<NumbersView selectedField={field} onClose={vi.fn()} />)
+    render(<NumbersView selectedField={field} />)
     expect(await screen.findByText('last read 2026-11-15')).toBeTruthy()
     expect(screen.getByText('Numbers service unreachable. Check your connection and retry.')).toBeTruthy()
     expect(screen.getAllByText('171.9').length).toBeGreaterThan(0)
@@ -464,14 +455,14 @@ describe('the request and the states (R-45, R-06, R-48, AC-05, AC-47)', () => {
 
   it('prints the offline text and no value when nothing is held (R-48)', async () => {
     stubNumbersFetch(() => Promise.reject(new TypeError('Failed to fetch')))
-    render(<NumbersView selectedField={field} onClose={vi.fn()} />)
+    render(<NumbersView selectedField={field} />)
     expect(await screen.findByText('No value held for this field and window.')).toBeTruthy()
     expect(printedMetrics()).toEqual([])
   })
 
   it('prints the HTTP status on a non 200 answer (R-46)', async () => {
     stubNumbersFetch(() => Promise.resolve({ ok: false, status: 422, json: async () => null } as unknown as Response))
-    render(<NumbersView selectedField={field} onClose={vi.fn()} />)
+    render(<NumbersView selectedField={field} />)
     expect(await screen.findByText('Numbers request failed (HTTP 422). Retry when the service is available.')).toBeTruthy()
   })
 })
@@ -489,7 +480,7 @@ describe('a selected polygon (R-03, R-49, Table B, AC-50)', () => {
       polygonRing: usRing,
       chosenDate: '2026-11-12',
     })
-    const { container } = render(<NumbersView selectedField={null} onClose={vi.fn()} />)
+    const { container } = render(<NumbersView selectedField={null} />)
     await screen.findByText('Climate')
     const header = container.querySelector('.numbers-header') as HTMLElement
     expect(within(header).getByText('csb:381825001868504')).toBeTruthy()
@@ -511,7 +502,7 @@ describe('a selected polygon (R-03, R-49, Table B, AC-50)', () => {
   it('abstains with the outline text and sends no request when the map has not rendered the outline', async () => {
     const { fetchMock } = stubNumbersFetch(recordedNumbersPayload())
     useMapStore.setState({ regionId: 'us', selectedFieldId: null, selectedPolygonId: '381825001868504', polygonRing: null })
-    render(<NumbersView selectedField={null} onClose={vi.fn()} />)
+    render(<NumbersView selectedField={null} />)
     expect(screen.getByText('Polygon outline not read yet. Select the polygon on the map.')).toBeTruthy()
     expect(fetchMock).not.toHaveBeenCalled()
   })
@@ -546,7 +537,7 @@ describe('abstention texts name the missing input, its source and its cause (R-1
   it('prints the SMAP abstention with the palette source and the SMAP gap cause', async () => {
     const payload = recordedNumbersPayload()
     stubNumbersFetch(payload)
-    const { container } = render(<NumbersView selectedField={field} onClose={vi.fn()} />)
+    const { container } = render(<NumbersView selectedField={field} />)
     await screen.findByText('Climate')
     const smap = container.querySelector('[data-card="smap"]') as HTMLElement
     const text = smap.querySelector('p.numbers-abstain')?.textContent ?? ''
@@ -559,7 +550,7 @@ describe('abstention texts name the missing input, its source and its cause (R-1
   it('prints the municipal abstention with the SIDRA source and the municipal gap cause', async () => {
     const payload = recordedNumbersPayload()
     stubNumbersFetch(payload)
-    const { container } = render(<NumbersView selectedField={field} onClose={vi.fn()} />)
+    const { container } = render(<NumbersView selectedField={field} />)
     await screen.findByText('Climate')
     const text = cellText(container, 'municipality_soy_ha')
     expect(text).toContain('Municipal value not read')
@@ -571,7 +562,7 @@ describe('abstention texts name the missing input, its source and its cause (R-1
   it('prints the share abstention with the SIDRA source and the municipal gap cause', async () => {
     const payload = recordedNumbersPayload()
     stubNumbersFetch(payload)
-    const { container } = render(<NumbersView selectedField={field} onClose={vi.fn()} />)
+    const { container } = render(<NumbersView selectedField={field} />)
     await screen.findByText('Climate')
     const text = cellText(container, 'polygon_share')
     expect(text).toContain('Share not computed')
@@ -595,7 +586,7 @@ describe('abstention texts name the missing input, its source and its cause (R-1
       },
     }
     stubNumbersFetch(payloadWithStateGap)
-    const { container } = render(<NumbersView selectedField={field} onClose={vi.fn()} />)
+    const { container } = render(<NumbersView selectedField={field} />)
     await screen.findByText('Climate')
     const text = cellText(container, 'state_soy_ha')
     expect(text).toContain('State value not read')
@@ -621,7 +612,7 @@ describe('abstention texts name the missing input, its source and its cause (R-1
         },
       },
     })
-    const { container } = render(<NumbersView selectedField={field} onClose={vi.fn()} />)
+    const { container } = render(<NumbersView selectedField={field} />)
     await screen.findByText('Climate')
     const rows = [
       ['municipality_soy_ha', 'Municipal value not read'],
@@ -651,7 +642,7 @@ describe('abstention texts name the missing input, its source and its cause (R-1
     payload.sections.smap = { ...payload.sections.smap, error: failure }
     payload.gaps = payload.gaps.filter((gap) => gap.section !== 'smap')
     stubNumbersFetch(payload)
-    const { container } = render(<NumbersView selectedField={field} onClose={vi.fn()} />)
+    const { container } = render(<NumbersView selectedField={field} />)
     await screen.findByText('Climate')
     const smap = container.querySelector('[data-card="smap"]') as HTMLElement
     const text = smap.querySelector('p.numbers-abstain')?.textContent ?? ''
@@ -669,7 +660,7 @@ describe('abstention texts name the missing input, its source and its cause (R-1
     expect(payload.sections.ndvi.error).toBe(failure)
     payload.gaps = payload.gaps.filter((gap) => gap.section !== 'ndvi')
     stubNumbersFetch(payload)
-    const { container } = render(<NumbersView selectedField={field} onClose={vi.fn()} />)
+    const { container } = render(<NumbersView selectedField={field} />)
     await screen.findByText('Climate')
     for (const metric of ['ndvi_scene_count', 'ndvi_clear_count'] as const) {
       const text = cellText(container, metric)
@@ -690,7 +681,7 @@ describe('abstention texts name the missing input, its source and its cause (R-1
     }
     payload.gaps = payload.gaps.filter((gap) => gap.section !== 'municipality')
     stubNumbersFetch(payload)
-    const { container } = render(<NumbersView selectedField={field} onClose={vi.fn()} />)
+    const { container } = render(<NumbersView selectedField={field} />)
     await screen.findByText('Climate')
     for (const metric of ['municipality_soy_ha', 'polygon_share'] as const) {
       const text = cellText(container, metric)
@@ -712,7 +703,7 @@ describe('abstention texts name the missing input, its source and its cause (R-1
       ...payload,
       sections: { ...payload.sections, climate: { ...payload.sections.climate, error: null, normals } },
     })
-    const { container } = render(<NumbersView selectedField={field} onClose={vi.fn()} />)
+    const { container } = render(<NumbersView selectedField={field} />)
     await screen.findByText('Climate')
     const text = cellText(container, 'rain_median')
     expect(text).toContain('Normals not computed')
@@ -725,7 +716,7 @@ describe('abstention texts name the missing input, its source and its cause (R-1
     const payload = structuredClone(OFFLINE)
     expect(payload.sections.climate.aggregates).toEqual({})
     stubNumbersFetch(payload)
-    const { container } = render(<NumbersView selectedField={field} onClose={vi.fn()} />)
+    const { container } = render(<NumbersView selectedField={field} />)
     await screen.findByText('Climate')
     const rows = [
       ['rain_total', 'PRECTOTCORR'],
@@ -750,7 +741,7 @@ describe('abstention texts name the missing input, its source and its cause (R-1
       gaps: payload.gaps.filter((gap) => gap.section !== 'climate'),
       sections: { ...payload.sections, climate },
     })
-    const { container } = render(<NumbersView selectedField={field} onClose={vi.fn()} />)
+    const { container } = render(<NumbersView selectedField={field} />)
     await screen.findByText('Climate')
     const text = cellText(container, 'gdd10')
     expect(text).toContain('T2M_MAX and T2M_MIN')
@@ -766,7 +757,7 @@ describe('abstention texts name the missing input, its source and its cause (R-1
     const payload = structuredClone(OFFLINE)
     expect(payload.sections.climate.window).toBeNull()
     stubNumbersFetch(payload)
-    const { container } = render(<NumbersView selectedField={field} onClose={vi.fn()} />)
+    const { container } = render(<NumbersView selectedField={field} />)
     await screen.findByText('Climate')
     const text = windowAbstainText(container, 'climate')
     expect(text).toContain('Climate window not read')
@@ -779,7 +770,7 @@ describe('abstention texts name the missing input, its source and its cause (R-1
     const payload = structuredClone(OFFLINE)
     expect(payload.sections.water_balance.window).toBeNull()
     stubNumbersFetch(payload)
-    const { container } = render(<NumbersView selectedField={field} onClose={vi.fn()} />)
+    const { container } = render(<NumbersView selectedField={field} />)
     await screen.findByText('Climate')
     const text = windowAbstainText(container, 'water')
     expect(text).toContain('Water balance window not read')
@@ -797,7 +788,7 @@ describe('abstention texts name the missing input, its source and its cause (R-1
       gaps: payload.gaps.filter((gap) => gap.section !== 'climate'),
       sections: { ...payload.sections, climate },
     })
-    const { container } = render(<NumbersView selectedField={field} onClose={vi.fn()} />)
+    const { container } = render(<NumbersView selectedField={field} />)
     await screen.findByText('Climate')
     const text = windowAbstainText(container, 'climate')
     expect(text).toContain('Climate window not read')
@@ -814,7 +805,7 @@ describe('abstention texts name the missing input, its source and its cause (R-1
       ...payload,
       sections: { ...payload.sections, water_balance: water },
     })
-    const { container } = render(<NumbersView selectedField={field} onClose={vi.fn()} />)
+    const { container } = render(<NumbersView selectedField={field} />)
     await screen.findByText('Climate')
     const text = windowAbstainText(container, 'water')
     expect(text).toContain('Water balance window not read')
@@ -827,7 +818,7 @@ describe('abstention texts name the missing input, its source and its cause (R-1
     const payload = structuredClone(OFFLINE)
     expect(payload.sections.ndvi.scene_count).toBeNull()
     stubNumbersFetch(payload)
-    const { container } = render(<NumbersView selectedField={field} onClose={vi.fn()} />)
+    const { container } = render(<NumbersView selectedField={field} />)
     await screen.findByText('Climate')
     const text = cellText(container, 'ndvi_scene_count')
     expect(text).toContain('NDVI scene count not read')
@@ -842,7 +833,7 @@ describe('abstention texts name the missing input, its source and its cause (R-1
     const payload = structuredClone(OFFLINE)
     expect(payload.sections.ndvi.clear_count).toBeNull()
     stubNumbersFetch(payload)
-    const { container } = render(<NumbersView selectedField={field} onClose={vi.fn()} />)
+    const { container } = render(<NumbersView selectedField={field} />)
     await screen.findByText('Climate')
     const text = cellText(container, 'ndvi_clear_count')
     expect(text).toContain('NDVI clear scene count not read')
@@ -857,7 +848,7 @@ describe('abstention texts name the missing input, its source and its cause (R-1
     delete (payload.sections.ndvi as { error?: string | null }).error
     payload.gaps = payload.gaps.filter((gap) => gap.section !== 'ndvi')
     stubNumbersFetch(payload)
-    const { container } = render(<NumbersView selectedField={field} onClose={vi.fn()} />)
+    const { container } = render(<NumbersView selectedField={field} />)
     await screen.findByText('Climate')
     for (const metric of ['ndvi_scene_count', 'ndvi_clear_count']) {
       const text = cellText(container, metric)
@@ -872,7 +863,7 @@ describe('abstention texts name the missing input, its source and its cause (R-1
     const payload = structuredClone(OFFLINE)
     expect(payload.sections.ndvi.scene_count).toBeNull()
     stubNumbersFetch(payload)
-    const { container } = render(<NumbersView selectedField={field} onClose={vi.fn()} />)
+    const { container } = render(<NumbersView selectedField={field} />)
     await screen.findByText('Climate')
     const text = ndviCardSentence(container)
     expect(text).toContain('scene count')
@@ -890,7 +881,7 @@ describe('abstention texts name the missing input, its source and its cause (R-1
     delete (payload.sections.ndvi as { error?: string | null }).error
     payload.gaps = payload.gaps.filter((gap) => gap.section !== 'ndvi')
     stubNumbersFetch(payload)
-    const { container } = render(<NumbersView selectedField={field} onClose={vi.fn()} />)
+    const { container } = render(<NumbersView selectedField={field} />)
     await screen.findByText('Climate')
     const text = ndviCardSentence(container)
     expect(text).toContain('scene count')
@@ -910,7 +901,7 @@ describe('abstention texts name the missing input, its source and its cause (R-1
       gaps,
       sections: { ...payload.sections, municipality: { ...payload.sections.municipality, state_row: null } },
     })
-    const { container } = render(<NumbersView selectedField={field} onClose={vi.fn()} />)
+    const { container } = render(<NumbersView selectedField={field} />)
     await screen.findByText('Climate')
     const text = cellText(container, 'state_soy_ha')
     expect(text).toContain('State value not read')

@@ -176,7 +176,7 @@ describe('Table E: the municipality state row (t_c9ad213a)', () => {
   it('prints the SIDRA state total labelled while the municipal row abstains (R-38, AC-37)', async () => {
     const payload = recordedNumbersPayload()
     stubNumbersFetch(payload)
-    const { container } = render(<NumbersView selectedField={field} onClose={vi.fn()} />)
+    const { container } = render(<NumbersView selectedField={field} />)
     await screen.findByText('Climate')
 
     const card = container.querySelector<HTMLElement>('[data-card="municipal"]')
@@ -192,7 +192,7 @@ describe('the smoke test the four defects needed', () => {
   it('mounts the seven cards, the provenance table and the gap register from the recorded payload', async () => {
     const payload = recordedNumbersPayload()
     stubNumbersFetch(payload)
-    const { container } = render(<NumbersView selectedField={field} onClose={vi.fn()} />)
+    const { container } = render(<NumbersView selectedField={field} />)
     await screen.findByText('Climate')
 
     expect(within(container.querySelector('.numbers-header') as HTMLElement).getByText(RECORDED_FIELD_ID)).toBeTruthy()
@@ -264,7 +264,7 @@ describe('the offline surface the route sends when POWER is unreachable (R-48, A
   it('mounts the whole surface from the captured offline payload and prints every card or its empty state', async () => {
     const payload = offlineNumbersPayload()
     stubNumbersFetch(payload)
-    const { container } = render(<NumbersView selectedField={field} onClose={vi.fn()} />)
+    const { container } = render(<NumbersView selectedField={field} />)
     await screen.findByText('Climate')
 
     // The section states the capture carries, so a reader knows which wire shape this test renders.
@@ -362,7 +362,7 @@ describe('the offline surface the route sends when POWER is unreachable (R-48, A
 
   it('prints no literal `null` token anywhere on the offline surface (AC-11 falsifier)', async () => {
     stubNumbersFetch(offlineNumbersPayload())
-    const { container } = render(<NumbersView selectedField={field} onClose={vi.fn()} />)
+    const { container } = render(<NumbersView selectedField={field} />)
     await screen.findByText('Climate')
 
     const text = container.textContent ?? ''

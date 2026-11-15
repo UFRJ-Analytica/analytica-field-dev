@@ -154,10 +154,28 @@ export const useMapStore = create<MapState>((set, get) => ({
     const region = regionAdapter(get().regionId)
     const rawId = rawIdFromCommandFieldId(region, fieldId)
     if (rawId !== null) {
-      set({ selectedPolygonId: rawId, selectedFieldId: null, polygonRing: null })
+      // Block 5.5, U4: a selection writes the whole polygon state in one set, class and raw values
+      // included. Selecting B after A used to leave A's class, raw values and ring on screen,
+      // because only `selectedPolygonId` was written and the sync effect treats a populated class
+      // as a finished resolution.
+      set({
+        selectedPolygonId: rawId,
+        selectedFieldId: null,
+        polygonClass: null,
+        polygonClassYear: null,
+        polygonRaw: null,
+        polygonRing: null,
+      })
       return
     }
-    set({ selectedFieldId: fieldId, selectedPolygonId: null, polygonRing: null })
+    set({
+      selectedFieldId: fieldId,
+      selectedPolygonId: null,
+      polygonClass: null,
+      polygonClassYear: null,
+      polygonRaw: null,
+      polygonRing: null,
+    })
   },
   setComposition: (composition) => set({ composition }),
   openPanel: (openPanelName) => set({ openPanelName }),
@@ -192,9 +210,22 @@ export const useMapStore = create<MapState>((set, get) => ({
   }),
 
   /** R-23: the selection a `?polygon=` resolves at load, written without a command. */
-  restorePolygon: (rawId) => set({ selectedPolygonId: rawId, selectedFieldId: null, polygonRing: null }),
+  restorePolygon: (rawId) => set({
+    selectedPolygonId: rawId,
+    selectedFieldId: null,
+    polygonClass: null,
+    polygonClassYear: null,
+    polygonRaw: null,
+    polygonRing: null,
+  }),
 
-  clearPolygonSelection: () => set({ selectedPolygonId: null, polygonClass: null, polygonRaw: null, polygonRing: null }),
+  clearPolygonSelection: () => set({
+    selectedPolygonId: null,
+    polygonClass: null,
+    polygonClassYear: null,
+    polygonRaw: null,
+    polygonRing: null,
+  }),
 
   setPolygonScene: (polygonMode) => set({ polygonMode }),
   // The raw values travel with the class: a class of null clears both, so no stale area or

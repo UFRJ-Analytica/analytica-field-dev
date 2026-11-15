@@ -432,6 +432,13 @@ export const en = {
   'calendar.open': 'Planting calendar',
   'calendar.title': 'Planting calendar',
   'record.open': 'Field record',
+  // Block 5.5: the panel host's own strings.
+  'panel.close': 'Close {panel}',
+  'panel.close_label': 'Close',
+  'panel.needs_selection': '{panel}, select a polygon first',
+  'panel.record_instructions': 'Press the map to add a boundary point. Close ring when the boundary is complete.',
+  'panel.draw': 'Draw boundary',
+  'panel.drawing': 'Drawing boundary',
   'record.title': 'Field record',
   'surface.back_to_map': 'Back to map',
 

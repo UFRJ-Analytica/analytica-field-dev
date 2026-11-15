@@ -8,14 +8,13 @@
  * three tests. It computes no envelope of its own: the rows come from `calendarRows`, which reads the
  * window rows the app already holds for block 4's band, so the two surfaces agree by construction.
  */
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   applyMarks,
   calendarRows,
   contextFrom,
   seasonlessRows,
   type CalendarContext,
-  type CalendarGap,
   type CalendarRow,
   type SeasonlessPayload,
   type ZarcWindowRow,
@@ -39,7 +38,6 @@ export type CalendarTarget = {
 }
 
 type DecisionViewProps = {
-  onClose: () => void
   fieldName: string | null
   chosenDate: string
   /** The field's place, or null when it has none (a registered field carries no municipality). */
@@ -52,47 +50,7 @@ type DecisionViewProps = {
   history: HistoryRow[]
   /** What the block 6 numbers route is asked for, or null when there is nothing to ask about. */
   numbersTarget: CalendarTarget | null
-  /** Gaps the caller measured before the surface opened (no source, no place, no field). */
-  gaps: CalendarGap[]
   seasonlessGrainState?: boolean
-}
-
-function GapsCard({ gaps }: { gaps: readonly CalendarGap[] }) {
-  return (
-    <section className="surface-card" aria-labelledby="calendar-gaps-title">
-      <h3 id="calendar-gaps-title">{t('gaps.heading')}</h3>
-      {gaps.length === 0 ? (
-        <p className="surface-empty">{t('gaps.empty')}</p>
-      ) : (
-        <div className="surface-card-scroll">
-          <table className="surface-table gaps-table">
-            <thead>
-              <tr>
-                <th scope="col">{t('gaps.col.surface')}</th>
-                <th scope="col">{t('gaps.col.cause')}</th>
-                <th scope="col">{t('gaps.col.source')}</th>
-                <th scope="col">{t('gaps.col.status')}</th>
-                <th scope="col">{t('gaps.col.date')}</th>
-                <th scope="col">{t('gaps.col.remediation')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {gaps.map((gap, index) => (
-                <tr key={`${gap.cause}-${index}`}>
-                  <td>{gap.surface}</td>
-                  <td>{t(gap.cause, gap.params)}</td>
-                  <td>{gap.source}</td>
-                  <td>{gap.status}</td>
-                  <td>{gap.date}</td>
-                  <td>{gap.remediation}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </section>
-  )
 }
 
 function contextText(context: CalendarContext | null): string | null {
@@ -147,7 +105,6 @@ function RowCells({ row }: { row: CalendarRow }) {
 }
 
 export function DecisionView({
-  onClose,
   fieldName,
   chosenDate,
   place,
@@ -156,16 +113,9 @@ export function DecisionView({
   heldSeasons,
   history,
   numbersTarget,
-  gaps,
 }: DecisionViewProps) {
-  const backRef = useRef<HTMLButtonElement>(null)
   const [payload, setPayload] = useState<NumbersPayload | null>(null)
   const season = seasonForDate(chosenDate)
-
-  // R-01 and the keyboard contract: focus moves to `Back to map` when the surface opens.
-  useEffect(() => {
-    backRef.current?.focus()
-  }, [])
 
   // R-30: the three climate numbers come from the block 6 payload. One request, keyed on the field,
   // its ring and the chosen date, so a resize issues nothing (R-05).
@@ -221,28 +171,18 @@ export function DecisionView({
   )
 
   const context = payload === null ? null : contextFrom(payload)
-  const allGaps = useMemo(() => [...gaps, ...marked.gaps], [gaps, marked.gaps])
   const emptyText = fieldName === null
     ? t('record.no_field_selected')
     : base.empty === null
       ? null
       : t(base.empty, base.params ?? {})
 
+  // Block 5.5, W5: the panel body. The landmark and the heading are the host's; `Back to map` and
+  // the calendar's own `Gaps` card are deleted by block 7 revision 10 (U9, R-58).
   return (
-    <section aria-labelledby="calendar-title" className="decision-view" {...{ [DECISION_VIEW_ATTR]: '' }} role="region">
-      <header className="surface-header">
-        <button className="surface-back" onClick={onClose} ref={backRef} type="button">
-          {t('surface.back_to_map')}
-        </button>
-        <h2 className="surface-title" id="calendar-title">{t('calendar.title')}</h2>
-        <p className="surface-facts">
-          <span>{fieldName ?? t('record.no_field_selected')}</span>
-          <span>{chosenDate}</span>
-          <span>{season}</span>
-        </p>
-      </header>
+    <div className="decision-panel" data-decision-view>
       <div className="surface-content">
-        <section className="surface-card" aria-labelledby="calendar-card-title">
+        <div className="surface-card">
           <h3 id="calendar-card-title">{t('calendar.title')}</h3>
           {emptyText !== null ? (
             <p className="surface-empty">{emptyText}</p>
@@ -275,9 +215,8 @@ export function DecisionView({
           {context !== null && emptyText === null ? (
             <p className="calendar-context">{t('calendar.context_label')}: {contextText(context)}</p>
           ) : null}
-        </section>
-        <GapsCard gaps={allGaps} />
+        </div>
       </div>
-    </section>
+    </div>
   )
 }

@@ -2,6 +2,7 @@ import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import App from './App'
 import { chosenDateOf, useMapStore } from '@/lib/map-store'
+import { usePanelStore } from '@/lib/panel-store'
 import { UNMAPPED_CLASS_COLOUR, paintedClassYear } from '@/lib/polygon-style'
 import { REGION_ADAPTERS } from '@/lib/regions'
 import { layersResponse } from '@/test/api-fixtures'
@@ -79,6 +80,7 @@ function installFetch(options: { axisDefault?: string } = {}) {
 }
 
 beforeEach(() => {
+  usePanelStore.setState({ open: 'rotation' })
   MapStub.reset()
   useMapStore.setState({
     regionId: 'us',
@@ -127,11 +129,12 @@ describe('the polygon selection in the app (R-23, R-24, R-28, AC-19, AC-20, AC-2
     await waitFor(() => expect(useMapStore.getState().regionId).toBe('br'))
 
     act(() => {
-      useMapStore.setState({
-        polygonClass: { classId: 39, name: 'Soybean', hex: '#f5b3c8', unmapped: false },
-      })
       // R-22: the map runs the command; the command runs this store action.
       useMapStore.getState().selectField('trazo:39')
+      // Block 5.5 U4: a selection clears the previous class in the same write, so the class on
+      // screen is the one the map resolves for THIS polygon. The test writes it the way the map's
+      // sync does, after the selection.
+      useMapStore.getState().setPolygonClass({ classId: 39, name: 'Soybean', hex: '#f5b3c8', unmapped: false })
     })
 
     await waitFor(() => expect(window.location.search).toContain('polygon=39'))
@@ -173,11 +176,11 @@ describe('the polygon selection in the app (R-23, R-24, R-28, AC-19, AC-20, AC-2
     await waitFor(() => expect(useMapStore.getState().axis.default).toBe('2022-06-01'))
 
     act(() => {
+      useMapStore.getState().selectField('csb:381825001868504')
       useMapStore.getState().setPolygonClass(
         { classId: null, name: null, hex: UNMAPPED_CLASS_COLOUR, unmapped: true },
         { classValue: null, area: 12.5 },
       )
-      useMapStore.getState().selectField('csb:381825001868504')
     })
 
     const expectedYear = paintedClassYear(REGION_ADAPTERS.us, chosenDateOf(useMapStore.getState()))

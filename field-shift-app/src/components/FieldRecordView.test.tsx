@@ -2,9 +2,8 @@ import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { FieldRecordView } from './FieldRecordView'
-import { regionAdapter } from '@/lib/regions'
 import type { ZarcWindowRow } from '@/lib/planting-calendar'
-import { registeredFieldOf, saveField, saveProducer } from '@/lib/producer-store'
+import { registeredFieldOf, saveField } from '@/lib/producer-store'
 import snapshot from '../../artifacts/zarc-mt-snapshot.json'
 
 vi.mock('maplibre-gl', async () => {
@@ -14,7 +13,6 @@ vi.mock('maplibre-gl', async () => {
 
 const ROWS = snapshot.rows as unknown as ZarcWindowRow[]
 const PLACE = { municipality: 'Santa Carmem', uf: 'MT' }
-const REGION = regionAdapter('br')
 
 /** A square in the fixture field's neighbourhood, from the block 7 example ring of Table C. */
 const SQUARE: Array<[number, number]> = [
@@ -25,12 +23,11 @@ const SQUARE: Array<[number, number]> = [
   [-55.285, -11.9],
 ]
 
+// Block 7 revision 10: `Producer data` and the panel's own `Gaps` card are deleted (U9, R-56, R-58).
 const CARD_ORDER = [
   'Registered fields',
   'Boundary editor',
   'Declared history',
-  'Producer data',
-  'Gaps',
 ]
 
 /**
@@ -55,9 +52,7 @@ function renderRecord(overrides: Partial<Parameters<typeof FieldRecordView>[0]> 
   const onFieldDeleted = vi.fn()
   const onChanged = vi.fn()
   const props: Parameters<typeof FieldRecordView>[0] = {
-    onClose: () => {},
     regionId: 'br',
-    region: REGION,
     chosenDate: '2026-11-12',
     selectedFieldId: null,
     selectedFieldName: null,
@@ -83,19 +78,29 @@ afterEach(() => {
   window.localStorage.clear()
 })
 
-describe('R-35 and R-36, the surface and its five cards (AC-39)', () => {
-  it('prints the five cards in the order of the Expected Interface', () => {
+describe('R-35 and R-36, the panel and its three cards', () => {
+  it('prints the three cards in the order of the Expected Interface', () => {
     renderRecord()
-    const headings = [...document.querySelectorAll('.record-view h3')].map((node) => node.textContent)
+    const headings = [...document.querySelectorAll('.record-panel h3')].map((node) => node.textContent)
     for (const name of CARD_ORDER) expect(headings).toContain(name)
     const indexes = CARD_ORDER.map((name) => headings.indexOf(name))
     expect(indexes).toEqual([...indexes].sort((a, b) => a - b))
   })
 
-  it('carries the surface header with the field, the date and `Back to map`', () => {
+  it('carries the field and the date in the panel body and no Back control of its own', () => {
     renderRecord({ selectedFieldName: 'North Forty' })
-    expect(document.querySelector('.surface-back')?.textContent).toBe('Back to map')
-    expect(document.querySelector('.record-view')?.textContent).toContain('North Forty')
+    expect(document.querySelector('.surface-back')).toBeNull()
+    const facts = document.querySelector('.record-facts')?.textContent ?? ''
+    expect(facts).toContain('North Forty')
+    expect(facts).toContain('2026-11-12')
+  })
+
+  it('carries neither Producer data nor a gap register (R-56, R-58)', () => {
+    renderRecord()
+    expect(screen.queryByText('Producer data')).toBeNull()
+    expect(screen.queryByText('Export producer data')).toBeNull()
+    expect(screen.queryByText('Reset producer data')).toBeNull()
+    expect(document.querySelector('.gaps-table')).toBeNull()
   })
 })
 
@@ -220,39 +225,11 @@ describe('R-61 and R-62, the crop list (AC-45)', () => {
   })
 })
 
-describe('R-56, export and reset (AC-46)', () => {
-  it('exports both keys in one bundle and resets them after a confirmation', async () => {
-    const user = userEvent.setup()
-    const id = seedField()
-    saveProducer(id, [], {})
-    const created: Blob[] = []
-    const createObjectURL = vi.fn((blob: Blob) => {
-      created.push(blob)
-      return 'blob:x'
-    })
-    vi.stubGlobal('URL', { ...URL, createObjectURL, revokeObjectURL: vi.fn() })
-    renderRecord()
-    await user.click(screen.getByRole('button', { name: 'Export producer data' }))
-    expect(created).toHaveLength(1)
-    const text = await created[0].text()
-    const bundle = JSON.parse(text) as { schema_version: number; fields: unknown[]; producer: Record<string, unknown>; exported_at: string }
-    expect(bundle.schema_version).toBe(1)
-    expect(bundle.fields).toHaveLength(1)
-    expect(typeof bundle.exported_at).toBe('string')
-    vi.stubGlobal('URL', URL)
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
-    await user.click(screen.getByRole('button', { name: 'Reset producer data' }))
-    expect(confirmSpy).toHaveBeenCalled()
-    expect(storedFields()).toHaveLength(0)
-  })
-})
-
-describe('R-54, an unreadable store (AC-50)', () => {
-  it('reports the version gap and keeps the surface standing', () => {
+describe('R-54, an unreadable store', () => {
+  it('reports the version refusal on the card and keeps the panel standing', () => {
     window.localStorage.setItem('fs.fields.v1', JSON.stringify({ schema_version: 99, fields: [] }))
     renderRecord()
-    const gaps = document.querySelector('.gaps-table')?.textContent ?? ''
-    expect(gaps).toContain('fs.fields.v1')
-    expect(document.querySelector('.record-view')).toBeTruthy()
+    expect(document.querySelector('.error-line')?.textContent).toBe('The stored record was written by a different version and is not read.')
+    expect(document.querySelector('[data-record-view]')).toBeTruthy()
   })
 })

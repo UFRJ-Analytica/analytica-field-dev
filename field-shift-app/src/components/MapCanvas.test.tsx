@@ -1,3 +1,4 @@
+import { usePanelStore } from '@/lib/panel-store'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -151,6 +152,12 @@ afterEach(() => {
 })
 
 describe('initial field selection does not depend on event ordering', () => {
+  // Block 5.5 B4: the coverage pill and the cards live in the rotation panel, which the product
+  // opens by a press; these cases open the same store value to reach the pill.
+  beforeEach(() => {
+    usePanelStore.setState({ open: 'rotation' })
+  })
+
   it('selects the first field when the field list lands before the map style and load never fires', async () => {
     // Load race: GET /fields resolves while the basemap style is still loading. Only
     // `style.load` follows, `load` never fires (it waits on every source in the remote

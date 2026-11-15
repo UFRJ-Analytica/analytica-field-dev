@@ -1,10 +1,12 @@
 /**
- * Block 6: the `Field numbers` region (R-01 to R-06, R-07 to R-13, R-21 to R-25, R-30, R-41,
- * R-42, R-44). It is a full viewport view that the App mounts as a sibling of the map screen,
- * while the map screen is `display: none` (R-02). It prints what the payload says and nothing
- * else: every printed number reads its basis from its own provenance row (R-08, R-09).
+ * Block 6 revision 5: the `Field numbers` panel of the map screen (R-01 to R-06, R-07 to R-13,
+ * R-21 to R-25, R-30, R-41, R-42, R-44). It is a panel body inside the map screen's panel host:
+ * the map stays visible and interactive while it is open, no element of the map screen reads
+ * `display: none`, and opening or closing the panel calls no `map.resize()`. The landmark and the
+ * level two heading belong to the host. It prints what the payload says and nothing else: every
+ * printed number reads its basis from its own provenance row (R-08, R-09).
  */
-import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { chosenDateOf, useMapStore, type FieldSummary } from '@/lib/map-store'
 import { fetchPolygonArea, readoutRows, type SidecarArea } from '@/lib/polygon-readout'
 import { commandFieldId } from '@/lib/polygon-selection'
@@ -40,7 +42,6 @@ export const NUMBERS_VIEW_ATTR = 'data-numbers-view'
 
 type NumbersViewProps = {
   selectedField: FieldSummary | null
-  onClose: () => void
   /** Block 6 F-13: the scenarios of the selected fixture field, for the counter evidence card. */
   scenarios?: readonly FalsifiableScenario[]
 }
@@ -845,7 +846,7 @@ function GapRegister({ gaps }: { gaps: NumbersPayload['gaps'] }) {
   )
 }
 
-export function NumbersView({ selectedField, onClose, scenarios = [] }: NumbersViewProps) {
+export function NumbersView({ selectedField, scenarios = [] }: NumbersViewProps) {
   const regionId = useMapStore((state) => state.regionId)
   const selectedPolygonId = useMapStore((state) => state.selectedPolygonId)
   const polygonRaw = useMapStore((state) => state.polygonRaw)
@@ -854,14 +855,9 @@ export function NumbersView({ selectedField, onClose, scenarios = [] }: NumbersV
   const chosenDate = useMapStore(chosenDateOf)
   const setNumbersLastRead = useMapStore((state) => state.setNumbersLastRead)
   const region = regionAdapter(regionId)
-  const backRef = useRef<HTMLButtonElement | null>(null)
   const [sidecar, setSidecar] = useState<SidecarArea>({ status: 'idle' })
   const [load, setLoad] = useState<Load>({ kind: 'idle' })
 
-  // R-05: focus moves to `Back to map` on open, and the control is a native button.
-  useEffect(() => {
-    backRef.current?.focus()
-  }, [])
 
   // Block 5's Brazil area is read from the sidecar for the selected polygon (R-25 of block 5).
   useEffect(() => {
@@ -1023,13 +1019,11 @@ export function NumbersView({ selectedField, onClose, scenarios = [] }: NumbersV
   // `ring_area` cells read the same provenance rows as the cards.
   return (
     <RowsContext.Provider value={rows}>
-      <section aria-labelledby="numbers-title" className="numbers-view" data-numbers-view role="region">
+      {/* Block 5.5, W4: the panel body. The landmark and the level two heading are the host's
+          (block 6 revision 5 R-05), the full viewport shell and `Back to map` are gone. */}
+      <div className="numbers-panel" data-numbers-view>
         <header className="numbers-header">
-          <button className="numbers-back" onClick={onClose} ref={backRef} type="button">
-            {t('numbers.back')}
-          </button>
           <div className="numbers-title-block">
-            <h2 id="numbers-title">{t('numbers.region')}</h2>
             {fieldId !== null && <span className="numbers-field-id">{fieldId}</span>}
           </div>
           {fieldId !== null && (
@@ -1084,7 +1078,7 @@ export function NumbersView({ selectedField, onClose, scenarios = [] }: NumbersV
           )}
         </header>
         <div className="numbers-body">{body}</div>
-      </section>
+      </div>
     </RowsContext.Provider>
   )
 }

@@ -1,0 +1,40 @@
+Block 5.5, AC-01 of block 6 revision 5: the panel and the block 3 right edge column
+
+measured   2026-11-15T20:43:45Z
+viewports  1440x900, 780x900, 360x640 (CDP Emulation.setDeviceMetricsOverride)
+page       http://localhost:5173/?region=us&polygon=381825001868504
+column     .anchor-right-column, mounted by pressing Supporting data, which is block 3's
+           own control and not something this block adds
+host       [data-panel-host], the slot the four panels render into
+method     headless Chrome, layout boxes only, no WebGL needed and none used
+intersection  area in square pixels of the overlap of the two rectangles
+
+ viewport panel     host x,y w x h           column x,y w x h         intersection
+----------------------------------------------------------------------------------
+ 1440x900 none      absent                   1018,60 400x270                     0
+ 1440x900 rotation  23,471 967x418           1018,60 400x270                     0
+ 1440x900 numbers   23,688 982x195           1018,60 400x270                     0
+ 1440x900 decision  23,689 982x195           1018,60 400x270                     0
+ 1440x900 record    23,471 967x950           1018,60 400x270                     0
+  780x900 none      absent                   407,60 351x270                      0
+  780x900 rotation  23,471 356x438           407,60 351x270                      0
+  780x900 numbers   23,637 371x246           407,60 351x270                      0
+  780x900 decision  23,689 371x195           407,60 351x270                      0
+  780x900 record    23,471 356x1204          407,60 351x270                      0
+  360x640 none      absent                   8,328 288x104                       0
+  360x640 rotation  9,441 327x370            8,328 288x104                       0
+  360x640 numbers   9,441 327x221            8,328 288x104                       0
+  360x640 decision  9,449 342x183            8,328 288x104                       0
+  360x640 record    9,441 327x1400           8,328 288x104                       0
+
+Results. Every one of the 15 states reports zero intersection.
+Above 640 the host ends 13 px before the column begins: 1005 against 1018 at 1440, and
+394 against 407 at 780. At 360 the column sits at y 328 to 432 and the host starts at y
+441, so the two are apart vertically; the host is wider than the column's left edge there
+(336 against 296) and the vertical separation is what keeps the intersection at zero.
+
+With nothing open the host is absent from the DOM, so the slot itself covers no area at
+any width: the four panels are mounted one at a time and never all at once.
+
+Not measured here: anything that needs WebGL, which this machine does not provide. This
+artifact measures layout only.

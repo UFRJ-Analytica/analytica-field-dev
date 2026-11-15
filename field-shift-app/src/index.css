@@ -377,7 +377,9 @@
   /* Techo dos paineis: aplica antes dos blocos de faixa estreita para eles vencerem. */
   /* Techo real dos paineis inferiores: teto em vh em cada nivel, rolagem so no cartao. */
   .anchor-bottom-left { max-height: 40vh; align-items: flex-end; }
-  .anchor-bottom-left .scenario-anchor { max-height: 40vh; overflow: auto; }
+  /* Block 5.5 W2, the layout decision taken once: at 360 the panel host may grow upward, so the
+     anchor's ceiling is 60vh there and the panel scrolls inside it. */
+  .anchor-bottom-left .scenario-anchor { max-height: 60vh; overflow: auto; }
   .anchor-bottom-left .scenario-panel, .anchor-bottom-left .scenario-list { max-height: none; }
   .anchor-bottom-right { max-height: 40vh; }
   .anchor-bottom-right .evidence-anchor { max-height: 40vh; overflow: auto; }
@@ -1179,3 +1181,20 @@
 @media (prefers-reduced-motion: reduce) {
   .polygon-tooltip { transition-duration: 0s !important; }
 }
+
+/* Block 5.5, W2: the panel host. It keeps the rectangle `.scenario-anchor` has today, and the
+   panel body is the only scroller, so a tall panel never scrolls the page (block 6 revision 5
+   R-02). At 360 the host may grow upward, which is the layout decision taken in W2: the body is
+   capped at 40vh there and scrolls inside itself, so the four panels fit the slot the cards use. */
+.panel-host { display: block; }
+.panel-host-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 0; padding: 13px 16px 10px; }
+.panel-host-head h2 { margin: 0; font-size: 15px; line-height: 20px; }
+.panel-host-close { min-width: 44px; min-height: 44px; border: 0; background: transparent; color: inherit; font: inherit; cursor: pointer; }
+/* The scroller is `.scenario-anchor`, the box `ScenarioCards` uses today: it already clamps to
+   max-height 43vh and scrolls, so the panel keeps that rectangle and the page never scrolls
+   (block 6 revision 5 R-02). The body itself does not add a second scroller. */
+.panel-host-body { padding: 0 16px 14px; }
+.panel-host-body .numbers-body, .panel-host-body .surface-content { overflow: visible; }
+.panel-toggle[aria-disabled="true"] { opacity: 0.55; cursor: not-allowed; }
+.panel-toggle.is-open { background: #2e4520; color: #f4f6f0; }
+.editor-controls-panel { display: grid; gap: 8px; margin-top: 8px; }

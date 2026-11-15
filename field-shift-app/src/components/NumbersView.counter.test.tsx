@@ -65,7 +65,7 @@ afterEach(() => {
 describe('AC-39, the counter evidence card and its completeness count (R-40)', () => {
   it('prints No counter evidence recorded in the slot of a scenario without a falsifier, and no threshold', async () => {
     stubNumbersFetch(recordedNumbersPayload())
-    render(<NumbersView scenarios={[WITHOUT_FALSIFIER]} selectedField={field} onClose={vi.fn()} />)
+    render(<NumbersView scenarios={[WITHOUT_FALSIFIER]} selectedField={field} />)
     await screen.findByText('Counter evidence')
     const card = document.querySelector('.numbers-counter') as HTMLElement
     expect(card.querySelector('[data-counter-scenario="soy-cotton"]')?.textContent).toContain('No counter evidence recorded')
@@ -75,7 +75,7 @@ describe('AC-39, the counter evidence card and its completeness count (R-40)', (
 
   it('carries one gap row per scenario without a falsifier, naming the scenario and the field', async () => {
     stubNumbersFetch(recordedNumbersPayload())
-    render(<NumbersView scenarios={[WITHOUT_FALSIFIER]} selectedField={field} onClose={vi.fn()} />)
+    render(<NumbersView scenarios={[WITHOUT_FALSIFIER]} selectedField={field} />)
     await screen.findByText('Counter evidence')
     const register = document.querySelector('.numbers-gap-table') as HTMLElement
     const text = register.textContent ?? ''
@@ -86,7 +86,7 @@ describe('AC-39, the counter evidence card and its completeness count (R-40)', (
 
   it('reports the completeness count with its status and never as passed while a scenario lacks one', async () => {
     stubNumbersFetch(recordedNumbersPayload())
-    render(<NumbersView scenarios={[WITH_FALSIFIER, WITHOUT_FALSIFIER]} selectedField={field} onClose={vi.fn()} />)
+    render(<NumbersView scenarios={[WITH_FALSIFIER, WITHOUT_FALSIFIER]} selectedField={field} />)
     await screen.findByText('Counter evidence')
     const card = document.querySelector('.numbers-counter') as HTMLElement
     expect(card.querySelector('.numbers-counter-count')?.textContent).toBe('1 of 2 scenarios carry a falsifier; not verified')
@@ -94,7 +94,7 @@ describe('AC-39, the counter evidence card and its completeness count (R-40)', (
 
   it('reports passed only when every scenario carries one, and prints its value with basis and date', async () => {
     stubNumbersFetch(recordedNumbersPayload())
-    render(<NumbersView scenarios={[WITH_FALSIFIER]} selectedField={field} onClose={vi.fn()} />)
+    render(<NumbersView scenarios={[WITH_FALSIFIER]} selectedField={field} />)
     await screen.findByText('Counter evidence')
     const card = document.querySelector('.numbers-counter') as HTMLElement
     expect(card.querySelector('.numbers-counter-count')?.textContent).toBe('1 of 1 scenarios carry a falsifier; passed')
@@ -107,7 +107,7 @@ describe('AC-39, the counter evidence card and its completeness count (R-40)', (
 
   it('prints the polygon empty text and no scenario when the selection carries no fixture scenario', async () => {
     stubNumbersFetch(recordedNumbersPayload())
-    render(<NumbersView scenarios={[]} selectedField={field} onClose={vi.fn()} />)
+    render(<NumbersView scenarios={[]} selectedField={field} />)
     await screen.findByText('Counter evidence')
     const card = document.querySelector('.numbers-counter') as HTMLElement
     expect(card.textContent).toContain('This polygon carries no rotation scenario')

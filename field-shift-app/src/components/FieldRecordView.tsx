@@ -8,8 +8,9 @@
  * (R-57). Nothing here derives a crop, a season or a date (R-44) and nothing writes a fixture field
  * (R-60).
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { BoundaryEditor, runningAreaHa } from '@/components/BoundaryEditor'
+import { usePanelStore } from '@/lib/panel-store'
 import { fileLeaf, readGeoJSON, readKML, validateRing, type ImportErrorCode } from '@/lib/boundary-import'
 import { distinctVertexCount, type RingPoint } from '@/lib/field-ring'
 import { cropListFor, missingSourcesText } from '@/lib/crop-list'
@@ -22,14 +23,11 @@ import {
 } from '@/lib/history'
 import {
   deleteField as deleteFieldRecord,
-  exportFileName,
-  exportProducer,
   isLocalFieldId,
   loadFields,
   loadProducer,
   nameTaken,
   registeredFieldOf,
-  resetProducer,
   saveField,
   saveProducer,
   type FieldSource,
@@ -37,18 +35,15 @@ import {
   type ProducerEntry,
   type RegisteredField,
 } from '@/lib/producer-store'
-import type { CalendarGap, ZarcWindowRow } from '@/lib/planting-calendar'
+import type { ZarcWindowRow } from '@/lib/planting-calendar'
 import { seasonForDate } from '@/lib/timeline'
-import type { RegionAdapter } from '@/lib/regions'
 import { t, type TranslationKey } from '@/strings'
 import './Block7.css'
 
 export const RECORD_VIEW_ATTR = 'data-record-view'
 
 type FieldRecordViewProps = {
-  onClose: () => void
   regionId: 'us' | 'br'
-  region: RegionAdapter
   chosenDate: string
   selectedFieldId: string | null
   selectedFieldName: string | null
@@ -67,45 +62,6 @@ export function seasonLabel(key: string): string {
   return `${year}/${(end ?? '').slice(-2)}`
 }
 
-type Gap = CalendarGap
-
-function GapsCard({ gaps }: { gaps: readonly Gap[] }) {
-  return (
-    <section className="surface-card" aria-labelledby="record-gaps-title">
-      <h3 id="record-gaps-title">{t('gaps.heading')}</h3>
-      {gaps.length === 0 ? (
-        <p className="surface-empty">{t('gaps.empty')}</p>
-      ) : (
-        <div className="surface-card-scroll">
-          <table className="surface-table gaps-table">
-            <thead>
-              <tr>
-                <th scope="col">{t('gaps.col.surface')}</th>
-                <th scope="col">{t('gaps.col.cause')}</th>
-                <th scope="col">{t('gaps.col.source')}</th>
-                <th scope="col">{t('gaps.col.status')}</th>
-                <th scope="col">{t('gaps.col.date')}</th>
-                <th scope="col">{t('gaps.col.remediation')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {gaps.map((gap, index) => (
-                <tr key={`${gap.cause}-${index}`}>
-                  <td>{gap.surface}</td>
-                  <td>{t(gap.cause, gap.params)}</td>
-                  <td>{gap.source}</td>
-                  <td>{gap.status}</td>
-                  <td>{gap.date}</td>
-                  <td>{gap.remediation}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </section>
-  )
-}
 
 function readFileAsText(file: File): Promise<string> {
   if (typeof file.text === 'function') return file.text()
@@ -118,9 +74,7 @@ function readFileAsText(file: File): Promise<string> {
 }
 
 export function FieldRecordView({
-  onClose,
   regionId,
-  region,
   chosenDate,
   selectedFieldId,
   selectedFieldName,
@@ -132,12 +86,14 @@ export function FieldRecordView({
   onFieldDeleted,
   onChanged,
 }: FieldRecordViewProps) {
-  const backRef = useRef<HTMLButtonElement>(null)
   const [fields, setFields] = useState<RegisteredField[]>([])
   const [producer, setProducer] = useState<Record<string, ProducerEntry>>({})
-  const [gaps, setGaps] = useState<Gap[]>([])
   const [name, setName] = useState('')
-  const [vertices, setVertices] = useState<RingPoint[]>([])
+  // Block 7 revision 10 R-63: the draft the map fills, one vertex per press.
+  const draft = usePanelStore((state) => state.draft)
+  const startDrawing = usePanelStore((state) => state.startDrawing)
+  const undoVertex = usePanelStore((state) => state.undoVertex)
+  const stopDrawing = usePanelStore((state) => state.stopDrawing)
   const [imported, setImported] = useState<{ ring: RingPoint[]; source: FieldSource; file: string | null } | null>(null)
   const [errorKey, setErrorKey] = useState<TranslationKey | null>(null)
   const [errorParams, setErrorParams] = useState<Record<string, string> | undefined>(undefined)
@@ -146,43 +102,26 @@ export function FieldRecordView({
     season: '', first: '', second: '', firstDate: '', secondDate: '',
   })
 
-  useEffect(() => {
-    backRef.current?.focus()
-  }, [])
-
-  const addGap = useCallback((gap: Gap) => setGaps((current) => [...current, gap]), [])
 
   const refresh = useCallback(() => {
     const storedFields = loadFields()
     if (!('value' in storedFields)) {
-      addGap({
-        surface: 'Field record',
-        cause: 'persist.version',
-        source: 'fs.fields.v1',
-        status: storedFields.code,
-        date: new Date().toISOString().slice(0, 10),
-        remediation: 'R-54',
-      })
+      // R-54: an unreadable key is reported on the card's own error line, and the panel prints no
+      // gap row (block 7 revision 10 R-58).
+      setErrorKey('persist.version')
       setFields([])
     } else {
       setFields(storedFields.value)
     }
     const storedProducer = loadProducer()
     if (!('value' in storedProducer)) {
-      addGap({
-        surface: 'Field record',
-        cause: 'persist.version',
-        source: 'fs.producer.v1',
-        status: storedProducer.code,
-        date: new Date().toISOString().slice(0, 10),
-        remediation: 'R-54',
-      })
+      setErrorKey('persist.version')
       setProducer({})
     } else {
       setProducer(storedProducer.value)
     }
     onChanged()
-  }, [addGap, onChanged])
+  }, [onChanged])
 
   useEffect(() => {
     refresh()
@@ -229,13 +168,8 @@ export function FieldRecordView({
     ? null
     : t('history.crops_empty', { missing: missingSourcesText(cropList.missing, (key) => t(key), t('history.missing_join')) })
 
-  const ring = imported?.ring ?? vertices
+  const ring: RingPoint[] = imported?.ring ?? draft ?? []
   const candidateArea = runningAreaHa(ring)
-
-  const startDrawing = (point: RingPoint) => {
-    setImported(null)
-    setVertices((current) => [...current, point])
-  }
 
   const closeRing = () => {
     const existing = fields.map((field) => field.ring)
@@ -247,6 +181,7 @@ export function FieldRecordView({
     }
     setErrorKey(null)
     setImported({ ring: result.ring, source: imported?.source ?? 'drawn', file: imported?.file ?? null })
+    stopDrawing()
   }
 
   const onImport = async (file: File | null) => {
@@ -258,7 +193,7 @@ export function FieldRecordView({
       setErrorKey(result.code as unknown as TranslationKey)
       return
     }
-    setVertices([])
+    stopDrawing()
     setImported({ ring: result.ring, source: isKml ? 'kml' : 'geojson', file: fileLeaf(file.name) })
     setErrorKey(null)
     if (name.trim() === '') setName(fileLeaf(file.name).replace(/\.[^.]+$/, ''))
@@ -291,7 +226,7 @@ export function FieldRecordView({
       return
     }
     setFields(saved.value)
-    setVertices([])
+    stopDrawing()
     setImported(null)
     setName('')
     setErrorKey(null)
@@ -370,36 +305,6 @@ export function FieldRecordView({
     onChanged()
   }
 
-  const doExport = () => {
-    const bundle = exportProducer({})
-    if (!('value' in bundle)) {
-      setErrorKey('persist.version')
-      return
-    }
-    if (typeof document === 'undefined' || typeof URL.createObjectURL !== 'function') return
-    const blob = new Blob([JSON.stringify(bundle.value, null, 2)], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = exportFileName(bundle.value.exported_at)
-    link.click()
-    URL.revokeObjectURL(url)
-  }
-
-  const doReset = () => {
-    if (typeof window !== 'undefined' && typeof window.confirm === 'function') {
-      if (!window.confirm(t('record.reset_confirm'))) return
-    }
-    const result = resetProducer({})
-    if (!('value' in result)) {
-      setErrorKey('persist.quota')
-      return
-    }
-    setFields([])
-    setProducer({})
-    onChanged()
-  }
-
   // R-46: the declared history and the modelled rotation print as two lists under two headings, and
   // a season both name with a different crop prints that they disagree. Neither is relabelled.
   const disagreements = useMemo(() => {
@@ -414,20 +319,16 @@ export function FieldRecordView({
   }, [historyRows, rotationRows])
 
   return (
-    <section aria-labelledby="record-title" className="record-view" {...{ [RECORD_VIEW_ATTR]: '' }} role="region">
-      <header className="surface-header">
-        <button className="surface-back" onClick={onClose} ref={backRef} type="button">
-          {t('surface.back_to_map')}
-        </button>
-        <h2 className="surface-title" id="record-title">{t('record.title')}</h2>
-        <p className="surface-facts">
+    // Block 5.5, W5: the panel body. The heading belongs to the host, `Back to map` is gone, and
+    // `Producer data` and the `Gaps` card are deleted by block 7 revision 10 (U9, R-56, R-58).
+    <div className="record-panel" data-record-view>
+      <div className="surface-content">
+        <p className="record-facts">
           <span>{selectedFieldName ?? t('record.no_field_selected')}</span>
           <span>{chosenDate}</span>
         </p>
-      </header>
-      <div className="surface-content">
         <div className="record-grid">
-          <section className="surface-card span-6" aria-labelledby="record-fields-title">
+          <div className="surface-card span-6">
             <h3 id="record-fields-title">{t('record.registered_heading')}</h3>
             {fields.length === 0 ? (
               <p className="surface-empty">{t('record.registered_empty')}</p>
@@ -450,9 +351,9 @@ export function FieldRecordView({
                 ))}
               </ul>
             )}
-          </section>
+          </div>
 
-          <section className="surface-card span-6" aria-labelledby="record-editor-title">
+          <div className="surface-card span-6">
             <h3 id="record-editor-title">{t('record.editor_heading')}</h3>
             <label className="history-form">
               <span>{t('record.name_label')}</span>
@@ -468,22 +369,20 @@ export function FieldRecordView({
               />
             </label>
             <BoundaryEditor
-              onAddVertex={startDrawing}
-              onCancel={() => { setVertices([]); setImported(null); setErrorKey(null) }}
+              draft={draft}
+              onCancel={() => { stopDrawing(); setImported(null); setErrorKey(null) }}
               onCloseRing={closeRing}
-              onUndo={() => setVertices((current) => current.slice(0, -1))}
-              region={region}
-              registeredFields={fields}
-              vertices={vertices}
+              onStart={() => { setImported(null); setErrorKey(null); startDrawing() }}
+              onUndo={undoVertex}
             />
             <div className="editor-controls">
               <button disabled={ring.length < 3} onClick={save} type="button">{t('record.save')}</button>
             </div>
             <p className="surface-empty">{t('record.running_area', { area: candidateArea.toFixed(1) })}</p>
             {errorKey !== null ? <p className="error-line" role="alert">{t(errorKey, errorParams)}</p> : null}
-          </section>
+          </div>
 
-          <section className="surface-card span-8" aria-labelledby="record-history-title">
+          <div className="surface-card span-8">
             <h3 id="record-history-title">{t('record.history_heading')}</h3>
             {historyRows.length === 0 ? <p className="surface-empty">{t('record.history_empty')}</p> : (
               <table className="surface-table">
@@ -572,22 +471,10 @@ export function FieldRecordView({
                 </ul>
               </section>
             ) : null}
-          </section>
-
-          <section className="surface-card span-4" aria-labelledby="record-producer-title">
-            <h3 id="record-producer-title">{t('record.producer_heading')}</h3>
-            <div className="producer-actions">
-              <button onClick={doExport} type="button">{t('record.export')}</button>
-              <button onClick={doReset} type="button">{t('record.reset')}</button>
-            </div>
-          </section>
-
-          <div className="span-12">
-            <GapsCard gaps={gaps} />
           </div>
         </div>
       </div>
-    </section>
+    </div>
   )
 }
 

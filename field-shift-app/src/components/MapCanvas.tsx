@@ -20,6 +20,7 @@ import {
   type CompositionPreset,
   type FieldSummary,
 } from '@/lib/map-store'
+import { usePanelStore } from '@/lib/panel-store'
 import { activeBasemapAdapter, BASEMAP_ADAPTERS, type BasemapAdapter } from '@/lib/basemap-adapters'
 import { probeLayerTile } from '@/lib/tile-guard'
 import { regionAdapter, regionFromSearch, type RegionAdapter } from '@/lib/regions'
@@ -671,41 +672,9 @@ export function MapCanvas({ fields, selectedField, onTileChange, children }: Map
     }
   }, [mapReady, selectedPolygonId, polygonScene, regionId])
 
-  // Block 6, R-02: while the numbers surface is open the map screen is `display: none`. The
-  // camera is read before the surface opens, and on close `map.resize()` runs once and the
-  // camera is restored if the resize moved it, so the centre, zoom, bearing and pitch are the
-  // values they had before opening.
-  const numbersOpen = useMapStore((state) => state.numbersOpen)
-  const calendarOpen = useMapStore((state) => state.calendarOpen)
-  const recordOpen = useMapStore((state) => state.recordOpen)
-  // Block 7, R-02: the two surfaces of this block hide the map screen the same way, so the camera is
-  // read before either opens and `map.resize()` runs once when the last one closes.
-  const surfaceOpen = numbersOpen || calendarOpen || recordOpen
-  const cameraBeforeNumbersRef = useRef<{ center: [number, number]; zoom: number; bearing: number; pitch: number } | null>(null)
-  useEffect(() => {
-    const map = mapRef.current
-    if (!mapReady || !map) return
-    if (surfaceOpen) {
-      const center = map.getCenter()
-      cameraBeforeNumbersRef.current = {
-        center: [center.lng, center.lat],
-        zoom: map.getZoom(),
-        bearing: map.getBearing(),
-        pitch: map.getPitch(),
-      }
-      return
-    }
-    const before = cameraBeforeNumbersRef.current
-    if (before === null) return
-    cameraBeforeNumbersRef.current = null
-    map.resize()
-    const center = map.getCenter()
-    const moved = center.lng !== before.center[0] || center.lat !== before.center[1]
-      || map.getZoom() !== before.zoom || map.getBearing() !== before.bearing || map.getPitch() !== before.pitch
-    if (moved) {
-      map.jumpTo({ center: before.center, zoom: before.zoom, bearing: before.bearing, pitch: before.pitch })
-    }
-  }, [numbersOpen, mapReady])
+  // Block 6 revision 5 R-02 and block 5.5: the map is never hidden by a panel, so opening or
+  // closing one needs no camera restore and no `map.resize()` call. The guard that used to
+  // read the camera before a surface opened and restored it on close was removed here.
 
   // R-19, R-20, R-22, R-27: hover, the tooltip, the cursor and the press.
   useEffect(() => {
@@ -774,19 +743,42 @@ export function MapCanvas({ fields, selectedField, onTileChange, children }: Map
     }
     const handleLeave = () => clearHover()
     const handleClick = (event: PolygonEvent) => {
+      // Block 7 revision 10 R-63: while the boundary drawing mode takes the pointer events, a press
+      // on the map adds a vertex and never selects the polygon under it.
+      if (usePanelStore.getState().draft !== null) return
       const found = currentFeature(event)
       if (!found) return
       // R-22: the map handler runs the command and never calls the store action itself.
       runCommand('select_field', { field_id: commandFieldId(found.active, found.raw) })
     }
 
+    /**
+     * Block 5.5, U5 and B8: a press on the map that lands on no polygon clears the selection. The
+     * layer scoped handler above only runs when the press hits the fill layer, so a press on empty
+     * map, on the basemap or on a label never deselected anything.
+     */
+    const handleMapClick = (event: PolygonEvent) => {
+      const store = useMapStore.getState()
+      if (usePanelStore.getState().draft !== null) {
+        usePanelStore.getState().addVertex([event.lngLat.lng, event.lngLat.lat])
+        return
+      }
+      if (store.selectedPolygonId === null) return
+      // The same feature reader the layer scoped handler uses, so the two agree on what the press
+      // hit: a press with no polygon under it clears, and a press on one never clears what the
+      // command just selected.
+      if (!currentFeature(event)) store.clearPolygonSelection()
+    }
+
     map.on('mousemove', POLYGON_FILL_LAYER_ID, handleMove)
     map.on('mouseleave', POLYGON_FILL_LAYER_ID, handleLeave)
     map.on('click', POLYGON_FILL_LAYER_ID, handleClick)
+    map.on('click', handleMapClick)
     return () => {
       map.off('mousemove', POLYGON_FILL_LAYER_ID, handleMove)
       map.off('mouseleave', POLYGON_FILL_LAYER_ID, handleLeave)
       map.off('click', POLYGON_FILL_LAYER_ID, handleClick)
+      map.off('click', handleMapClick)
       clearHover()
     }
   }, [mapReady, regionId])

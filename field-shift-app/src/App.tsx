@@ -8,22 +8,23 @@ import { AbstentionNotice } from '@/components/AbstentionNotice'
 import { FieldsPanel } from '@/components/FieldsPanel'
 import { AgentBar, CommandToggle, useCommandToggle } from '@/components/CommandToggle'
 import { PolygonPanel } from '@/components/PolygonPanel'
+import { PanelHost, type PanelSpec } from '@/components/PanelHost'
+import { PANEL_TOGGLE_ATTR, usePanelStore, type PanelId } from '@/lib/panel-store'
+import { RotationToggle } from '@/components/RotationToggle'
 import { SUPPORTING_DATA_PANEL_ID, SupportingDataToggle, useSupportingDataToggle } from '@/components/SupportingDataToggle'
-import { NumbersToggle, NUMBERS_TOGGLE_ATTR } from '@/components/NumbersToggle'
+import { NumbersToggle } from '@/components/NumbersToggle'
 import { NumbersView } from '@/components/NumbersView'
 import { FieldShiftAIPanel, FieldShiftAIToggle } from '@/components/FieldShiftAI'
-import { DecisionToggle, DECISION_TOGGLE_ATTR } from '@/components/DecisionToggle'
-import { FieldRecordToggle, FIELD_RECORD_TOGGLE_ATTR } from '@/components/FieldRecordToggle'
+import { DecisionToggle } from '@/components/DecisionToggle'
+import { FieldRecordToggle } from '@/components/FieldRecordToggle'
 import { DecisionView, type CalendarTarget } from '@/components/DecisionView'
 import { FieldRecordView } from '@/components/FieldRecordView'
 import snapshotJson from '../artifacts/zarc-mt-snapshot.json'
 import usWindowsJson from '../artifacts/us-windows-cass-nd.json'
 import { chosenDateOf, useMapStore, type FieldSummary } from '@/lib/map-store'
-import { numbersOpenFromSearch, searchWithNumbers } from '@/lib/numbers'
 import { heldSeasonsOf, type SeasonlessPayload, type ZarcWindowRow } from '@/lib/planting-calendar'
 import { loadFields, loadProducer, type RegisteredField } from '@/lib/producer-store'
 import { ringCentroid } from '@/lib/field-ring'
-import { surfaceOpenFromSearch, searchWithSurface, searchWithoutSurface, type Surface } from '@/lib/surface-params'
 import { parseFieldLocation } from '@/lib/timeline'
 import { useLayers } from '@/lib/use-layers'
 import { seasonForDate } from '@/lib/timeline'
@@ -38,7 +39,6 @@ import { polygonIdFromSearch, searchWithPolygon } from '@/lib/polygon-selection'
 import {
   COMPACT_QUERY,
   NARROW_QUERY,
-  isCompactViewport,
   isNarrowViewport,
   useMediaMatch,
 } from '@/lib/viewport'
@@ -97,7 +97,7 @@ function App() {
   // R-21, R-28: the raw class value tells a United States null class from an unmapped code.
   const polygonRaw = useMapStore((state) => state.polygonRaw)
   const polygonDate = useMapStore(chosenDateOf)
-  const numbersOpen = useMapStore((state) => state.numbersOpen)
+  const panelOpen = usePanelStore((state) => state.open)
   const command = useCommandToggle()
   const supportingData = useSupportingDataToggle()
   const [fields, setFields] = useState<FieldSummary[]>([])
@@ -122,7 +122,6 @@ function App() {
   // the app loads at, once, and is never re-derived: a resize keeps the value the user's
   // last press set, and only a reload returns the default.
   const [timelineExpanded, setTimelineExpanded] = useState(() => !isNarrowViewport())
-  const [rotationCollapsed, setRotationCollapsed] = useState(() => isCompactViewport())
   // Structure only, never state (R-40): the timeline toggle is mounted at 360 and 780, and
   // at 360 it is the region's first control rather than the region's sibling (R-46).
   const compactViewport = useMediaMatch(COMPACT_QUERY)
@@ -155,38 +154,22 @@ function App() {
     const restored = polygonIdFromSearch(search, regionAdapter(loadedRegion))
     if (restored !== null) store.restorePolygon(restored)
     else if (store.selectedPolygonId !== null) store.clearPolygonSelection()
-    // Block 6, R-01: `?numbers=1` opens the numbers surface, and nothing else in the URL changes.
-    store.setNumbersOpen(numbersOpenFromSearch(search))
-    // Block 7, R-01: `?decision=1` and `?record=1` open the two surfaces of this block.
-    store.setCalendarOpen(surfaceOpenFromSearch(search, 'decision'))
-    store.setRecordOpen(surfaceOpenFromSearch(search, 'record'))
+    // Block 5.5, D1: the three deep links are removed. The four buttons are the only way to open
+    // a panel, and nothing in the URL records which one is open (block 7 revision 10 R-06, R-09).
   }, [])
 
-  // Block 6, R-01 and R-02: opening and closing the numbers surface writes or removes the one
-  // `numbers` parameter with `history.replaceState`. Every other parameter is kept as it was.
-  const openNumbers = useCallback(() => {
-    useMapStore.getState().setNumbersOpen(true)
-    window.history.replaceState(null, '', `${window.location.pathname}${searchWithNumbers(window.location.search, true)}${window.location.hash}`)
-  }, [])
-
-  const closeNumbers = useCallback(() => {
-    useMapStore.getState().setNumbersOpen(false)
-    window.history.replaceState(null, '', `${window.location.pathname}${searchWithNumbers(window.location.search, false)}${window.location.hash}`)
-  }, [])
-
-  // R-05 and AC-01: closing returns focus to the `Field numbers` button that opened the surface.
-  const wasNumbersOpenRef = useRef(false)
+  // Block 5.5, W3: closing a panel returns the focus to the button that opened it, the same rule
+  // block 6 R-05 had for the full screen surface, now that the panel is inside the map screen.
+  const wasPanelOpenRef = useRef<PanelId | null>(null)
   useEffect(() => {
-    if (wasNumbersOpenRef.current && !numbersOpen) {
-      document.querySelector<HTMLButtonElement>(`[${NUMBERS_TOGGLE_ATTR}]`)?.focus()
+    const previous = wasPanelOpenRef.current
+    if (previous !== null && panelOpen !== previous) {
+      const attr = PANEL_TOGGLE_ATTR[previous]
+      document.querySelector<HTMLButtonElement>(`[${attr}]`)?.focus()
     }
-    wasNumbersOpenRef.current = numbersOpen
-  }, [numbersOpen])
+    wasPanelOpenRef.current = panelOpen
+  }, [panelOpen])
 
-  // Block 7, R-01 and R-06: the two surfaces are URL state like `numbersOpen`. Opening one removes
-  // the other surface and `numbers`, and every other parameter is left byte for byte.
-  const calendarOpen = useMapStore((state) => state.calendarOpen)
-  const recordOpen = useMapStore((state) => state.recordOpen)
   const registeredFields = useMapStore((state) => state.registeredFields)
   const producerData = useMapStore((state) => state.producerData)
 
@@ -204,48 +187,6 @@ function App() {
   useEffect(() => {
     refreshProducer()
   }, [refreshProducer])
-
-  const openSurface = useCallback((surface: Surface) => {
-    const store = useMapStore.getState()
-    // R-06: one screen at a time. Both flags are written explicitly rather than only the one being
-    // opened, so the store cannot keep a surface the URL has just dropped.
-    store.setNumbersOpen(false)
-    store.setCalendarOpen(surface === 'decision')
-    store.setRecordOpen(surface === 'record')
-    window.history.replaceState(
-      null,
-      '',
-      `${window.location.pathname}${searchWithSurface(window.location.search, surface)}${window.location.hash}`,
-    )
-  }, [])
-
-  const closeSurface = useCallback((surface: Surface) => {
-    const store = useMapStore.getState()
-    if (surface === 'decision') store.setCalendarOpen(false)
-    else store.setRecordOpen(false)
-    window.history.replaceState(
-      null,
-      '',
-      `${window.location.pathname}${searchWithoutSurface(window.location.search, surface)}${window.location.hash}`,
-    )
-  }, [])
-
-  // R-01 and AC-01: closing a surface returns focus to the button that opened it.
-  const wasCalendarOpenRef = useRef(false)
-  useEffect(() => {
-    if (wasCalendarOpenRef.current && !calendarOpen) {
-      document.querySelector<HTMLButtonElement>(`[${DECISION_TOGGLE_ATTR}]`)?.focus()
-    }
-    wasCalendarOpenRef.current = calendarOpen
-  }, [calendarOpen])
-
-  const wasRecordOpenRef = useRef(false)
-  useEffect(() => {
-    if (wasRecordOpenRef.current && !recordOpen) {
-      document.querySelector<HTMLButtonElement>(`[${FIELD_RECORD_TOGGLE_ATTR}]`)?.focus()
-    }
-    wasRecordOpenRef.current = recordOpen
-  }, [recordOpen])
 
   // R-03 and R-23: the URL is the only record of the region and the polygon selection, so it
   // is rewritten with `history.replaceState` and never with a navigation or local storage.
@@ -300,7 +241,7 @@ function App() {
       observer.disconnect()
       window.removeEventListener('resize', measure)
     }
-  }, [rotationCollapsed])
+  }, [false])
 
   // The status notice and the right edge column are separate fixed overlays, so the
   // 8 px gap of R-23 is kept by measuring the notice, not by nesting it. The measure
@@ -440,10 +381,6 @@ function App() {
     setTimelineExpanded((current) => !current)
   }, [])
 
-  const handleToggleRotation = useCallback(() => {
-    setRotationCollapsed((current) => !current)
-  }, [])
-
   const handleToggleCommand = useCallback(() => {
     const willOpen = !command.isOpen
     if (isNarrowViewport() && willOpen) supportingData.close()
@@ -478,7 +415,6 @@ function App() {
   // block 4's band already bundles (TimelineDock imports the same file), so this block adds no
   // request and no reader of its own; the calendar groups the rows of the field's municipality and
   // season, and the seasonless payload is the recorded United States source of AC-57.
-  const region = regionAdapter(regionId)
   const windowRows = snapshotJson.rows as unknown as ZarcWindowRow[]
   const heldBySeason = useMemo(() => heldSeasonsOf(windowRows), [windowRows])
   const selectedRegistered: RegisteredField | null = registeredFields.find((field) => field.id === selectedFieldId) ?? null
@@ -508,30 +444,6 @@ function App() {
     return null
   }, [selectedRegistered, selectedField, selectedPolygonId])
   const selectedHistory = selectedFieldId === null ? [] : (producerData[selectedFieldId]?.history ?? [])
-  const calendarGaps = useMemo(() => {
-    const today = new Date().toISOString().slice(0, 10)
-    if (selectedFieldId !== null && selectedRegistered !== null && !calendarSeasonless) {
-      return [{
-        surface: 'Planting calendar',
-        cause: 'calendar.abstain_municipality' as const,
-        source: 'fs.fields.v1',
-        status: 'the field carries no municipality',
-        date: today,
-        remediation: 'CO-B7-06',
-      }]
-    }
-    if (calendarFieldName !== null && calendarPlace === null && !calendarSeasonless) {
-      return [{
-        surface: 'Planting calendar',
-        cause: 'calendar.no_source' as const,
-        source: 'src/lib/window-source.ts',
-        status: 'no window source for this region',
-        date: today,
-        remediation: 'CO-B7-05',
-      }]
-    }
-    return []
-  }, [selectedFieldId, selectedRegistered, calendarSeasonless, calendarPlace, calendarFieldName])
   const selectedFieldName = calendarFieldName
 
   const handleFieldDeleted = useCallback((fieldId: string) => {
@@ -539,12 +451,99 @@ function App() {
     if (store.selectedFieldId === fieldId) useMapStore.setState({ selectedFieldId: null })
   }, [])
 
-  const shellClass = [
-    'app-shell',
-    numbersOpen ? 'is-numbers-open' : '',
-    calendarOpen ? 'is-calendar-open' : '',
-    recordOpen ? 'is-record-open' : '',
-  ].filter(Boolean).join(' ')
+  // Block 5.5, B5: `Rotation outlook` and `Field numbers` are disabled while nothing is selected,
+  // with the reason in their accessible name. A fixture field is a selection too (block 6 R-03).
+  const hasSelection = selectedPolygonId !== null || selectedFieldId !== null
+
+  /**
+   * Block 5.5, W2 and the plan's R3: the four panels are data. A fifth panel is one more entry
+   * here, and `PanelHost` renders whichever one is open without a branch of its own.
+   */
+  const panelSpecs: PanelSpec[] = [
+    {
+      id: 'rotation',
+      labelKey: 'map.rotation_outlook',
+      needsSelection: true,
+      content: hasSelection ? (
+        <>
+          {/* AM-07 and R-26: a polygon has no coverage measurement, so the pill is unmounted
+              while a polygon is the selected field rather than printing a 0 percent. */}
+          <div className="rotation-heading-row">
+            {selectedPolygonId === null && (
+              <span className="field-coverage-pill"><span className="coverage-dot" />{t('map.data_coverage', { coverage: selectedField?.coverage ?? 0 })}</span>
+            )}
+            {showFixtureNote && (
+              <p className="fixture-season-note">
+                {t('timeline.fixture_data', { season: fixtureSeason, derived: derivedSeason })}
+              </p>
+            )}
+          </div>
+          <ScenarioCards
+            collapsed={false}
+            emptyReason={isLoadingFields || isLoadingScenarios
+              ? null
+              : error ?? (selectedPolygonId !== null
+                ? t('empty.no_rotation_scenarios')
+                : !selectedFieldId
+                  ? t('empty.select_field')
+                  : scenarios.length === 0 ? t('empty.no_rotation_scenarios') : null)}
+            isLoading={isLoadingFields || isLoadingScenarios}
+            seasonChip={selectedPolygonId === null}
+            scenarios={scenarios}
+            state={scenarioState === 'abstained' ? null : scenarioState}
+            threshold={scenarioState === 'abstained' ? null : threshold}
+          />
+        </>
+      ) : null,
+    },
+    {
+      id: 'numbers',
+      labelKey: 'numbers.open',
+      needsSelection: true,
+      content: hasSelection ? <NumbersView scenarios={scenarios} selectedField={selectedField} /> : null,
+    },
+    {
+      id: 'decision',
+      labelKey: 'calendar.open',
+      needsSelection: false,
+      content: (
+        <DecisionView
+          chosenDate={chosenDate}
+          fieldName={calendarFieldName}
+          heldSeasons={heldBySeason}
+          history={selectedHistory}
+          numbersTarget={calendarTarget}
+          place={calendarPlace}
+          seasonless={calendarSeasonless}
+          windowRows={calendarSeasonless === null ? windowRows : null}
+        />
+      ),
+    },
+    {
+      id: 'record',
+      labelKey: 'record.open',
+      needsSelection: false,
+      content: (
+        <FieldRecordView
+          chosenDate={chosenDate}
+          heldSeasons={heldBySeason}
+          onChanged={refreshProducer}
+          onFieldDeleted={handleFieldDeleted}
+          onSelectField={handleSelectField}
+          place={calendarPlace}
+          regionId={regionId}
+          rotationRows={[]}
+          selectedFieldId={selectedFieldId}
+          selectedFieldName={selectedFieldName}
+          windowRows={calendarSeasonless === null ? windowRows : null}
+        />
+      ),
+    },
+  ]
+
+  // Block 5.5, B1: the map screen is never hidden. The shell carries no state class for a panel,
+  // because a panel is a box inside the map screen and not a screen over it.
+  const shellClass = 'app-shell'
 
   const shellStyle = {
     '--fs-notice-block': `${hasNotice ? noticeHeight + 8 : 0}px`,
@@ -562,7 +561,8 @@ function App() {
           At 360 it is not mounted at all, and the fields chip carries the class there. */}
       {!narrowViewport && (
         <div className="polygon-panel-anchor" style={{ zIndex: ZOrder.polygonPanel }}>
-          <PolygonPanel />
+          {/* Block 5.5, U3 and W6: the readout exists only while a polygon is selected. */}
+          {selectedPolygonId !== null && <PolygonPanel />}
         </div>
       )}
 
@@ -581,10 +581,13 @@ function App() {
           <span className="top-chip profile-avatar" aria-label={t('map.grower_profile')}>GM</span>
           <CommandToggle isOpen={command.isOpen} buttonRef={command.buttonRef} onToggle={handleToggleCommand} />
           <SupportingDataToggle isOpen={supportingData.isOpen} onToggle={handleToggleSupportingData} />
-          <NumbersToggle onOpen={openNumbers} />
-          {/* Block 7, R-08: the two buttons sit to the right of `Supporting data`, in this order. */}
-          <DecisionToggle onOpen={() => openSurface('decision')} />
-          <FieldRecordToggle onOpen={() => openSurface('record')} />
+          {/* Block 5.5, W3 and block 7 revision 10 R-08: the four buttons in the fixed order
+              `Rotation outlook`, `Field numbers`, `Planting calendar`, `Field record`, to the
+              right of `Supporting data`, which block 4 R-41 freezes as the anchor. */}
+          <RotationToggle hasSelection={hasSelection} />
+          <NumbersToggle hasSelection={hasSelection} />
+          <DecisionToggle />
+          <FieldRecordToggle />
         </div>
       </div>
 
@@ -631,67 +634,18 @@ function App() {
         />
       </div>
 
+      {/* Block 5.5, W2: one box in the bottom left overlay, the rectangle `ScenarioCards`
+          occupied, holding exactly one panel. The heading row, the coverage pill and the fixture
+          note now belong to the `Rotation outlook` panel's own content. */}
       <div className="overlay anchor-bottom-left layer-cards" style={{ zIndex: ZOrder.scenarioCards }}>
         <div
           ref={rotationPanelRef}
           className="overlay-interactive panel-surface scenario-anchor"
-          data-collapsed={rotationCollapsed ? 'true' : 'false'}
+          data-collapsed={panelOpen === 'rotation' ? 'false' : 'true'}
           data-rotation-panel
           style={{ zIndex: ZOrder.scenarioCards }}
         >
-          <div className="rotation-heading-row">
-            <div className="rotation-heading-copy">
-              <div>
-                <p className="eyebrow">{t('map.plan_with_evidence')}</p>
-                <h2>{t('map.rotation_outlook')}</h2>
-              </div>
-              {/* R-48: native button, name states the action, 44 by 44 px, focus stays. */}
-              <button
-                aria-expanded={!rotationCollapsed}
-                aria-label={t(rotationCollapsed ? 'rotation.expand' : 'rotation.collapse')}
-                className="rotation-collapse-toggle"
-                onClick={handleToggleRotation}
-                type="button"
-              >
-                <svg aria-hidden="true" focusable="false" height="14" viewBox="0 0 14 14" width="14">
-                  <path
-                    d={rotationCollapsed ? 'M2 5l5 5 5-5' : 'M2 9l5-5 5 5'}
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.8"
-                  />
-                </svg>
-              </button>
-            </div>
-            {/* AM-07 and R-26: a polygon has no coverage measurement, so the pill is unmounted
-                while a polygon is the selected field rather than printing a 0 percent. */}
-            {selectedPolygonId === null && (
-              <span className="field-coverage-pill"><span className="coverage-dot" />{t('map.data_coverage', { coverage: selectedField?.coverage ?? 0 })}</span>
-            )}
-            {showFixtureNote && (
-              <p className="fixture-season-note">
-                {t('timeline.fixture_data', { season: fixtureSeason, derived: derivedSeason })}
-              </p>
-            )}
-          </div>
-          <ScenarioCards
-            collapsed={rotationCollapsed}
-            emptyReason={isLoadingFields || isLoadingScenarios
-              ? null
-              : error ?? (selectedPolygonId !== null
-                // R-26, AC-22: a polygon has no rotation scenarios of its own. It gets the
-                // scenarios empty text, not the fixture's select-a-field copy.
-                ? t('empty.no_rotation_scenarios')
-                : !selectedFieldId
-                  ? t('empty.select_field')
-                  : scenarios.length === 0 ? t('empty.no_rotation_scenarios') : null)}
-            isLoading={isLoadingFields || isLoadingScenarios}
-            // R-49, AC-41: the season chip belongs to block 3's map screen, not to the polygon surface.
-            seasonChip={selectedPolygonId === null}
-            scenarios={scenarios}
-            state={scenarioState === 'abstained' ? null : scenarioState}
-            threshold={scenarioState === 'abstained' ? null : threshold}
-          />
+          <PanelHost panels={panelSpecs} />
         </div>
       </div>
 
@@ -727,49 +681,12 @@ function App() {
       )}
 
       {/* Field Shift AI (experiment): its own launcher and panel, outside the frozen control strip
-          (block 4 R-41), as direct children of the shell, so `.is-numbers-open` hides them too. */}
+          (block 4 R-41), as direct children of the shell. */}
       <FieldShiftAIToggle />
       <FieldShiftAIPanel selectedField={selectedField} />
 
-      {/* Block 6, R-01 and R-02: the numbers surface is a sibling of the map screen. While it is
-          open, `.is-numbers-open` hides every other child of the shell (NumbersView.css). */}
-      {numbersOpen && (
-        <NumbersView scenarios={scenarios} selectedField={selectedField} onClose={closeNumbers} />
-      )}
-
-      {/* Block 7, R-01 and R-02: the two surfaces are siblings of the map screen too, and
-          `.is-calendar-open` / `.is-record-open` hide every other child (Block7.css). */}
-      {calendarOpen && (
-        <DecisionView
-          chosenDate={chosenDate}
-          fieldName={calendarFieldName}
-          gaps={calendarGaps}
-          heldSeasons={heldBySeason}
-          history={selectedHistory}
-          numbersTarget={calendarTarget}
-          onClose={() => closeSurface('decision')}
-          place={calendarPlace}
-          seasonless={calendarSeasonless}
-          windowRows={calendarSeasonless === null ? windowRows : null}
-        />
-      )}
-      {recordOpen && (
-        <FieldRecordView
-          chosenDate={chosenDate}
-          heldSeasons={heldBySeason}
-          onChanged={refreshProducer}
-          onClose={() => closeSurface('record')}
-          onFieldDeleted={handleFieldDeleted}
-          onSelectField={handleSelectField}
-          place={calendarPlace}
-          region={region}
-          regionId={regionId}
-          rotationRows={[]}
-          selectedFieldId={selectedFieldId}
-          selectedFieldName={selectedFieldName}
-          windowRows={calendarSeasonless === null ? windowRows : null}
-        />
-      )}
+      {/* Block 5.5, B1: nothing is mounted over the map any more. The four panels live in the
+          host above, and the map screen is the screen. */}
     </main>
   )
 }

@@ -1,21 +1,21 @@
-import { t } from '@/strings'
+import { PanelToggle } from './PanelToggle'
 
-/** R-01: the `Field numbers` button of the block 3 control strip. Opening it writes `?numbers=1`. */
+/** Block 5.5 W3: the `Field numbers` button of the block 3 control strip, second of the four. */
 export const NUMBERS_TOGGLE_ATTR = 'data-numbers-toggle'
 
 type NumbersToggleProps = {
-  onOpen: () => void
+  hasSelection: boolean
 }
 
-export function NumbersToggle({ onOpen }: NumbersToggleProps) {
+export function NumbersToggle({ hasSelection }: NumbersToggleProps) {
   return (
-    <button
-      type="button"
-      className="top-chip toggle-control numbers-toggle"
-      {...{ [NUMBERS_TOGGLE_ATTR]: '' }}
-      onClick={onOpen}
-    >
-      {t('numbers.open')}
-    </button>
+    <PanelToggle
+      attr={[NUMBERS_TOGGLE_ATTR, '']}
+      className="numbers-toggle"
+      hasSelection={hasSelection}
+      id="numbers"
+      labelKey="numbers.open"
+      needsSelection
+    />
   )
 }

@@ -1,24 +1,21 @@
-import { t } from '@/strings'
+import { PanelToggle } from './PanelToggle'
 
-/**
- * Block 7, R-01 and R-08: the two strip buttons. They sit to the right of `Supporting data` and open
- * their surface; the App owns the URL and the focus return (R-01).
- */
+/** Block 5.5 W3: the `Planting calendar` button of the block 3 control strip, third of the four. */
 export const DECISION_TOGGLE_ATTR = 'data-decision-toggle'
 
 type DecisionToggleProps = {
-  onOpen: () => void
+  hasSelection?: boolean
 }
 
-export function DecisionToggle({ onOpen }: DecisionToggleProps) {
+export function DecisionToggle({ hasSelection = true }: DecisionToggleProps) {
   return (
-    <button
-      type="button"
-      className="top-chip toggle-control decision-toggle"
-      {...{ [DECISION_TOGGLE_ATTR]: '' }}
-      onClick={onOpen}
-    >
-      {t('calendar.open')}
-    </button>
+    <PanelToggle
+      attr={[DECISION_TOGGLE_ATTR, '']}
+      className="decision-toggle"
+      hasSelection={hasSelection}
+      id="decision"
+      labelKey="calendar.open"
+      needsSelection={false}
+    />
   )
 }
