@@ -39,14 +39,29 @@ type PanelState = {
   stopDrawing: () => void
 }
 
-export const usePanelStore = create<PanelState>((set, get) => ({
-  open: null,
-  openPanel: (id) => set({ open: id }),
-  closePanel: () => set({ open: null }),
-  togglePanel: (id) => set({ open: get().open === id ? null : id }),
-  draft: null,
-  startDrawing: () => set({ draft: [] }),
-  addVertex: (point) => set((state) => ({ draft: state.draft === null ? null : [...state.draft, point] })),
-  undoVertex: () => set((state) => ({ draft: state.draft === null ? null : state.draft.slice(0, -1) })),
-  stopDrawing: () => set({ draft: null }),
-}))
+export const usePanelStore = create<PanelState>((set, get) => {
+  /**
+   * The drawing mode lives exactly as long as the `Field record` panel is open. `startDrawing` sets
+   * `draft: []` and only `stopDrawing` used to clear it, and `stopDrawing` runs on save, cancel and
+   * import but never when the panel closes, so pressing the draw control once and closing the panel
+   * left `draft` non null. Every later press on the map then added a vertex instead of selecting the
+   * polygon under it: no selection, no highlight, nothing happened, for the rest of the tab's life.
+   * Ending it here, in the three actions that change `open`, keeps one place and needs no effect.
+   */
+  const nextOpenState = (state: PanelState, next: PanelId | null) => ({
+    open: next,
+    // The vertices survive while the record panel stays open and die the moment it does not.
+    draft: next === 'record' ? state.draft : null,
+  })
+  return {
+    open: null,
+    openPanel: (id) => set((state) => nextOpenState(state, id)),
+    closePanel: () => set((state) => nextOpenState(state, null)),
+    togglePanel: (id) => set((state) => nextOpenState(state, get().open === id ? null : id)),
+    draft: null,
+    startDrawing: () => set({ draft: [] }),
+    addVertex: (point) => set((state) => ({ draft: state.draft === null ? null : [...state.draft, point] })),
+    undoVertex: () => set((state) => ({ draft: state.draft === null ? null : state.draft.slice(0, -1) })),
+    stopDrawing: () => set({ draft: null }),
+  }
+})
