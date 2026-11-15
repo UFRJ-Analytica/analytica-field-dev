@@ -1127,9 +1127,10 @@
 }
 
 /* R-40, R-45 and AC-33: the Polygon region is placed by its own numbers. At 1440 it spans left 22,
-   top 260, width 320, height 170 to 190. At 780 the width is 26vw (the block 3 left column), the
-   height 110 to 130, and the bottom edge stays at or above y 390. It scrolls inside its own box
-   and never grows the page. The anchor is mounted only above 640 (OD-03). */
+   top 260 and a width of 320. At 780 the width is 26vw (the block 3 left column). The box takes the
+   height its content needs: no max-height and no inner scroller, so the five readout rows and the
+   legend are always fully visible and the panel is never a second scroll container. The anchor is
+   mounted only above 640 (OD-03). */
 .polygon-panel-anchor {
   position: fixed;
   left: 22px;
@@ -1141,9 +1142,6 @@
   box-sizing: border-box;
   display: block;
   width: 100%;
-  min-height: 170px;
-  max-height: 190px;
-  overflow-y: auto;
   padding: 10px 12px;
   border: 1px solid rgb(232 235 229 / 75%);
   border-radius: 12px;
@@ -1155,7 +1153,9 @@
   pointer-events: auto;
 }
 @media (max-width: 1020px) {
-  .polygon-panel { min-height: 110px; max-height: 130px; }
+  /* The panel keeps its width from the anchor and takes its height from the content, the same rule
+     as above 1020: no cap and no scrollbar here either. */
+  .polygon-panel { width: 100%; }
 }
 .polygon-heading { margin: 0 0 6px; font-size: 12px; font-weight: 600; }
 .polygon-readout { display: grid; gap: 3px; margin: 0 0 6px; }

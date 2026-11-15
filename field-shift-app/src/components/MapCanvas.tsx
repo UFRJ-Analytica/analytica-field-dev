@@ -756,6 +756,13 @@ export function MapCanvas({ fields, selectedField, onTileChange, children }: Map
      * Block 5.5, U5 and B8: a press on the map that lands on no polygon clears the selection. The
      * layer scoped handler above only runs when the press hits the fill layer, so a press on empty
      * map, on the basemap or on a label never deselected anything.
+     *
+     * The hit test asks the map at the pressed point and never reads `event.features`: MapLibre sets
+     * that field only for a layer scoped listener and deletes it the moment that listener returns
+     * (maplibre-gl `map.ts` assigns `e.features` before the call and runs `delete e.features` after
+     * it). The layer scoped `handleClick` above runs first and writes the selection, so on the same
+     * event this handler used to see a selection with `event.features` already gone, and cleared the
+     * selection it had just been given in the same tick.
      */
     const handleMapClick = (event: PolygonEvent) => {
       const store = useMapStore.getState()
@@ -764,10 +771,11 @@ export function MapCanvas({ fields, selectedField, onTileChange, children }: Map
         return
       }
       if (store.selectedPolygonId === null) return
-      // The same feature reader the layer scoped handler uses, so the two agree on what the press
-      // hit: a press with no polygon under it clears, and a press on one never clears what the
-      // command just selected.
-      if (!currentFeature(event)) store.clearPolygonSelection()
+      // A missing layer cannot answer a query and `queryRenderedFeatures` throws on an unknown
+      // layer id, so the map is asked only once the fill layer is mounted.
+      if (!map.getLayer(POLYGON_FILL_LAYER_ID)) return
+      const hit = map.queryRenderedFeatures(event.point, { layers: [POLYGON_FILL_LAYER_ID] })
+      if (hit.length === 0) store.clearPolygonSelection()
     }
 
     map.on('mousemove', POLYGON_FILL_LAYER_ID, handleMove)
