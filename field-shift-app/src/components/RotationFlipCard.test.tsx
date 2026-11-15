@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { RotationFlipCard } from './RotationFlipCard'
 import type { RotationScenario } from './ScenarioCards'
 
-const FACT_LABELS = ['Why', 'Evidence', 'Benefit', 'Gap', 'Risk']
+const FACT_LABELS = ['Why', 'Evidence', 'Benefit', 'Falsifier', 'Gap', 'Risk']
 const VISUAL_LABELS = ['SMAP soil moisture', 'Crop history']
 
 const smapRow = {
@@ -111,6 +111,7 @@ describe('RotationFlipCard', () => {
       scenarios[0].why,
       scenarios[0].evidence,
       scenarios[0].benefit,
+      'No counter evidence recorded',
       scenarios[0].gap,
       scenarios[0].risk,
     ])

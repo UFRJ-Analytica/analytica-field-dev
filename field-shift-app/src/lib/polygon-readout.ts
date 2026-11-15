@@ -18,6 +18,11 @@ export type PolygonFeatureRaw = {
   classValue: number | null
   /** The region's area property when the tile carries it (United States only). */
   area: number | null
+  /**
+   * Block 6 wave 3, R-33 to R-36: the `cdl{Y}` properties of a United States feature, one entry
+   * per CDL year of the region's range, each `null` when the property is absent or null.
+   */
+  cdl?: Record<number, number | null>
 }
 
 /** The Brazil sidecar area of R-25: the row, its absence, or the failure to read it. */
@@ -54,10 +59,18 @@ export function rawFeatureFrom(
   properties: Record<string, unknown> | null | undefined,
   classProperty: string,
 ): PolygonFeatureRaw {
-  return {
+  const raw: PolygonFeatureRaw = {
     classValue: classIdFrom(region, properties, classProperty),
     area: region.areaFromSidecar ? null : numberOrNull(properties?.[region.areaProperty]),
   }
+  if (region.classSource === 'cdl-year' && region.classYearRange !== null) {
+    const cdl: Record<number, number | null> = {}
+    for (let year = region.classYearRange[0]; year <= region.classYearRange[1]; year += 1) {
+      cdl[year] = numberOrNull(properties?.[`cdl${year}`])
+    }
+    raw.cdl = cdl
+  }
+  return raw
 }
 
 function classText(region: RegionAdapter, raw: PolygonFeatureRaw, date: string): string {

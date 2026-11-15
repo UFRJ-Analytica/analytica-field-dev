@@ -63,7 +63,7 @@ const scenarios: RotationScenario[] = [
   },
 ]
 
-const expectedFields = ['Why', 'Evidence', 'Benefit', 'Gap', 'Risk']
+const expectedFields = ['Why', 'Evidence', 'Benefit', 'Falsifier', 'Gap', 'Risk']
 
 function cardFor(name: string): HTMLElement {
   const card = screen.getByRole('heading', { name }).closest('.scenario-card')
@@ -166,6 +166,7 @@ describe('ScenarioCards', () => {
         scenario.why,
         scenario.evidence,
         scenario.benefit,
+        'No counter evidence recorded',
         scenario.gap,
         scenario.risk,
       ])
