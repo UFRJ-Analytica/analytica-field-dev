@@ -1,6 +1,6 @@
 # Spec: Block 6, numbers per polygon
 
-Status: frozen on 2026-11-14 as revision 2. Revision 2 states the default region of this block as the United States, the value block 5 R-01 defaults `regionId` to, corrects the fixture fallback of Data contracts Table B and adds the United States worked example that follows from it; revision 1 carried neither the default nor a second region example. The governing rule is ADR 0005 (`docs/adr/0005-blocos-com-spec-congelada.md`): every block runs on a frozen spec before code. This file produces the spec only. No application code, config, string catalog, test, other spec or block 1 to 5 text changes on the card that writes it. The freeze digest is in the Freeze record near the end of this file.
+Status: frozen on 2026-11-14 as revision 2. Revision 3 (2026-11-15) amends one row of Table E, two explanatory sentences and the worked municipality section of the worked response, and nothing else: the municipality row names the state total `state_row`, so that it no longer collides with the R-45 `state` token, and the worked response carries the `share` key Table E requires; revision 3 awaits the user's approval. Revision 2 states the default region of this block as the United States, the value block 5 R-01 defaults `regionId` to, corrects the fixture fallback of Data contracts Table B and adds the United States worked example that follows from it; revision 1 carried neither the default nor a second region example. The governing rule is ADR 0005 (`docs/adr/0005-blocos-com-spec-congelada.md`): every block runs on a frozen spec before code. This file produces the spec only. No application code, config, string catalog, test, other spec or block 1 to 5 text changes on the card that writes it. The freeze digest is in the Freeze record near the end of this file.
 
 Inherits block 5 revision 5, the frozen text in the tree: `field-shift-app/specs/bloco-5-poligonos-de-cultura.md`, 531 lines, raw sha256 `6823769b59910ac64814d6dddfb5f7a0501f994f9fcab8dd0a8431df4975296d`, freeze digest `ebc94342f57071cfea25d3074e392f73427b51a94286b2372ebc98c8458bea61`, verified on this card by re-running that file's own `sed` recipe. It inherits block 4 revision 8 (`field-shift-app/specs/bloco-4-camadas-e-timeline.md`, 681 lines, raw sha256 `dd1aa5a067fe1d8c908454132a5c77d75c6d272ee99a6e26828891ef695ea51c`, freeze digest `f74a1715d28b0808504065653b296ffbce9e87a84aeb2e238949c6a42787d82e`, commit `b3bff60`) and block 1 revision 3 (`field-shift-app/specs/bloco-1-mapa-de-composicao.md`, 177 lines, raw sha256 `70c235ccbc154762df4c6d9e35024da4a2bf501e6e70cc6eb38ee09bf26acab3`, freeze digest `5165dd4df375b74c455296562585bf00b2b2813304153e849d477d8e4735a117`). All three digests were reproduced on 2026-11-14 with the recorded recipes, so this file reads the text the tree actually carries.
 
@@ -223,11 +223,12 @@ Worked response, the climate and municipality sections of the same request, ever
                     "source": "https://servicodados.ibge.gov.br/api/v3/agregados/1612/periodos/2021-2025/variaveis/109?localidades=N6%5B5107248%5D&classificacao=81%5B2713%5D",
                     "as_of": "2025-12-31", "fetched_at": "2026-11-14T18:12:09Z", "cached": false,
                     "municipality": {"code": "5107248", "name": "Santa Carmem (MT)", "year": 2025, "soy_ha": 130000},
-                    "state": {"code": "51", "name": "Mato Grosso", "year": 2025, "soy_ha": 12788611, "label": "state total, not this field"}}},
+                    "share": 0.0172,
+                    "state_row": {"code": "51", "name": "Mato Grosso", "year": 2025, "soy_ha": 12788611, "label": "state total, not this field"}}},
  "provenance": [], "gaps": []}
 ```
 
-The `provenance` array is elided in the example because the full payload carries one row per metric of Table A that the response prints; the criteria read it in full.
+The `provenance` array is elided in the example because the full payload carries one row per metric of Table A that the response prints; the criteria read it in full. The `share` of the example is Table A's `polygon_share`: 22.4 ha divided by 130,000 ha, times 100, which is 0.0172 percent to four decimals.
 
 Worked example, a field that names no region. The United States is the default of R-51, so the second worked example is a United States fixture, `csb:381825001868504` of block 5 R-24, on the same chosen date 2026-11-12. Only what this repository has measured is pinned here. The rest is a shape with the value left to the gate, because both probe files record one point, `-55.27, -11.91`, and neither carries a United States reading.
 
@@ -316,10 +317,12 @@ The second crop product is mapped only for Parana, Sao Paulo, Minas Gerais, Mato
 | `ndvi` | `ok`, `abstained`, `unavailable` | `scenes` array with `ndvi_mean`, `valid_fraction`, `kept_pixels`, `polygon_pixels`, `cloud_cover`, `partial`; `scene_count`, `clear_count`, `assets`, `source`, `as_of` | fewer than two scenes with `valid_fraction` at or above 0.5 |
 | `soil` | `ok`, `abstained`, `unavailable` | `depths` array with `clay_g_kg`, `sand_g_kg`, `ph`, `soc_g_kg`; `d_factor` per property; `model_note`, `source`, `as_of` | a property, a depth or a `d_factor` is missing |
 | `rotation` | `ok`, `abstained`, `not_applicable`, `unavailable` | `first_crop` array, `second_crop` array, `collection`, `collection_year`, `sidecar`, `basis` | no sidecar row; a state outside the ten for the second crop only |
-| `municipality` | `ok`, `abstained`, `unavailable` | `municipality` object, `state` object, `share`, `source`, `as_of` | an unresolved code or a missing year |
+| `municipality` | `ok`, `abstained`, `unavailable` | `municipality` object, `state_row` object, `share`, `source`, `as_of` | an unresolved code or a missing year |
 | `fragment` | always present | `ring_area_ha`, `area_ha`, `difference_percent`, `is_fragment` | the feature carries no `area_ha`, then `is_fragment` is `null` and a gap records it |
 | `provenance` | always present | one row per printed metric with the ten keys of R-07 | never |
 | `gaps` | always present | one row per gap with `section`, `cause`, `source`, `status`, `date`, `remediation` | never; an empty array prints the register's empty text |
+
+The `state` column of the `municipality` row is the section's own lifecycle token of R-45 and is never a key of the section body. The state total of R-37 and R-38 is carried in `state_row`, because one key cannot hold the token and the object at once, and the worked response of Table B writes it that way. Both `state_row` and `share` are present in every municipality section, `ok`, `abstained` or `unavailable`; `state_row` is `null` while the state total abstains, and `share` is `null` while either area it divides is missing (R-37, R-38).
 
 ### Table F: the extraction routes and which feature uses which
 
@@ -550,12 +553,17 @@ Every other requirement and criterion of blocks 1 to 5 stays in force unchanged.
 
 ## Freeze record
 
-Frozen at revision 2 on 2026-11-14. Revision 1 was the first revision of this file; revision 2 states the default region as the United States (R-51), so that the fixture fallback of Table B and the worked examples name the default the product decided, and it adds the United States worked example of Table B. It inherits block 5 revision 5, block 4 revision 8 and block 1 revision 3, and it reproduces all three digests with their own recipes (see the status line). Each of the two revisions wrote one file and no other.
+Frozen at revision 2 on 2026-11-14. Revision 3, on 2026-11-15, amends one row of Table E, two sentences and the worked municipality section of the worked response, with no change to a requirement, a criterion, another table row, an identifier or a count: the municipality row required a `state` object while R-45 and AC-44 require the same key to be the section's lifecycle token, so the state total is now `state_row`, the key the numbers route already carries and the surface already reads, and the worked response no longer writes `state` twice in one JSON object, which no parser can produce; the same amendment adds the `share` key Table E requires and the worked response omitted. Revision 3 awaits the user's approval, as revision 2 does. Revision 2 is the frozen text this revision amends:
+
+- raw sha256 `83f855ad47bf1d748973296f224bf88d2e76ce7e4f75810f904ac14c0c3897b4`
+- freeze digest `0d10c71fbe74519f3a801dcdc9eb475a8a53b1fbbfd23c52d8263880fbb7088e`
+
+Revision 1 was the first revision of this file; revision 2 states the default region as the United States (R-51), so that the fixture fallback of Table B and the worked examples name the default the product decided, and it adds the United States worked example of Table B. It inherits block 5 revision 5, block 4 revision 8 and block 1 revision 3, and it reproduces all three digests with their own recipes (see the status line). Each revision wrote one file and no other.
 
 | Field | Value |
 |---|---|
-| Revision | 2 |
-| Approval | Not yet approved. The card stops at the frozen spec and requests review; the user approves in chat first, as with blocks 1 to 5. |
+| Revision | 3 |
+| Approval | Not yet approved. Revision 3 (2026-11-15) amends revision 2 and awaits the user's approval, as revision 2 does; the card stops at the frozen spec and requests review, and the user approves in chat first, as with blocks 1 to 5. |
 | Inherits | block 5 revision 5 (`ebc94342f57071cfea25d3074e392f73427b51a94286b2372ebc98c8458bea61`), block 4 revision 8 (`f74a1715d28b0808504065653b296ffbce9e87a84aeb2e238949c6a42787d82e`), block 1 revision 3 (`5165dd4df375b74c455296562585bf00b2b2813304153e849d477d8e4735a117`) |
 | Requirements | 51 active, R-01 to R-51; none withdrawn |
 | Criteria | 50 active, AC-01 to AC-50 |
@@ -563,7 +571,7 @@ Frozen at revision 2 on 2026-11-14. Revision 1 was the first revision of this fi
 | Open decisions | 8, OD-01 to OD-08, each with a written default and a consequence |
 | Carry-over | 12, CO-B6-01 to CO-B6-12 |
 | Findings | 20, M-01 to M-20 |
-| sha256 | `0d10c71fbe74519f3a801dcdc9eb475a8a53b1fbbfd23c52d8263880fbb7088e` |
+| sha256 | `2283105ddd0951bc6770dcc091ebf996dcb767eb13b9e1d52736065113ec4180` |
 
 A file cannot carry the digest of itself, so the sha256 row holds `PENDING` before hashing. The raw sha256 of the frozen file bytes is reported on the card, because a file cannot record its own raw digest. Reproduce the digest with, from `field-shift-app/`:
 
