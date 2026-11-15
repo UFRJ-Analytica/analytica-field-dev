@@ -225,6 +225,20 @@ function linePaint(): Record<string, unknown> {
 }
 
 /**
+ * R-06, AC-04: the `maxzoom` a layer needs to draw at the last zoom of its own range.
+ *
+ * A MapLibre layer draws at `minzoom` and stops at `maxzoom`, because a layer's `maxzoom` is
+ * exclusive. A layer whose `maxzoom` equals the tier's last zoom therefore stops one zoom short of
+ * it: measured on the running page, the overview drew nothing at zoom 5 in the United States and
+ * nothing at zoom 7 in Brazil, while the archive at 5/7/11 holds 52 Polygon and 1 MultiPolygon
+ * feature and renders 53 features once the range is widened by one. The tier's own numbers stay the
+ * contract (Table G and Table B); only the layer's exclusive bound carries the plus one.
+ */
+export function layerMaxzoomFor(tier: { maxzoom: number }): number {
+  return tier.maxzoom + 1
+}
+
+/**
  * R-04 and R-06: one vector source per mounted tier, one fill and one line per tier.
  *
  * Idempotent: a restyle re-adds the same ids and nothing is mounted twice (R-36). Below a
@@ -272,7 +286,8 @@ export function addPolygonLayers(
       source: POLYGON_OVERVIEW_SOURCE_ID,
       'source-layer': region.sourceLayer,
       minzoom: tiers.overview.minzoom,
-      maxzoom: tiers.overview.maxzoom,
+      // AC-04: the layer's exclusive bound, so the tier draws at its own last zoom too.
+      maxzoom: layerMaxzoomFor(tiers.overview),
       paint: fillPaint(classProperty, table),
     })
     ensure({
@@ -281,7 +296,7 @@ export function addPolygonLayers(
       source: POLYGON_OVERVIEW_SOURCE_ID,
       'source-layer': region.sourceLayer,
       minzoom: tiers.overview.minzoom,
-      maxzoom: tiers.overview.maxzoom,
+      maxzoom: layerMaxzoomFor(tiers.overview),
       paint: linePaint(),
       layout: { 'line-join': 'round' },
     })
@@ -347,17 +362,34 @@ export type PolygonStatusLines = {
 }
 
 /**
+ * R-07, R-12, AC-05, AC-09: the tiers this scene actually mounted, as the tier contract.
+ *
+ * A tier is mounted only when its numbers and its URL are both present. Brazil reads the Table B
+ * overview numbers in every mode, but Mode B mounts no overview file (the source carries no overview
+ * level, M-02), and the zoom line printed `Polygons from zoom 5` there while the lowest mounted tier
+ * was the detail at 8. The line comes from this value, never from the manifest or the Table B row.
+ */
+export function mountedTiers(scene: PolygonScene): RegionTiers | null {
+  if (!scene.tiers || !scene.detailUrl) return null
+  return {
+    ...scene.tiers,
+    overview: scene.overviewUrl && scene.tiers.overview ? scene.tiers.overview : null,
+  }
+}
+
+/**
  * R-07 and R-12: one zoom line over the lowest mounted tier, the select line only below the
  * interactive zoom, and never a failure line for a zoom below a healthy floor.
  */
 export function polygonStatusLines(scene: PolygonScene, zoom: number): PolygonStatusLines {
-  if (!scene.tiers) {
+  const mounted = mountedTiers(scene)
+  if (!mounted) {
     return { failure: scene.failure ?? polygonFailureForById(scene.regionId), zoomLine: null, selectLine: null }
   }
   return {
     failure: null,
-    zoomLine: { lowest: lowestMountedZoom(scene.tiers) },
-    selectLine: zoom < scene.tiers.interactiveMinzoom ? { interactive: scene.tiers.interactiveMinzoom } : null,
+    zoomLine: { lowest: lowestMountedZoom(mounted) },
+    selectLine: zoom < mounted.interactiveMinzoom ? { interactive: mounted.interactiveMinzoom } : null,
   }
 }
 

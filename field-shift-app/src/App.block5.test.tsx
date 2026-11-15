@@ -1,7 +1,9 @@
 import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import App from './App'
-import { useMapStore } from '@/lib/map-store'
+import { chosenDateOf, useMapStore } from '@/lib/map-store'
+import { UNMAPPED_CLASS_COLOUR, paintedClassYear } from '@/lib/polygon-style'
+import { REGION_ADAPTERS } from '@/lib/regions'
 import { layersResponse } from '@/test/api-fixtures'
 import { MapStub } from '@/test/maplibre-stub'
 
@@ -34,14 +36,18 @@ const brazilFields = [
 
 const modeBody = { region: 'br', mode: 'source-direct', classProperty: 'mbmode24' }
 
-function installFetch() {
+function installFetch(options: { axisDefault?: string } = {}) {
   const calls: string[] = []
   vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
     const url = String(input)
     calls.push(url)
     const parsed = new URL(url, 'http://localhost/')
     if (parsed.pathname === '/layers') {
-      return { ok: true, status: 200, json: async () => layersResponse() } as unknown as Response
+      const response = layersResponse()
+      const body = options.axisDefault
+        ? { ...response, axis: { ...response.axis, default: options.axisDefault } }
+        : response
+      return { ok: true, status: 200, json: async () => body } as unknown as Response
     }
     if (parsed.pathname === '/polygons/mode') {
       return { ok: true, status: 200, json: async () => modeBody } as unknown as Response
@@ -156,6 +162,28 @@ describe('the polygon selection in the app (R-23, R-24, R-28, AC-19, AC-20, AC-2
     await waitFor(() => expect(window.location.search).not.toContain('polygon='))
     expect(useMapStore.getState().selectedPolygonId).toBeNull()
     expect(useMapStore.getState().selectedFieldId).toBe('mt-santa-carmem-01')
+  })
+
+  it('reads the chip year through chosenDateOf, not the live axis default (R-21, R-28)', async () => {
+    // The live axis default is 2022-06-01 while the static LAYER_AXIS default is 2026-11-14.
+    // The tooltip, the legend and the readout read chosenDateOf, so the chip must too.
+    window.history.replaceState({}, '', '/')
+    installFetch({ axisDefault: '2022-06-01' })
+    render(<App />)
+    await waitFor(() => expect(useMapStore.getState().axis.default).toBe('2022-06-01'))
+
+    act(() => {
+      useMapStore.getState().setPolygonClass(
+        { classId: null, name: null, hex: UNMAPPED_CLASS_COLOUR, unmapped: true },
+        { classValue: null, area: 12.5 },
+      )
+      useMapStore.getState().selectField('csb:381825001868504')
+    })
+
+    const expectedYear = paintedClassYear(REGION_ADAPTERS.us, chosenDateOf(useMapStore.getState()))
+    const chip = await screen.findByRole('button', { name: `No CDL class for ${expectedYear}` })
+    expect(chip.textContent).toBe(`No CDL class for ${expectedYear}`)
+    expect(screen.queryByRole('button', { name: 'No CDL class for 2022' })).toBeNull()
   })
 
   it('clears a ?polygon= that does not resolve in the active region', async () => {

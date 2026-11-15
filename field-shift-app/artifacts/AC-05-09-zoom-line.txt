@@ -1,0 +1,51 @@
+AC-05 and AC-09, the zoom line over the tiers that are mounted, round 2 rework
+
+WHAT WAS WRONG. `polygonStatusLines` took the line's number from `lowestMountedZoom(scene.tiers)`, and
+the scene's `tiers` carries the Table B overview numbers in every Brazil mode. Mode B mounts no
+overview file (the source carries no overview level, M-02), so the line printed `Polygons from zoom 5`
+while the lowest mounted tier was the detail at 8. The gate measured it at zoom 6, 7, 9 and 10.
+
+FIX. `mountedTiers(scene)` (src/lib/polygon-source.ts) returns the tier contract with `overview: null`
+unless the scene also carries an `overviewUrl`, and returns null when no tier's URL is mounted. The
+status lines take the number from that value, so the line names what is on the map and the no-tier
+state prints the R-11 failure line with neither R-12 line.
+
+PROBE 1, the running app. Brazil Mode B was produced by moving the overview build out of the way so
+`GET /polygons/mode?region=br` answers `mode: source-direct` with `overview_file: null`, then loading
+http://localhost:5175/?region=br fresh; the map was checked to mount no overview source and no overview
+layer (`getSource('trazo-overview')` false, `getLayer('polygon-overview-fill')` false, `getSource('trazo')`
+true) and the status lines were read from `.polygon-status` at each zoom.
+
+  Brazil Mode B (source-direct, detail only), page at 1440x900:
+    zoom 4    zoom: Polygons from zoom 8    select: Select from zoom 10
+    zoom 6    zoom: Polygons from zoom 8    select: Select from zoom 10
+    zoom 7    zoom: Polygons from zoom 8    select: Select from zoom 10
+    zoom 8    zoom: Polygons from zoom 8    select: Select from zoom 10
+    zoom 9    zoom: Polygons from zoom 8    select: Select from zoom 10
+    zoom 10   zoom: Polygons from zoom 8    (no select line)
+    zoom 11   zoom: Polygons from zoom 8    (no select line)
+  The gate's row (Lines `Polygons from zoom 5` at zoom 6, 7, 9, 10) is replaced by `zoom 8` at every
+  zoom, with the select line present below the interactive zoom 10 and absent at and above it.
+
+  Brazil Mode A (both files present), page at 1440x900:
+    zoom 4, 6, 7, 8, 9   zoom: Polygons from zoom 5    select: Select from zoom 10
+    zoom 10, 11          zoom: Polygons from zoom 5    (no select line)
+  Mode A still names the overview's 5, which is mounted there.
+
+  The overview build file was moved back after the probe and the backend answers `self-hosted` again
+  (`br-mt-overview.pmtiles`, 3526612 bytes, in place).
+
+PROBE 2, vitest, `node node_modules/vitest/vitest.mjs run`:
+  src/lib/polygon-source.test.ts, describe `status lines (R-07, R-12, AC-09)`:
+    `names zoom 5 in Brazil Mode A, where the overview file is mounted`
+    `names zoom 8 in Brazil Mode B, where only the detail tier is mounted`
+    `prints no tier line at all when the region mounts no tier`
+  src/components/PolygonPanel.test.tsx, describe `the status lines of R-07, R-11, R-12, R-32 and R-35`:
+    `names the overview floor in Brazil Mode A, where the overview file is mounted`
+    `names the detail floor in Brazil Mode B, where the overview numbers are mounted by nothing`
+  The two Mode B tests fail on the previous code (measured: 4 failed, 42 passed with the previous
+  `lowestMountedZoom(scene.tiers)` call restored).
+
+NOT MEASURED: the widths 780x900 and 360x640 for the status lines in this run; AC-09's width clause is
+the region's mounting (absent at 360, R-40) and is not changed by this rework. The United States
+no-tier branch (the build absent) is unchanged and was measured by the earlier gate.

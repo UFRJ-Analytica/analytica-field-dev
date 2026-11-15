@@ -1,0 +1,72 @@
+AC-33 rectangles and stacking order, round 2 rework, branch block5/one-string-per-state
+
+READING OF THE CRITERION. Revision 8 of the block 5 spec (commit 3a1fd85, the text in the tree after
+the merge of `origin/main`) reads stacking "on the positioned element that carries each box's
+`z index`, and never on a descendant of it", and it names the numbers: the map canvas 0
+(`.map-panel`), the layer rail's anchor 20 "while the rail element inside it declares 25", and "the
+region's own positioning wrapper is 25 (`polygonPanel` of `ZOrder`) while the `section` it holds reads
+`auto`". The wrapper is the measured element and the upper bound is "the nearest mounted overlay above
+the wrapper, named in the artifact with its own value", or "no upper neighbour is mounted" when none
+is.
+
+WHAT THE GATE MEASURED. Its FAIL row read `[data-polygon-region]`, the section, which computes `auto`
+by design, and reported the region as not above the rail's 25. That reading is the one revision 8
+excludes. Measured as revision 8 requires, the region's wrapper reads 25, above the map canvas (0) and
+above the layer rail's anchor (20), so this criterion needed no code change. A first attempt on this
+branch put a second `z-index: 25` on the section itself, which the criterion does not ask for and does
+not read; that change is reverted in this commit and the tree carries no stacking edit for AC-33.
+
+METHOD. Running app at http://localhost:5175/?region=us (backend on :8000), real browser, one page
+load per width with CDP Emulation.setDeviceMetricsOverride 1440x900, 780x900 and 360x640.
+`getBoundingClientRect` and `getComputedStyle().zIndex` read from the live DOM after the map settled.
+An overlap is a positive-area intersection of the region's rectangle with each named box.
+
+WIDTHS
+
+  width  region mounted  region wrapper [left, top, width, height]  wrapper z  section z
+  -----------------------------------------------------------------------------------------
+  1440   yes             [22, 260, 320.00, 190]                     25         auto
+  780    yes             [22, 260, 202.80, 130]                     25         auto
+  360    no              absent                                      absent     absent
+
+  Spec bound check. 1440: left 22, top 260, width 320, height 190 inside 170 to 190, bottom
+  260 + 190 = 450 at or above 450. 780: left 22, top 260, width 202.80, height 130 inside 110 to 130,
+  bottom 390 at or above 390. Every bound met exactly, no tolerance used. At 360 no element named
+  `Polygon` is mounted.
+
+STACKING, the same pages
+
+  box                                        z index  position  note
+  -------------------------------------------------------------------------------------------
+  map panel (.map-panel)                     0        fixed     the map canvas inside it is auto
+  layer rail anchor (.layer-rail-anchor)     20       fixed     ZOrder.layerRail
+  layer rail element (.layer-rail)           25       static    block 1/2 stylesheet value
+  region wrapper (.polygon-panel-anchor)     25       fixed     ZOrder.polygonPanel, the measured box
+  region section ([data-polygon-region])     auto     static    the descendant, not measured
+  evidence panel (.layer-evidence)           absent            `Supporting data` closed
+  abstention notice (.layer-notice)          absent            no notice mounted
+  timeline dock (.anchor-timeline-dock)      45       fixed     mounted
+  rotation cards (.layer-cards)              50       fixed     mounted
+  control strip (.layer-controls)            60       fixed     mounted
+  agent bar (.layer-agent)                   absent
+  numbers surface ([data-numbers-view])      absent
+
+  Nearest mounted overlay above the wrapper: the timeline dock at 45, which is above 25. Every other
+  mounted overlay above the region reads higher still (rotation cards 50, control strip 60). No
+  mounted overlay above the region reads at or below 25. Same values at 1440 and at 780.
+
+OVERLAP SCAN, 1440 and 780, positive area intersection with each mounted box
+
+  The region intersects none of: the brand chip, the fields panel, the status notice (absent), the top
+  right strip, the block 3 right edge column (absent at this state), the layer rail, the navigation
+  control, the timeline dock. Two candidates reported a positive area and both are full-viewport
+  wrappers, which the gate's P14 excludes (wrappers of 80 percent or more of the viewport):
+  `.anchor-timeline-dock` (position fixed, inset 0, pointer-events none) at 60800 px2 at 1440 and
+  26363.6 px2 at 780, the same box as `.map-canvas` under it. Neither is a box the region can
+  intersect in the sense of R-41.
+
+NOT MEASURED. The fields panel's open state and the rotation panel's collapsed state were not toggled
+in this run; the region's placement does not depend on either (R-40), and the previous gate's AC-33
+row measured the fields panel in both states with identical rectangles. No screenshot
+(`AC-33-polygon-{width}.png`) is committed: this round forbids screenshots in the repository, so the
+numbers above are the artifact.

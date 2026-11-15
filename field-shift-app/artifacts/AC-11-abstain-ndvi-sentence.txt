@@ -1,0 +1,16 @@
+AC-11: the card-level NDVI sentence names the scene count and the Earth Search source when the count was not read
+field: mt-santa-carmem-01
+payload: artifacts/block6/numbers-offline-payload.json, the capture with POWER unreachable: ndvi.state unavailable, scene_count and clear_count null, and the NDVI gap row
+written: 2026-11-15T06:54:13.205Z
+
+metric: ndvi_scene_count
+row value: null
+rendered text: NDVI not plotted, because the scene count was not read: search window unknown: the climate source is unavailable, so the 42 day window that bounds the search cannot be set. Best valid fraction not read. Source: Element84 Earth Search, collection sentinel-2-l2a, assets B04, B08 and SCL. At least two scenes at or above 0.5 are needed.
+gap row: {"section":"ndvi","cause":"search window unknown: the climate source is unavailable, so the 42 day window that bounds the search cannot be set","source":"Element84 Earth Search, collection sentinel-2-l2a, assets B04, B08 and SCL","status":"window unknown","date":"2026-11-12","remediation":""}
+
+payload: the same capture with the NDVI error key removed and no NDVI gap row: the fallback that has no recorded cause
+
+metric: ndvi_scene_count
+row value: null
+rendered text: NDVI not plotted, because the scene count was not read: the reason was not recorded in the payload or the gap register. Best valid fraction not read. Source: Element84 Earth Search, collection sentinel-2-l2a, assets B04, B08 and SCL. At least two scenes at or above 0.5 are needed.
+gap row: no gap row for section ndvi

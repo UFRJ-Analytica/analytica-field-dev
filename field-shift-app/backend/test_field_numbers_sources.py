@@ -164,7 +164,9 @@ class Sentinel2ReaderTests(unittest.TestCase):
         scenes = sentinel2.parse_scenes(payload)
         self.assertEqual(len(scenes), 13)
         self.assertEqual(sum(1 for s in scenes if s["cloud_cover"] < 20.0), sentinel2.clear_count(scenes))
-        self.assertTrue(all(set(s) == {"id", "date", "cloud_cover"} for s in scenes))
+        # Table E's ndvi `assets`: the parse keeps the addresses of the three assets beside the counts.
+        self.assertTrue(all(set(s) == {"id", "date", "cloud_cover", "assets"} for s in scenes))
+        self.assertTrue(all(sorted(s["assets"]) == ["B04", "B08", "SCL"] for s in scenes))
 
     def test_r28_clear_threshold_is_below_twenty_percent(self) -> None:
         scenes = [{"id": "a", "date": "2026-10-01", "cloud_cover": 19.99},

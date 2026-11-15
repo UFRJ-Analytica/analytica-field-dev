@@ -1,0 +1,14 @@
+AC-11: the municipal row and the share abstention name the input, its source and the cause
+field: mt-santa-carmem-01
+payload: src/test/numbers-recorded.json, the recorded response of POST /fields/mt-santa-carmem-01/numbers
+written: 2026-11-15T06:14:27.758Z
+
+metric: municipality_soy_ha
+row value: null
+rendered text: Municipal value not read: municipality code is unresolved for this field: the IBGE municipal join is not built, so the municipal row and the share abstain. Source: IBGE SIDRA table 1612, API v3, variable 109, category 2713.
+gap row: {"section":"municipality","cause":"municipality code is unresolved for this field: the IBGE municipal join is not built, so the municipal row and the share abstain","source":"IBGE SIDRA table 1612, API v3, variable 109, category 2713","status":"unresolved","date":null,"remediation":"CO-B6-06"}
+
+metric: polygon_share
+row value: null
+rendered text: Share not computed: municipality code is unresolved for this field: the IBGE municipal join is not built, so the municipal row and the share abstain. Source: IBGE SIDRA table 1612, API v3, variable 109, category 2713.
+gap row: {"section":"municipality","cause":"municipality code is unresolved for this field: the IBGE municipal join is not built, so the municipal row and the share abstain","source":"IBGE SIDRA table 1612, API v3, variable 109, category 2713","status":"unresolved","date":null,"remediation":"CO-B6-06"}

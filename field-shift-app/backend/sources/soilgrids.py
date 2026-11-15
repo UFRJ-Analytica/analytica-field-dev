@@ -59,3 +59,17 @@ def _one(name: str, depth: str, layer: dict | None, unit: dict, depth_rows: dict
     if unit.get("target_units") == PERCENT_TARGET:
         value = value * GRAMS_PER_KILOGRAM_PER_PERCENT
     return {"value": float(value), "reason": None, "d_factor": d_factor}
+
+
+def d_factors(values: dict[tuple[str, str], dict]) -> dict[str, float | None]:
+    """The `d_factor` each property declared, so the section shows what was applied (Table E, R-31).
+
+    The factor sits on the layer, so the three depths of a property carry the same one. A property
+    whose depths disagree, or whose factor is missing at any depth, reports `None` instead of picking
+    one of them: the section never prints a factor that was not the one used for every value.
+    """
+    factors: dict[str, float | None] = {}
+    for name in PROPERTIES:
+        declared = {values[(name, depth)]["d_factor"] for depth in DEPTHS}
+        factors[name] = declared.pop() if len(declared) == 1 else None
+    return factors

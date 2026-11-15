@@ -1,0 +1,26 @@
+AC-11: the NDVI count abstention names the scene count, the Earth Search source and the section error when the count is null
+field: mt-santa-carmem-01
+payload: artifacts/block6/numbers-offline-payload.json, the capture with POWER unreachable: ndvi.state unavailable, scene_count and clear_count null, ndvi.error carrying the cause and the NDVI gap row. The row prints the section `error`, which is the field the route writes; it never sends a section `reason`.
+written: 2026-11-15T06:55:01.000Z
+
+metric: ndvi_scene_count
+row value: null
+rendered text: NDVI scene count not read: search window unknown: climate source unavailable. Source: Element84 Earth Search, collection sentinel-2-l2a, assets B04, B08 and SCL.
+gap row: {"section":"ndvi","cause":"search window unknown: the climate source is unavailable, so the 42 day window that bounds the search cannot be set","source":"Element84 Earth Search, collection sentinel-2-l2a, assets B04, B08 and SCL","status":"window unknown","date":"2026-11-12","remediation":""}
+
+metric: ndvi_clear_count
+row value: null
+rendered text: NDVI clear scene count not read: search window unknown: climate source unavailable. Source: Element84 Earth Search, collection sentinel-2-l2a, assets B04, B08 and SCL.
+gap row: {"section":"ndvi","cause":"search window unknown: the climate source is unavailable, so the 42 day window that bounds the search cannot be set","source":"Element84 Earth Search, collection sentinel-2-l2a, assets B04, B08 and SCL","status":"window unknown","date":"2026-11-12","remediation":""}
+
+payload: the same capture with the NDVI error key removed and no NDVI gap row: the fallback that has no recorded cause
+
+metric: ndvi_scene_count
+row value: null
+rendered text: NDVI scene count not read: the reason was not recorded in the payload or the gap register. Source: Element84 Earth Search, collection sentinel-2-l2a, assets B04, B08 and SCL.
+gap row: no gap row for section ndvi
+
+metric: ndvi_clear_count
+row value: null
+rendered text: NDVI clear scene count not read: the reason was not recorded in the payload or the gap register. Source: Element84 Earth Search, collection sentinel-2-l2a, assets B04, B08 and SCL.
+gap row: no gap row for section ndvi

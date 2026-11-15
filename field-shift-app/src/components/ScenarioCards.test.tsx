@@ -63,7 +63,8 @@ const scenarios: RotationScenario[] = [
   },
 ]
 
-const expectedFields = ['Why', 'Evidence', 'Benefit', 'Gap', 'Risk']
+// Block 6 AM-03: six labelled facts on the back face, the falsifier after Benefit.
+const expectedFields = ['Why', 'Evidence', 'Benefit', 'Falsifier', 'Gap', 'Risk']
 
 function cardFor(name: string): HTMLElement {
   const card = screen.getByRole('heading', { name }).closest('.scenario-card')
@@ -151,7 +152,7 @@ describe('ScenarioCards', () => {
     }
   })
 
-  it('renders the five labelled facts in block 2 order on the back face (R-13, AC-07)', async () => {
+  it('renders the six labelled facts in block 2 order on the back face (R-13, AC-07, AM-03)', async () => {
     const user = userEvent.setup()
     render(<ScenarioCards scenarios={scenarios} state="ranked" threshold={null} />)
 
@@ -162,10 +163,12 @@ describe('ScenarioCards', () => {
       const facts = card.querySelector('dl')
       expect(facts).not.toBeNull()
       expect(within(facts as HTMLElement).getAllByRole('term').map((label) => label.textContent)).toEqual(expectedFields)
+      // R-40: with no payload read, the falsifier slot prints the abstention of the block.
       expect(within(facts as HTMLElement).getAllByRole('definition').map((value) => value.textContent)).toEqual([
         scenario.why,
         scenario.evidence,
         scenario.benefit,
+        'No counter evidence recorded',
         scenario.gap,
         scenario.risk,
       ])

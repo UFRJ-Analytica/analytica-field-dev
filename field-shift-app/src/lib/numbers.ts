@@ -3,8 +3,14 @@
  * metric mirror of Table A that the surface reads, the formatting rules of Table A, and the
  * URL helpers of `?numbers=1` (R-01).
  *
- * The backend route is not on `main` at this card (wave 1 of block 6). The surface is built
- * against the payload shape below and against a recorded payload (`src/test/numbers-recorded.ts`).
+ * Every type below is the shape the shipped route sends, not the shape the surface once assumed:
+ * `climate.series` carries `rain_day`, `tmax_day` and `tmin_day`, each aggregate carries its own
+ * `valid_days` and `of_days`, a soil depth carries the Table A token as `depth` beside the `_g_kg`
+ * keys of Table E, a chart series carries its point list in its provenance `value`, a section
+ * that cannot be read sends nulls rather than empty lists, and a window the route could not
+ * resolve carries null in all five of its facts (`printedWindow` is the guard the surface uses
+ * before it prints one). `src/test/numbers-recorded.json` is the
+ * recorded response the suite renders, so a type that drifts from the route fails a test.
  */
 
 export type Basis = 'observed' | 'retrieved' | 'modelled' | 'entered'
@@ -12,11 +18,39 @@ export type SectionState = 'ok' | 'abstained' | 'not_applicable' | 'unavailable'
 export type Route = 'feature' | 'request' | 'api' | 'cogs' | 'canvas' | 'sidecar' | 'derived'
 
 export type WindowInfo = {
+  /**
+   * The 42 day window of R-16. Every fact is null when the route could not resolve a window at
+   * all, which is the shape R-48 sends offline: `{"start": null, "end": null, "days": null,
+   * "valid_days": null, "dropped_days": null}`. `printedWindow` below turns it into the shape a
+   * printed line needs, or into null.
+   */
+  start: string | null
+  end: string | null
+  days: number | null
+  valid_days: number | null
+  dropped_days: number | null
+}
+
+/** A window whose five facts are all present: the only shape the surface prints. */
+export type PrintedWindow = {
   start: string
   end: string
   days: number
   valid_days: number
   dropped_days: number
+}
+
+/**
+ * The window as the surface prints it, or null when any of its five facts is missing. A card with
+ * no window prints its abstention text instead (R-12, R-48): never a null, a zero, a made up date,
+ * or a window remembered from another read.
+ */
+export function printedWindow(window: WindowInfo | null | undefined): PrintedWindow | null {
+  if (!window) return null
+  const { start, end, days, valid_days, dropped_days } = window
+  if (start === null || end === null) return null
+  if (days === null || valid_days === null || dropped_days === null) return null
+  return { start, end, days, valid_days, dropped_days }
 }
 
 export type NumbersRequest = {
@@ -26,11 +60,11 @@ export type NumbersRequest = {
   date: string
 }
 
-/** One row per printed number (R-07). `metric` is the only key. */
+/** One row per printed number (R-07). `metric` is the only key. A chart series carries its points. */
 export type ProvenanceRow = {
   metric: string
   label: string
-  value: number | string | null
+  value: number | string | DailyPoint[] | null
   unit: string
   basis: Basis
   as_of: string | null
@@ -52,53 +86,75 @@ export type GapRow = {
 
 export type DailyPoint = { date: string; value: number | null }
 
+/**
+ * The daily families of Table A. The backend names them `rain_day`, `tmax_day` and `tmin_day`,
+ * and one provenance row covers the whole family (R-07).
+ */
+export type ClimateSeries = { rain_day: DailyPoint[]; tmax_day: DailyPoint[]; tmin_day: DailyPoint[] }
+
+/** One aggregate of R-18 as the route sends it: the value and the valid day count behind it (R-19). */
+export type AggregateValue = { value: number | null; valid_days: number; of_days: number }
+
+export type AggregateName =
+  | 'rain_total'
+  | 'dry_spell_days'
+  | 'gdd10'
+  | 'frost_days'
+  | 'tmin_min'
+  | 'gwetroot_mean'
+
+/** One normal of R-20 as the route sends it. `of_years` and `excluded_years` are facts of the family. */
+export type NormalValue = { value: number | null }
+
+export type NormalName =
+  | 'rain_median'
+  | 'rain_min'
+  | 'rain_max'
+  | 'rain_rank'
+  | 'rain_percentile'
+  | 'hot_days'
+  | 'hot_days_median'
+
 export type ClimateSection = {
   state: SectionState
   basis: 'modelled'
-  resolution: string
+  resolution: string | null
   source: string
   as_of: string | null
   fetched_at: string | null
   cached: boolean
   error?: string | null
-  series: { rain: DailyPoint[]; tmax: DailyPoint[]; tmin: DailyPoint[] }
-  aggregates: {
-    rain_total: number | null
-    dry_spell_days: number | null
-    gdd10: number | null
-    frost_days: number | null
-    tmin_min: number | null
-    gwetroot_mean: number | null
+  window: WindowInfo | null
+  series: ClimateSeries
+  aggregates: Partial<Record<AggregateName, AggregateValue>>
+  normals: Partial<Record<NormalName, NormalValue>> & {
+    of_years?: number | null
+    excluded_years?: number[]
+    error?: string | null
   }
-  normals: {
-    rain_median: number | null
-    rain_min: number | null
-    rain_max: number | null
-    rank: number | null
-    of_years: number | null
-    percentile: number | null
-    hot_days: number | null
-    hot_days_median: number | null
-  }
-  /** Valid day counts behind each aggregate (R-19), and the reason an aggregate abstained. */
-  aggregate_valid: Partial<Record<keyof ClimateSection['aggregates'], { parameter: string; valid: number; days: number }>>
-  normals_reason?: string | null
 }
 
 export type WaterBalanceSection = {
-  state: 'ok' | 'abstained'
+  /** R-48 sends `unavailable` when POWER cannot be read at all; R-23 abstains the balance as a whole. */
+  state: 'ok' | 'abstained' | 'unavailable'
   in: number | null
   out: number | null
   remaining: number | null
   formula: string
-  window: WindowInfo
+  /** Null when there is no window: the section is unavailable, or no consolidated rain day was found. */
+  window: WindowInfo | null
   statement: string
+  unit?: string
+  out_label?: string
   missing?: { parameter: string; days: number } | null
+  /** The reason an unavailable section carries (`ConnectError`, the HTTP status, ...). */
+  error?: string | null
   basis: 'modelled'
   source: string
   as_of: string | null
-  resolution: string
+  resolution: string | null
   fetched_at: string | null
+  cached?: boolean
 }
 
 export type SmapDay = {
@@ -116,6 +172,12 @@ export type SmapSection = {
   disclosure: string
   source: string
   as_of: string | null
+  /**
+   * The failure the route records when the section cannot be read (`ConnectError`, the HTTP status,
+   * a malformed response, ...). It is the field the route writes and the one the abstention row
+   * prints; `reason` is the older key a payload may still carry.
+   */
+  error?: string | null
   reason?: string | null
 }
 
@@ -126,7 +188,8 @@ export type NdviScene = {
   valid_fraction: number | null
   kept_pixels: number | null
   polygon_pixels: number | null
-  partial: boolean
+  /** Null until the COG reader of OD-01 can mark a point partial; the route sends null today. */
+  partial: boolean | null
 }
 
 export type NdviSection = {
@@ -134,15 +197,35 @@ export type NdviSection = {
   scenes: NdviScene[]
   scene_count: number | null
   clear_count: number | null
-  best_valid_fraction: number | null
+  /**
+   * Table E's ndvi `assets`: the B04, B08 and SCL addresses the STAC search returned, labelled by
+   * their own file stem (`B04.tif` is `B04`). Empty when no search ran, never absent.
+   */
   assets: string[]
+  /**
+   * R-29 names the best valid fraction. It is null while the COG reader of OD-01 is open, and
+   * `best_valid_fraction_reason` names that missing producer beside it; a number means the reader
+   * computed it. Nothing is ever filled in here.
+   */
+  best_valid_fraction: number | null
+  best_valid_fraction_reason: string | null
   source: string
   as_of: string | null
+  /**
+   * The failure the route records when it could not read the section: the search window is unknown,
+   * the STAC response is malformed, or the search itself failed. It is the field the route writes
+   * and the one the abstention row prints; `reason` is the older key a payload may still carry.
+   */
+  error?: string | null
   reason?: string | null
 }
 
+/** The Table A depth token of a SoilGrids row. The payload also carries the display `label`. */
+export type DepthToken = '0_5' | '5_15' | '15_30'
+
 export type SoilDepth = {
-  depth: '0_5' | '5_15' | '15_30'
+  label: string
+  depth: DepthToken
   clay_g_kg: number | null
   sand_g_kg: number | null
   ph: number | null
@@ -152,7 +235,7 @@ export type SoilDepth = {
 export type SoilSection = {
   state: SectionState
   depths: SoilDepth[]
-  missing: string[]
+  missing?: string[]
   model_note: string
   source: string
   as_of: string | null
@@ -162,14 +245,16 @@ export type CropYear = { year: number; code: number; product: string; class_name
 
 export type RotationSection = {
   state: SectionState
-  first_crop: CropYear[]
-  second_crop: CropYear[]
+  /** Null while the sidecar cannot be read: the route sends null, never an empty list, for that state. */
+  first_crop: CropYear[] | null
+  second_crop: CropYear[] | null
   collection: string
-  collection_year: number
+  collection_year: number | null
   sidecar: string
   basis: 'modelled'
   source: string
   as_of: string | null
+  error?: string | null
   reason?: string | null
   second_crop_state_outside?: string | null
 }
@@ -179,11 +264,28 @@ export type MunicipalityRow = { code: string; name: string; year: number; soy_ha
 export type MunicipalitySection = {
   state: SectionState
   municipality: MunicipalityRow | null
+  /**
+   * Table E's municipality `state` object. It is carried as `state_row` because the section's own
+   * `state` key is the state token of R-45: one JSON object cannot hold both. Null when the field
+   * carries no IBGE state code, and `state_reason` names why.
+   */
   state_row: (MunicipalityRow & { label: string }) | null
+  state_reason: string | null
   share: number | null
   source: string
   as_of: string | null
+  /** The route records the unresolved municipal code here; the reader prints `error` first, then this key. */
   reason?: string | null
+  /** Present only when the SIDRA read itself failed; the section abstains with this text. */
+  error?: string | null
+}
+
+export type FragmentSection = {
+  state: SectionState
+  ring_area_ha: number
+  area_ha: number | null
+  difference_percent: number | null
+  is_fragment: boolean | null
 }
 
 export type NumbersPayload = {
@@ -199,6 +301,7 @@ export type NumbersPayload = {
     soil: SoilSection
     rotation: RotationSection
     municipality: MunicipalitySection
+    fragment: FragmentSection
   }
   provenance: ProvenanceRow[]
   gaps: GapRow[]
@@ -246,6 +349,20 @@ export const METRICS: Record<string, { unit: string; decimals: number; route: Ro
   municipality_soy_ha: { unit: 'ha', decimals: 0, route: 'api' },
   state_soy_ha: { unit: 'ha', decimals: 0, route: 'api' },
   polygon_share: { unit: 'percent', decimals: 4, route: 'derived' },
+}
+
+/**
+ * Table A, Source column: the POWER parameter behind each aggregate of R-18. The abstention text of
+ * R-19 names the missing input, and the payload carries the input as a fact of Table A rather than
+ * as a field of each aggregate, so the mirror lives here and nowhere else.
+ */
+export const AGGREGATE_INPUTS: Record<AggregateName, string> = {
+  rain_total: 'PRECTOTCORR',
+  dry_spell_days: 'PRECTOTCORR',
+  gdd10: 'T2M_MAX and T2M_MIN',
+  frost_days: 'FROST_DAYS',
+  tmin_min: 'T2M_MIN',
+  gwetroot_mean: 'GWETROOT',
 }
 
 /** The Table A family of a metric id: `soil.clay.0_5` is `soil.clay`, `ndvi_mean.2026-10-07` is `ndvi_mean`. */

@@ -1,0 +1,1959 @@
+{
+  "schema_version": "1",
+  "field_id": "mt-santa-carmem-01",
+  "region": "br",
+  "query": {
+    "ring": [
+      [
+        -55.285,
+        -11.9
+      ],
+      [
+        -55.26,
+        -11.9
+      ],
+      [
+        -55.26,
+        -11.92
+      ],
+      [
+        -55.285,
+        -11.92
+      ],
+      [
+        -55.285,
+        -11.9
+      ]
+    ],
+    "centroid": [
+      -55.27,
+      -11.91
+    ],
+    "area_ha": null,
+    "date": "2026-11-12",
+    "window": {
+      "start": "2026-10-01",
+      "end": "2026-11-11",
+      "days": 42,
+      "valid_days": 42,
+      "dropped_days": 1
+    }
+  },
+  "sections": {
+    "climate": {
+      "state": "ok",
+      "source": "https://power.larc.nasa.gov/api/temporal/daily/point",
+      "as_of": "2026-11-11",
+      "basis": "modelled",
+      "resolution": "0.5 degree cell",
+      "fetched_at": "2026-11-15T03:00:00Z",
+      "cached": false,
+      "window": {
+        "start": "2026-10-01",
+        "end": "2026-11-11",
+        "days": 42,
+        "valid_days": 42,
+        "dropped_days": 1
+      },
+      "aggregates": {
+        "rain_total": {
+          "value": 171.9,
+          "valid_days": 42,
+          "of_days": 42
+        },
+        "dry_spell_days": {
+          "value": 7,
+          "valid_days": 42,
+          "of_days": 42
+        },
+        "gdd10": {
+          "value": 836,
+          "valid_days": 42,
+          "of_days": 42
+        },
+        "frost_days": {
+          "value": 0,
+          "valid_days": 42,
+          "of_days": 42
+        },
+        "tmin_min": {
+          "value": 21.8,
+          "valid_days": 42,
+          "of_days": 42
+        },
+        "gwetroot_mean": {
+          "value": 0.49,
+          "valid_days": 42,
+          "of_days": 42
+        }
+      },
+      "series": {
+        "rain_day": [
+          {
+            "date": "2026-10-01",
+            "value": 4.63
+          },
+          {
+            "date": "2026-10-02",
+            "value": 7.29
+          },
+          {
+            "date": "2026-10-03",
+            "value": 5.47
+          },
+          {
+            "date": "2026-10-04",
+            "value": 6.48
+          },
+          {
+            "date": "2026-10-05",
+            "value": 7.08
+          },
+          {
+            "date": "2026-10-06",
+            "value": 6.67
+          },
+          {
+            "date": "2026-10-07",
+            "value": 0.06
+          },
+          {
+            "date": "2026-10-08",
+            "value": 0.0
+          },
+          {
+            "date": "2026-10-09",
+            "value": 0.06
+          },
+          {
+            "date": "2026-10-10",
+            "value": 0.18
+          },
+          {
+            "date": "2026-10-11",
+            "value": 0.0
+          },
+          {
+            "date": "2026-10-12",
+            "value": 0.02
+          },
+          {
+            "date": "2026-10-13",
+            "value": 0.28
+          },
+          {
+            "date": "2026-10-14",
+            "value": 1.05
+          },
+          {
+            "date": "2026-10-15",
+            "value": 5.53
+          },
+          {
+            "date": "2026-10-16",
+            "value": 2.11
+          },
+          {
+            "date": "2026-10-17",
+            "value": 4.14
+          },
+          {
+            "date": "2026-10-18",
+            "value": 5.55
+          },
+          {
+            "date": "2026-10-19",
+            "value": 5.39
+          },
+          {
+            "date": "2026-10-20",
+            "value": 2.36
+          },
+          {
+            "date": "2026-10-21",
+            "value": 5.93
+          },
+          {
+            "date": "2026-10-22",
+            "value": 0.12
+          },
+          {
+            "date": "2026-10-23",
+            "value": 0.02
+          },
+          {
+            "date": "2026-10-24",
+            "value": 0.01
+          },
+          {
+            "date": "2026-10-25",
+            "value": 7.96
+          },
+          {
+            "date": "2026-10-26",
+            "value": 6.15
+          },
+          {
+            "date": "2026-10-27",
+            "value": 2.51
+          },
+          {
+            "date": "2026-10-28",
+            "value": 6.53
+          },
+          {
+            "date": "2026-10-29",
+            "value": 16.41
+          },
+          {
+            "date": "2026-10-30",
+            "value": 1.71
+          },
+          {
+            "date": "2026-10-31",
+            "value": 7.33
+          },
+          {
+            "date": "2026-11-01",
+            "value": 4.58
+          },
+          {
+            "date": "2026-11-02",
+            "value": 1.87
+          },
+          {
+            "date": "2026-11-03",
+            "value": 4.61
+          },
+          {
+            "date": "2026-11-04",
+            "value": 1.07
+          },
+          {
+            "date": "2026-11-05",
+            "value": 1.92
+          },
+          {
+            "date": "2026-11-06",
+            "value": 4.61
+          },
+          {
+            "date": "2026-11-07",
+            "value": 4.17
+          },
+          {
+            "date": "2026-11-08",
+            "value": 7.34
+          },
+          {
+            "date": "2026-11-09",
+            "value": 7.82
+          },
+          {
+            "date": "2026-11-10",
+            "value": 5.79
+          },
+          {
+            "date": "2026-11-11",
+            "value": 9.12
+          }
+        ],
+        "tmax_day": [
+          {
+            "date": "2026-10-01",
+            "value": 37.3
+          },
+          {
+            "date": "2026-10-02",
+            "value": 29.82
+          },
+          {
+            "date": "2026-10-03",
+            "value": 33.96
+          },
+          {
+            "date": "2026-10-04",
+            "value": 34.62
+          },
+          {
+            "date": "2026-10-05",
+            "value": 28.3
+          },
+          {
+            "date": "2026-10-06",
+            "value": 30.19
+          },
+          {
+            "date": "2026-10-07",
+            "value": 36.5
+          },
+          {
+            "date": "2026-10-08",
+            "value": 38.24
+          },
+          {
+            "date": "2026-10-09",
+            "value": 38.24
+          },
+          {
+            "date": "2026-10-10",
+            "value": 38.65
+          },
+          {
+            "date": "2026-10-11",
+            "value": 38.45
+          },
+          {
+            "date": "2026-10-12",
+            "value": 39.06
+          },
+          {
+            "date": "2026-10-13",
+            "value": 38.74
+          },
+          {
+            "date": "2026-10-14",
+            "value": 39.27
+          },
+          {
+            "date": "2026-10-15",
+            "value": 30.06
+          },
+          {
+            "date": "2026-10-16",
+            "value": 35.07
+          },
+          {
+            "date": "2026-10-17",
+            "value": 36.18
+          },
+          {
+            "date": "2026-10-18",
+            "value": 36.63
+          },
+          {
+            "date": "2026-10-19",
+            "value": 33.68
+          },
+          {
+            "date": "2026-10-20",
+            "value": 37.07
+          },
+          {
+            "date": "2026-10-21",
+            "value": 37.18
+          },
+          {
+            "date": "2026-10-22",
+            "value": 37.94
+          },
+          {
+            "date": "2026-10-23",
+            "value": 38.23
+          },
+          {
+            "date": "2026-10-24",
+            "value": 39.42
+          },
+          {
+            "date": "2026-10-25",
+            "value": 39.59
+          },
+          {
+            "date": "2026-10-26",
+            "value": 36.44
+          },
+          {
+            "date": "2026-10-27",
+            "value": 34.35
+          },
+          {
+            "date": "2026-10-28",
+            "value": 34.01
+          },
+          {
+            "date": "2026-10-29",
+            "value": 35.21
+          },
+          {
+            "date": "2026-10-30",
+            "value": 30.01
+          },
+          {
+            "date": "2026-10-31",
+            "value": 34.61
+          },
+          {
+            "date": "2026-11-01",
+            "value": 35.53
+          },
+          {
+            "date": "2026-11-02",
+            "value": 37.39
+          },
+          {
+            "date": "2026-11-03",
+            "value": 36.7
+          },
+          {
+            "date": "2026-11-04",
+            "value": 37.4
+          },
+          {
+            "date": "2026-11-05",
+            "value": 37.79
+          },
+          {
+            "date": "2026-11-06",
+            "value": 36.47
+          },
+          {
+            "date": "2026-11-07",
+            "value": 37.3
+          },
+          {
+            "date": "2026-11-08",
+            "value": 36.18
+          },
+          {
+            "date": "2026-11-09",
+            "value": 34.41
+          },
+          {
+            "date": "2026-11-10",
+            "value": 34.95
+          },
+          {
+            "date": "2026-11-11",
+            "value": 34.08
+          }
+        ],
+        "tmin_day": [
+          {
+            "date": "2026-10-01",
+            "value": 25.18
+          },
+          {
+            "date": "2026-10-02",
+            "value": 23.24
+          },
+          {
+            "date": "2026-10-03",
+            "value": 21.77
+          },
+          {
+            "date": "2026-10-04",
+            "value": 22.31
+          },
+          {
+            "date": "2026-10-05",
+            "value": 22.65
+          },
+          {
+            "date": "2026-10-06",
+            "value": 21.85
+          },
+          {
+            "date": "2026-10-07",
+            "value": 22.19
+          },
+          {
+            "date": "2026-10-08",
+            "value": 24.02
+          },
+          {
+            "date": "2026-10-09",
+            "value": 23.8
+          },
+          {
+            "date": "2026-10-10",
+            "value": 23.32
+          },
+          {
+            "date": "2026-10-11",
+            "value": 25.09
+          },
+          {
+            "date": "2026-10-12",
+            "value": 23.45
+          },
+          {
+            "date": "2026-10-13",
+            "value": 24.83
+          },
+          {
+            "date": "2026-10-14",
+            "value": 25.19
+          },
+          {
+            "date": "2026-10-15",
+            "value": 25.36
+          },
+          {
+            "date": "2026-10-16",
+            "value": 24.02
+          },
+          {
+            "date": "2026-10-17",
+            "value": 24.31
+          },
+          {
+            "date": "2026-10-18",
+            "value": 24.39
+          },
+          {
+            "date": "2026-10-19",
+            "value": 24.24
+          },
+          {
+            "date": "2026-10-20",
+            "value": 24.17
+          },
+          {
+            "date": "2026-10-21",
+            "value": 24.3
+          },
+          {
+            "date": "2026-10-22",
+            "value": 23.99
+          },
+          {
+            "date": "2026-10-23",
+            "value": 23.69
+          },
+          {
+            "date": "2026-10-24",
+            "value": 24.95
+          },
+          {
+            "date": "2026-10-25",
+            "value": 26.05
+          },
+          {
+            "date": "2026-10-26",
+            "value": 25.09
+          },
+          {
+            "date": "2026-10-27",
+            "value": 24.82
+          },
+          {
+            "date": "2026-10-28",
+            "value": 24.0
+          },
+          {
+            "date": "2026-10-29",
+            "value": 22.96
+          },
+          {
+            "date": "2026-10-30",
+            "value": 23.39
+          },
+          {
+            "date": "2026-10-31",
+            "value": 23.3
+          },
+          {
+            "date": "2026-11-01",
+            "value": 24.01
+          },
+          {
+            "date": "2026-11-02",
+            "value": 24.34
+          },
+          {
+            "date": "2026-11-03",
+            "value": 24.85
+          },
+          {
+            "date": "2026-11-04",
+            "value": 23.87
+          },
+          {
+            "date": "2026-11-05",
+            "value": 25.03
+          },
+          {
+            "date": "2026-11-06",
+            "value": 23.9
+          },
+          {
+            "date": "2026-11-07",
+            "value": 23.76
+          },
+          {
+            "date": "2026-11-08",
+            "value": 24.34
+          },
+          {
+            "date": "2026-11-09",
+            "value": 24.36
+          },
+          {
+            "date": "2026-11-10",
+            "value": 23.47
+          },
+          {
+            "date": "2026-11-11",
+            "value": 23.85
+          }
+        ]
+      },
+      "normals": {
+        "rain_median": {
+          "value": 224.9
+        },
+        "rain_min": {
+          "value": 88.9
+        },
+        "rain_max": {
+          "value": 389.7
+        },
+        "rain_rank": {
+          "value": 7
+        },
+        "rain_percentile": {
+          "value": 20
+        },
+        "hot_days": {
+          "value": 28
+        },
+        "hot_days_median": {
+          "value": 17
+        },
+        "of_years": 35,
+        "excluded_years": []
+      }
+    },
+    "water_balance": {
+      "state": "ok",
+      "source": "https://power.larc.nasa.gov/api/temporal/daily/point",
+      "as_of": "2026-11-11",
+      "basis": "modelled",
+      "resolution": null,
+      "fetched_at": "2026-11-15T03:00:00Z",
+      "cached": false,
+      "in": 171.9,
+      "out": 124.8,
+      "remaining": 47.1,
+      "unit": "mm",
+      "out_label": "EVLAND, land surface evaporation from POWER. It is not crop transpiration and not a crop water demand; no reference evapotranspiration is used.",
+      "formula": "remaining = in - out",
+      "statement": "An estimate built from modelled fluxes, not a measurement.",
+      "window": {
+        "start": "2026-10-01",
+        "end": "2026-11-11",
+        "days": 42,
+        "valid_days": 42,
+        "dropped_days": 1
+      }
+    },
+    "smap": {
+      "state": "abstained",
+      "source": "NASA GIBS SMAP layers through the block 4 tile proxy",
+      "as_of": null,
+      "basis": "retrieved",
+      "resolution": "9 km posting, 36 km radiometer footprint",
+      "fetched_at": null,
+      "cached": false,
+      "axis": "0 to 100 percent of the served palette",
+      "disclosure": "palette, not a physical unit",
+      "shared_cell": "One 9 km cell is about 8,100 ha, and about 88 of the 900 polygons measured at the field point share one value.",
+      "days": []
+    },
+    "ndvi": {
+      "state": "abstained",
+      "source": "Element84 Earth Search, collection sentinel-2-l2a, assets B04, B08 and SCL",
+      "as_of": "2026-11-11",
+      "basis": "retrieved",
+      "resolution": "10 m",
+      "fetched_at": "2026-11-15T03:00:00Z",
+      "cached": false,
+      "scene_count": 13,
+      "clear_count": 3,
+      "scenes": [
+        {
+          "id": "S2B_21LXG_20261111_0_L2A",
+          "date": "2026-11-11",
+          "cloud_cover": 39.868569,
+          "ndvi_mean": null,
+          "valid_fraction": null,
+          "kept_pixels": null,
+          "polygon_pixels": null,
+          "partial": null
+        },
+        {
+          "id": "S2A_21LXG_20261108_0_L2A",
+          "date": "2026-11-08",
+          "cloud_cover": 100.0,
+          "ndvi_mean": null,
+          "valid_fraction": null,
+          "kept_pixels": null,
+          "polygon_pixels": null,
+          "partial": null
+        },
+        {
+          "id": "S2C_21LXG_20261106_0_L2A",
+          "date": "2026-11-06",
+          "cloud_cover": 76.163906,
+          "ndvi_mean": null,
+          "valid_fraction": null,
+          "kept_pixels": null,
+          "polygon_pixels": null,
+          "partial": null
+        },
+        {
+          "id": "S2B_21LXG_20261101_0_L2A",
+          "date": "2026-11-01",
+          "cloud_cover": 21.503684,
+          "ndvi_mean": null,
+          "valid_fraction": null,
+          "kept_pixels": null,
+          "polygon_pixels": null,
+          "partial": null
+        },
+        {
+          "id": "S2A_21LXG_20261029_0_L2A",
+          "date": "2026-10-29",
+          "cloud_cover": 52.440995,
+          "ndvi_mean": null,
+          "valid_fraction": null,
+          "kept_pixels": null,
+          "polygon_pixels": null,
+          "partial": null
+        },
+        {
+          "id": "S2C_21LXG_20261027_0_L2A",
+          "date": "2026-10-27",
+          "cloud_cover": 90.797496,
+          "ndvi_mean": null,
+          "valid_fraction": null,
+          "kept_pixels": null,
+          "polygon_pixels": null,
+          "partial": null
+        },
+        {
+          "id": "S2B_21LXG_20261022_0_L2A",
+          "date": "2026-10-22",
+          "cloud_cover": 44.110003,
+          "ndvi_mean": null,
+          "valid_fraction": null,
+          "kept_pixels": null,
+          "polygon_pixels": null,
+          "partial": null
+        },
+        {
+          "id": "S2A_21LXG_20261019_0_L2A",
+          "date": "2026-10-19",
+          "cloud_cover": 72.757596,
+          "ndvi_mean": null,
+          "valid_fraction": null,
+          "kept_pixels": null,
+          "polygon_pixels": null,
+          "partial": null
+        },
+        {
+          "id": "S2C_21LXG_20261017_0_L2A",
+          "date": "2026-10-17",
+          "cloud_cover": 12.020229,
+          "ndvi_mean": null,
+          "valid_fraction": null,
+          "kept_pixels": null,
+          "polygon_pixels": null,
+          "partial": null
+        },
+        {
+          "id": "S2B_21LXG_20261012_0_L2A",
+          "date": "2026-10-12",
+          "cloud_cover": 0.000644,
+          "ndvi_mean": null,
+          "valid_fraction": null,
+          "kept_pixels": null,
+          "polygon_pixels": null,
+          "partial": null
+        },
+        {
+          "id": "S2A_21LXG_20261009_0_L2A",
+          "date": "2026-10-09",
+          "cloud_cover": 53.172672,
+          "ndvi_mean": null,
+          "valid_fraction": null,
+          "kept_pixels": null,
+          "polygon_pixels": null,
+          "partial": null
+        },
+        {
+          "id": "S2C_21LXG_20261007_0_L2A",
+          "date": "2026-10-07",
+          "cloud_cover": 10.462158,
+          "ndvi_mean": null,
+          "valid_fraction": null,
+          "kept_pixels": null,
+          "polygon_pixels": null,
+          "partial": null
+        },
+        {
+          "id": "S2B_21LXG_20261002_0_L2A",
+          "date": "2026-10-02",
+          "cloud_cover": 100.0,
+          "ndvi_mean": null,
+          "valid_fraction": null,
+          "kept_pixels": null,
+          "polygon_pixels": null,
+          "partial": null
+        }
+      ],
+      "assets": [
+        "B04",
+        "B08",
+        "SCL"
+      ],
+      "best_valid_fraction": null,
+      "best_valid_fraction_reason": "not computed: the B04, B08 and SCL zonal statistic needs the cloud optimised GeoTIFF reader of OD-01, which is not approved, so no scene carries a valid_fraction and there is no best valid fraction"
+    },
+    "soil": {
+      "state": "ok",
+      "source": "https://rest.isric.org/soilgrids/v2.0/properties/query",
+      "as_of": "2026-11-15",
+      "basis": "modelled",
+      "resolution": "250 m static model",
+      "fetched_at": "2026-11-15T03:00:00Z",
+      "cached": false,
+      "model_note": "SoilGrids is a static 250 m model sampled at the centroid, not a map of the field.",
+      "depths": [
+        {
+          "label": "0-5cm",
+          "depth": "0_5",
+          "clay_g_kg": 225,
+          "sand_g_kg": 635,
+          "ph": 5.0,
+          "soc_g_kg": 22.2
+        },
+        {
+          "label": "5-15cm",
+          "depth": "5_15",
+          "clay_g_kg": 223,
+          "sand_g_kg": 639,
+          "ph": 5.1,
+          "soc_g_kg": 16.2
+        },
+        {
+          "label": "15-30cm",
+          "depth": "15_30",
+          "clay_g_kg": 265,
+          "sand_g_kg": 601,
+          "ph": 5.1,
+          "soc_g_kg": 9.1
+        }
+      ],
+      "d_factor": {
+        "clay": 10,
+        "sand": 10,
+        "phh2o": 10,
+        "soc": 10
+      }
+    },
+    "rotation": {
+      "basis": "modelled",
+      "source": "polygon-mapbiomas.sqlite, table polygon_mapbiomas (CO-B6-01)",
+      "sidecar": "data/polygons/polygon-mapbiomas.sqlite",
+      "collection": "MapBiomas Collection 11",
+      "collection_year": null,
+      "as_of": null,
+      "first_crop": null,
+      "second_crop": null,
+      "state": "unavailable",
+      "error": "sidecar file absent: data/polygons/polygon-mapbiomas.sqlite"
+    },
+    "municipality": {
+      "state": "abstained",
+      "source": "IBGE SIDRA table 1612, API v3, variable 109, category 2713",
+      "as_of": "2025-12-31",
+      "basis": "retrieved",
+      "resolution": "the municipality",
+      "fetched_at": "2026-11-15T03:00:00Z",
+      "cached": false,
+      "municipality": null,
+      "state_row": {
+        "code": "51",
+        "name": "Mato Grosso",
+        "year": 2025,
+        "soy_ha": 12788611,
+        "label": "state total, not this field"
+      },
+      "share": null,
+      "reason": "municipality code is unresolved for this field: the IBGE municipal join is not built, so the municipal row and the share abstain",
+      "state_reason": null
+    },
+    "fragment": {
+      "state": "abstained",
+      "ring_area_ha": 606.2632760891063,
+      "area_ha": null,
+      "difference_percent": null,
+      "is_fragment": null
+    }
+  },
+  "provenance": [
+    {
+      "metric": "area",
+      "label": "numbers.area",
+      "value": null,
+      "unit": "ha",
+      "basis": "modelled",
+      "as_of": "2026-11-12",
+      "source": "request body area_ha (block 5 polygon source)",
+      "resolution": "the polygon",
+      "route": "feature",
+      "fetched_at": null
+    },
+    {
+      "metric": "ring_area",
+      "label": "numbers.ring_area",
+      "value": 606.26,
+      "unit": "ha",
+      "basis": "retrieved",
+      "as_of": "2026-11-12",
+      "source": "request ring, spherical area",
+      "resolution": "the polygon",
+      "route": "request",
+      "fetched_at": null
+    },
+    {
+      "metric": "rain_total",
+      "label": "numbers.rain_total",
+      "value": 171.9,
+      "unit": "mm",
+      "basis": "modelled",
+      "as_of": "2026-11-11",
+      "source": "https://power.larc.nasa.gov/api/temporal/daily/point",
+      "resolution": "0.5 degree cell",
+      "route": "api",
+      "fetched_at": "2026-11-15T03:00:00Z"
+    },
+    {
+      "metric": "dry_spell_days",
+      "label": "numbers.dry_spell_days",
+      "value": 7,
+      "unit": "days",
+      "basis": "modelled",
+      "as_of": "2026-11-11",
+      "source": "https://power.larc.nasa.gov/api/temporal/daily/point",
+      "resolution": "0.5 degree cell",
+      "route": "api",
+      "fetched_at": "2026-11-15T03:00:00Z"
+    },
+    {
+      "metric": "gdd10",
+      "label": "numbers.gdd10",
+      "value": 836,
+      "unit": "C day",
+      "basis": "modelled",
+      "as_of": "2026-11-11",
+      "source": "https://power.larc.nasa.gov/api/temporal/daily/point",
+      "resolution": "0.5 degree cell",
+      "route": "api",
+      "fetched_at": "2026-11-15T03:00:00Z"
+    },
+    {
+      "metric": "frost_days",
+      "label": "numbers.frost_days",
+      "value": 0,
+      "unit": "days",
+      "basis": "modelled",
+      "as_of": "2026-11-11",
+      "source": "https://power.larc.nasa.gov/api/temporal/daily/point",
+      "resolution": "0.5 degree cell",
+      "route": "api",
+      "fetched_at": "2026-11-15T03:00:00Z"
+    },
+    {
+      "metric": "tmin_min",
+      "label": "numbers.tmin_min",
+      "value": 21.8,
+      "unit": "C",
+      "basis": "modelled",
+      "as_of": "2026-11-11",
+      "source": "https://power.larc.nasa.gov/api/temporal/daily/point",
+      "resolution": "0.5 degree cell",
+      "route": "api",
+      "fetched_at": "2026-11-15T03:00:00Z"
+    },
+    {
+      "metric": "gwetroot_mean",
+      "label": "numbers.gwetroot_mean",
+      "value": 0.49,
+      "unit": "unit 1",
+      "basis": "modelled",
+      "as_of": "2026-11-11",
+      "source": "https://power.larc.nasa.gov/api/temporal/daily/point",
+      "resolution": "0.5 degree cell",
+      "route": "api",
+      "fetched_at": "2026-11-15T03:00:00Z"
+    },
+    {
+      "metric": "rain_day",
+      "label": "numbers.rain_day",
+      "value": [
+        {
+          "date": "2026-10-01",
+          "value": 4.63
+        },
+        {
+          "date": "2026-10-02",
+          "value": 7.29
+        },
+        {
+          "date": "2026-10-03",
+          "value": 5.47
+        },
+        {
+          "date": "2026-10-04",
+          "value": 6.48
+        },
+        {
+          "date": "2026-10-05",
+          "value": 7.08
+        },
+        {
+          "date": "2026-10-06",
+          "value": 6.67
+        },
+        {
+          "date": "2026-10-07",
+          "value": 0.06
+        },
+        {
+          "date": "2026-10-08",
+          "value": 0.0
+        },
+        {
+          "date": "2026-10-09",
+          "value": 0.06
+        },
+        {
+          "date": "2026-10-10",
+          "value": 0.18
+        },
+        {
+          "date": "2026-10-11",
+          "value": 0.0
+        },
+        {
+          "date": "2026-10-12",
+          "value": 0.02
+        },
+        {
+          "date": "2026-10-13",
+          "value": 0.28
+        },
+        {
+          "date": "2026-10-14",
+          "value": 1.05
+        },
+        {
+          "date": "2026-10-15",
+          "value": 5.53
+        },
+        {
+          "date": "2026-10-16",
+          "value": 2.11
+        },
+        {
+          "date": "2026-10-17",
+          "value": 4.14
+        },
+        {
+          "date": "2026-10-18",
+          "value": 5.55
+        },
+        {
+          "date": "2026-10-19",
+          "value": 5.39
+        },
+        {
+          "date": "2026-10-20",
+          "value": 2.36
+        },
+        {
+          "date": "2026-10-21",
+          "value": 5.93
+        },
+        {
+          "date": "2026-10-22",
+          "value": 0.12
+        },
+        {
+          "date": "2026-10-23",
+          "value": 0.02
+        },
+        {
+          "date": "2026-10-24",
+          "value": 0.01
+        },
+        {
+          "date": "2026-10-25",
+          "value": 7.96
+        },
+        {
+          "date": "2026-10-26",
+          "value": 6.15
+        },
+        {
+          "date": "2026-10-27",
+          "value": 2.51
+        },
+        {
+          "date": "2026-10-28",
+          "value": 6.53
+        },
+        {
+          "date": "2026-10-29",
+          "value": 16.41
+        },
+        {
+          "date": "2026-10-30",
+          "value": 1.71
+        },
+        {
+          "date": "2026-10-31",
+          "value": 7.33
+        },
+        {
+          "date": "2026-11-01",
+          "value": 4.58
+        },
+        {
+          "date": "2026-11-02",
+          "value": 1.87
+        },
+        {
+          "date": "2026-11-03",
+          "value": 4.61
+        },
+        {
+          "date": "2026-11-04",
+          "value": 1.07
+        },
+        {
+          "date": "2026-11-05",
+          "value": 1.92
+        },
+        {
+          "date": "2026-11-06",
+          "value": 4.61
+        },
+        {
+          "date": "2026-11-07",
+          "value": 4.17
+        },
+        {
+          "date": "2026-11-08",
+          "value": 7.34
+        },
+        {
+          "date": "2026-11-09",
+          "value": 7.82
+        },
+        {
+          "date": "2026-11-10",
+          "value": 5.79
+        },
+        {
+          "date": "2026-11-11",
+          "value": 9.12
+        }
+      ],
+      "unit": "mm",
+      "basis": "modelled",
+      "as_of": "2026-11-11",
+      "source": "https://power.larc.nasa.gov/api/temporal/daily/point",
+      "resolution": "0.5 degree cell",
+      "route": "api",
+      "fetched_at": "2026-11-15T03:00:00Z"
+    },
+    {
+      "metric": "tmax_day",
+      "label": "numbers.tmax_day",
+      "value": [
+        {
+          "date": "2026-10-01",
+          "value": 37.3
+        },
+        {
+          "date": "2026-10-02",
+          "value": 29.82
+        },
+        {
+          "date": "2026-10-03",
+          "value": 33.96
+        },
+        {
+          "date": "2026-10-04",
+          "value": 34.62
+        },
+        {
+          "date": "2026-10-05",
+          "value": 28.3
+        },
+        {
+          "date": "2026-10-06",
+          "value": 30.19
+        },
+        {
+          "date": "2026-10-07",
+          "value": 36.5
+        },
+        {
+          "date": "2026-10-08",
+          "value": 38.24
+        },
+        {
+          "date": "2026-10-09",
+          "value": 38.24
+        },
+        {
+          "date": "2026-10-10",
+          "value": 38.65
+        },
+        {
+          "date": "2026-10-11",
+          "value": 38.45
+        },
+        {
+          "date": "2026-10-12",
+          "value": 39.06
+        },
+        {
+          "date": "2026-10-13",
+          "value": 38.74
+        },
+        {
+          "date": "2026-10-14",
+          "value": 39.27
+        },
+        {
+          "date": "2026-10-15",
+          "value": 30.06
+        },
+        {
+          "date": "2026-10-16",
+          "value": 35.07
+        },
+        {
+          "date": "2026-10-17",
+          "value": 36.18
+        },
+        {
+          "date": "2026-10-18",
+          "value": 36.63
+        },
+        {
+          "date": "2026-10-19",
+          "value": 33.68
+        },
+        {
+          "date": "2026-10-20",
+          "value": 37.07
+        },
+        {
+          "date": "2026-10-21",
+          "value": 37.18
+        },
+        {
+          "date": "2026-10-22",
+          "value": 37.94
+        },
+        {
+          "date": "2026-10-23",
+          "value": 38.23
+        },
+        {
+          "date": "2026-10-24",
+          "value": 39.42
+        },
+        {
+          "date": "2026-10-25",
+          "value": 39.59
+        },
+        {
+          "date": "2026-10-26",
+          "value": 36.44
+        },
+        {
+          "date": "2026-10-27",
+          "value": 34.35
+        },
+        {
+          "date": "2026-10-28",
+          "value": 34.01
+        },
+        {
+          "date": "2026-10-29",
+          "value": 35.21
+        },
+        {
+          "date": "2026-10-30",
+          "value": 30.01
+        },
+        {
+          "date": "2026-10-31",
+          "value": 34.61
+        },
+        {
+          "date": "2026-11-01",
+          "value": 35.53
+        },
+        {
+          "date": "2026-11-02",
+          "value": 37.39
+        },
+        {
+          "date": "2026-11-03",
+          "value": 36.7
+        },
+        {
+          "date": "2026-11-04",
+          "value": 37.4
+        },
+        {
+          "date": "2026-11-05",
+          "value": 37.79
+        },
+        {
+          "date": "2026-11-06",
+          "value": 36.47
+        },
+        {
+          "date": "2026-11-07",
+          "value": 37.3
+        },
+        {
+          "date": "2026-11-08",
+          "value": 36.18
+        },
+        {
+          "date": "2026-11-09",
+          "value": 34.41
+        },
+        {
+          "date": "2026-11-10",
+          "value": 34.95
+        },
+        {
+          "date": "2026-11-11",
+          "value": 34.08
+        }
+      ],
+      "unit": "C",
+      "basis": "modelled",
+      "as_of": "2026-11-11",
+      "source": "https://power.larc.nasa.gov/api/temporal/daily/point",
+      "resolution": "0.5 degree cell",
+      "route": "api",
+      "fetched_at": "2026-11-15T03:00:00Z"
+    },
+    {
+      "metric": "tmin_day",
+      "label": "numbers.tmin_day",
+      "value": [
+        {
+          "date": "2026-10-01",
+          "value": 25.18
+        },
+        {
+          "date": "2026-10-02",
+          "value": 23.24
+        },
+        {
+          "date": "2026-10-03",
+          "value": 21.77
+        },
+        {
+          "date": "2026-10-04",
+          "value": 22.31
+        },
+        {
+          "date": "2026-10-05",
+          "value": 22.65
+        },
+        {
+          "date": "2026-10-06",
+          "value": 21.85
+        },
+        {
+          "date": "2026-10-07",
+          "value": 22.19
+        },
+        {
+          "date": "2026-10-08",
+          "value": 24.02
+        },
+        {
+          "date": "2026-10-09",
+          "value": 23.8
+        },
+        {
+          "date": "2026-10-10",
+          "value": 23.32
+        },
+        {
+          "date": "2026-10-11",
+          "value": 25.09
+        },
+        {
+          "date": "2026-10-12",
+          "value": 23.45
+        },
+        {
+          "date": "2026-10-13",
+          "value": 24.83
+        },
+        {
+          "date": "2026-10-14",
+          "value": 25.19
+        },
+        {
+          "date": "2026-10-15",
+          "value": 25.36
+        },
+        {
+          "date": "2026-10-16",
+          "value": 24.02
+        },
+        {
+          "date": "2026-10-17",
+          "value": 24.31
+        },
+        {
+          "date": "2026-10-18",
+          "value": 24.39
+        },
+        {
+          "date": "2026-10-19",
+          "value": 24.24
+        },
+        {
+          "date": "2026-10-20",
+          "value": 24.17
+        },
+        {
+          "date": "2026-10-21",
+          "value": 24.3
+        },
+        {
+          "date": "2026-10-22",
+          "value": 23.99
+        },
+        {
+          "date": "2026-10-23",
+          "value": 23.69
+        },
+        {
+          "date": "2026-10-24",
+          "value": 24.95
+        },
+        {
+          "date": "2026-10-25",
+          "value": 26.05
+        },
+        {
+          "date": "2026-10-26",
+          "value": 25.09
+        },
+        {
+          "date": "2026-10-27",
+          "value": 24.82
+        },
+        {
+          "date": "2026-10-28",
+          "value": 24.0
+        },
+        {
+          "date": "2026-10-29",
+          "value": 22.96
+        },
+        {
+          "date": "2026-10-30",
+          "value": 23.39
+        },
+        {
+          "date": "2026-10-31",
+          "value": 23.3
+        },
+        {
+          "date": "2026-11-01",
+          "value": 24.01
+        },
+        {
+          "date": "2026-11-02",
+          "value": 24.34
+        },
+        {
+          "date": "2026-11-03",
+          "value": 24.85
+        },
+        {
+          "date": "2026-11-04",
+          "value": 23.87
+        },
+        {
+          "date": "2026-11-05",
+          "value": 25.03
+        },
+        {
+          "date": "2026-11-06",
+          "value": 23.9
+        },
+        {
+          "date": "2026-11-07",
+          "value": 23.76
+        },
+        {
+          "date": "2026-11-08",
+          "value": 24.34
+        },
+        {
+          "date": "2026-11-09",
+          "value": 24.36
+        },
+        {
+          "date": "2026-11-10",
+          "value": 23.47
+        },
+        {
+          "date": "2026-11-11",
+          "value": 23.85
+        }
+      ],
+      "unit": "C",
+      "basis": "modelled",
+      "as_of": "2026-11-11",
+      "source": "https://power.larc.nasa.gov/api/temporal/daily/point",
+      "resolution": "0.5 degree cell",
+      "route": "api",
+      "fetched_at": "2026-11-15T03:00:00Z"
+    },
+    {
+      "metric": "rain_median",
+      "label": "numbers.rain_median",
+      "value": 224.9,
+      "unit": "mm",
+      "basis": "modelled",
+      "as_of": "2026-11-11",
+      "source": "https://power.larc.nasa.gov/api/temporal/daily/point",
+      "resolution": "0.5 degree cell",
+      "route": "api",
+      "fetched_at": "2026-11-15T03:00:00Z"
+    },
+    {
+      "metric": "rain_min",
+      "label": "numbers.rain_min",
+      "value": 88.9,
+      "unit": "mm",
+      "basis": "modelled",
+      "as_of": "2026-11-11",
+      "source": "https://power.larc.nasa.gov/api/temporal/daily/point",
+      "resolution": "0.5 degree cell",
+      "route": "api",
+      "fetched_at": "2026-11-15T03:00:00Z"
+    },
+    {
+      "metric": "rain_max",
+      "label": "numbers.rain_max",
+      "value": 389.7,
+      "unit": "mm",
+      "basis": "modelled",
+      "as_of": "2026-11-11",
+      "source": "https://power.larc.nasa.gov/api/temporal/daily/point",
+      "resolution": "0.5 degree cell",
+      "route": "api",
+      "fetched_at": "2026-11-15T03:00:00Z"
+    },
+    {
+      "metric": "rain_rank",
+      "label": "numbers.rain_rank",
+      "value": 7,
+      "unit": "years",
+      "basis": "modelled",
+      "as_of": "2026-11-11",
+      "source": "https://power.larc.nasa.gov/api/temporal/daily/point",
+      "resolution": "0.5 degree cell",
+      "route": "derived",
+      "fetched_at": "2026-11-15T03:00:00Z"
+    },
+    {
+      "metric": "rain_percentile",
+      "label": "numbers.rain_percentile",
+      "value": 20,
+      "unit": "percent",
+      "basis": "modelled",
+      "as_of": "2026-11-11",
+      "source": "https://power.larc.nasa.gov/api/temporal/daily/point",
+      "resolution": "0.5 degree cell",
+      "route": "derived",
+      "fetched_at": "2026-11-15T03:00:00Z"
+    },
+    {
+      "metric": "hot_days",
+      "label": "numbers.hot_days",
+      "value": 28,
+      "unit": "days",
+      "basis": "modelled",
+      "as_of": "2026-11-11",
+      "source": "https://power.larc.nasa.gov/api/temporal/daily/point",
+      "resolution": "0.5 degree cell",
+      "route": "api",
+      "fetched_at": "2026-11-15T03:00:00Z"
+    },
+    {
+      "metric": "hot_days_median",
+      "label": "numbers.hot_days_median",
+      "value": 17,
+      "unit": "days",
+      "basis": "modelled",
+      "as_of": "2026-11-11",
+      "source": "https://power.larc.nasa.gov/api/temporal/daily/point",
+      "resolution": "0.5 degree cell",
+      "route": "api",
+      "fetched_at": "2026-11-15T03:00:00Z"
+    },
+    {
+      "metric": "wb_in",
+      "label": "numbers.wb_in",
+      "value": 171.9,
+      "unit": "mm",
+      "basis": "modelled",
+      "as_of": "2026-11-11",
+      "source": "https://power.larc.nasa.gov/api/temporal/daily/point",
+      "resolution": "0.5 degree cell",
+      "route": "derived",
+      "fetched_at": "2026-11-15T03:00:00Z"
+    },
+    {
+      "metric": "wb_out",
+      "label": "numbers.wb_out",
+      "value": 124.8,
+      "unit": "mm",
+      "basis": "modelled",
+      "as_of": "2026-11-11",
+      "source": "https://power.larc.nasa.gov/api/temporal/daily/point",
+      "resolution": "0.5 degree cell",
+      "route": "derived",
+      "fetched_at": "2026-11-15T03:00:00Z"
+    },
+    {
+      "metric": "wb_remaining",
+      "label": "numbers.wb_remaining",
+      "value": 47.1,
+      "unit": "mm",
+      "basis": "modelled",
+      "as_of": "2026-11-11",
+      "source": "https://power.larc.nasa.gov/api/temporal/daily/point",
+      "resolution": "0.5 degree cell",
+      "route": "derived",
+      "fetched_at": "2026-11-15T03:00:00Z"
+    },
+    {
+      "metric": "smap_surface",
+      "label": "numbers.smap_surface",
+      "value": null,
+      "unit": "percent of the served palette",
+      "basis": "retrieved",
+      "as_of": null,
+      "source": "NASA GIBS SMAP layers through the block 4 tile proxy",
+      "resolution": "9 km posting, 36 km radiometer footprint",
+      "route": "canvas",
+      "fetched_at": null
+    },
+    {
+      "metric": "smap_rootzone",
+      "label": "numbers.smap_rootzone",
+      "value": null,
+      "unit": "percent of the served palette",
+      "basis": "retrieved",
+      "as_of": null,
+      "source": "NASA GIBS SMAP layers through the block 4 tile proxy",
+      "resolution": "9 km",
+      "route": "canvas",
+      "fetched_at": null
+    },
+    {
+      "metric": "ndvi_scene_count",
+      "label": "numbers.ndvi_scene_count",
+      "value": 13,
+      "unit": "scenes",
+      "basis": "retrieved",
+      "as_of": "2026-11-11",
+      "source": "Element84 Earth Search, collection sentinel-2-l2a, assets B04, B08 and SCL",
+      "resolution": "not applicable",
+      "route": "api",
+      "fetched_at": "2026-11-15T03:00:00Z"
+    },
+    {
+      "metric": "ndvi_clear_count",
+      "label": "numbers.ndvi_clear_count",
+      "value": 3,
+      "unit": "scenes",
+      "basis": "retrieved",
+      "as_of": "2026-11-11",
+      "source": "Element84 Earth Search, collection sentinel-2-l2a, assets B04, B08 and SCL",
+      "resolution": "not applicable",
+      "route": "api",
+      "fetched_at": "2026-11-15T03:00:00Z"
+    },
+    {
+      "metric": "ndvi_mean",
+      "label": "numbers.ndvi_mean",
+      "value": null,
+      "unit": "unitless",
+      "basis": "retrieved",
+      "as_of": "2026-11-11",
+      "source": "Element84 Earth Search, collection sentinel-2-l2a, assets B04, B08 and SCL",
+      "resolution": "10 m",
+      "route": "cogs",
+      "fetched_at": "2026-11-15T03:00:00Z"
+    },
+    {
+      "metric": "ndvi_valid_fraction",
+      "label": "numbers.ndvi_valid_fraction",
+      "value": null,
+      "unit": "fraction",
+      "basis": "retrieved",
+      "as_of": "2026-11-11",
+      "source": "Element84 Earth Search, collection sentinel-2-l2a, assets B04, B08 and SCL",
+      "resolution": "10 m",
+      "route": "cogs",
+      "fetched_at": "2026-11-15T03:00:00Z"
+    },
+    {
+      "metric": "soil.clay.0_5",
+      "label": "numbers.clay",
+      "value": 225,
+      "unit": "g/kg",
+      "basis": "modelled",
+      "as_of": "2026-11-15",
+      "source": "https://rest.isric.org/soilgrids/v2.0/properties/query",
+      "resolution": "250 m static model",
+      "route": "api",
+      "fetched_at": "2026-11-15T03:00:00Z"
+    },
+    {
+      "metric": "soil.sand.0_5",
+      "label": "numbers.sand",
+      "value": 635,
+      "unit": "g/kg",
+      "basis": "modelled",
+      "as_of": "2026-11-15",
+      "source": "https://rest.isric.org/soilgrids/v2.0/properties/query",
+      "resolution": "250 m static model",
+      "route": "api",
+      "fetched_at": "2026-11-15T03:00:00Z"
+    },
+    {
+      "metric": "soil.ph.0_5",
+      "label": "numbers.ph",
+      "value": 5.0,
+      "unit": "pH",
+      "basis": "modelled",
+      "as_of": "2026-11-15",
+      "source": "https://rest.isric.org/soilgrids/v2.0/properties/query",
+      "resolution": "250 m static model",
+      "route": "api",
+      "fetched_at": "2026-11-15T03:00:00Z"
+    },
+    {
+      "metric": "soil.soc.0_5",
+      "label": "numbers.soc",
+      "value": 22.2,
+      "unit": "g/kg",
+      "basis": "modelled",
+      "as_of": "2026-11-15",
+      "source": "https://rest.isric.org/soilgrids/v2.0/properties/query",
+      "resolution": "250 m static model",
+      "route": "api",
+      "fetched_at": "2026-11-15T03:00:00Z"
+    },
+    {
+      "metric": "soil.clay.5_15",
+      "label": "numbers.clay",
+      "value": 223,
+      "unit": "g/kg",
+      "basis": "modelled",
+      "as_of": "2026-11-15",
+      "source": "https://rest.isric.org/soilgrids/v2.0/properties/query",
+      "resolution": "250 m static model",
+      "route": "api",
+      "fetched_at": "2026-11-15T03:00:00Z"
+    },
+    {
+      "metric": "soil.sand.5_15",
+      "label": "numbers.sand",
+      "value": 639,
+      "unit": "g/kg",
+      "basis": "modelled",
+      "as_of": "2026-11-15",
+      "source": "https://rest.isric.org/soilgrids/v2.0/properties/query",
+      "resolution": "250 m static model",
+      "route": "api",
+      "fetched_at": "2026-11-15T03:00:00Z"
+    },
+    {
+      "metric": "soil.ph.5_15",
+      "label": "numbers.ph",
+      "value": 5.1,
+      "unit": "pH",
+      "basis": "modelled",
+      "as_of": "2026-11-15",
+      "source": "https://rest.isric.org/soilgrids/v2.0/properties/query",
+      "resolution": "250 m static model",
+      "route": "api",
+      "fetched_at": "2026-11-15T03:00:00Z"
+    },
+    {
+      "metric": "soil.soc.5_15",
+      "label": "numbers.soc",
+      "value": 16.2,
+      "unit": "g/kg",
+      "basis": "modelled",
+      "as_of": "2026-11-15",
+      "source": "https://rest.isric.org/soilgrids/v2.0/properties/query",
+      "resolution": "250 m static model",
+      "route": "api",
+      "fetched_at": "2026-11-15T03:00:00Z"
+    },
+    {
+      "metric": "soil.clay.15_30",
+      "label": "numbers.clay",
+      "value": 265,
+      "unit": "g/kg",
+      "basis": "modelled",
+      "as_of": "2026-11-15",
+      "source": "https://rest.isric.org/soilgrids/v2.0/properties/query",
+      "resolution": "250 m static model",
+      "route": "api",
+      "fetched_at": "2026-11-15T03:00:00Z"
+    },
+    {
+      "metric": "soil.sand.15_30",
+      "label": "numbers.sand",
+      "value": 601,
+      "unit": "g/kg",
+      "basis": "modelled",
+      "as_of": "2026-11-15",
+      "source": "https://rest.isric.org/soilgrids/v2.0/properties/query",
+      "resolution": "250 m static model",
+      "route": "api",
+      "fetched_at": "2026-11-15T03:00:00Z"
+    },
+    {
+      "metric": "soil.ph.15_30",
+      "label": "numbers.ph",
+      "value": 5.1,
+      "unit": "pH",
+      "basis": "modelled",
+      "as_of": "2026-11-15",
+      "source": "https://rest.isric.org/soilgrids/v2.0/properties/query",
+      "resolution": "250 m static model",
+      "route": "api",
+      "fetched_at": "2026-11-15T03:00:00Z"
+    },
+    {
+      "metric": "soil.soc.15_30",
+      "label": "numbers.soc",
+      "value": 9.1,
+      "unit": "g/kg",
+      "basis": "modelled",
+      "as_of": "2026-11-15",
+      "source": "https://rest.isric.org/soilgrids/v2.0/properties/query",
+      "resolution": "250 m static model",
+      "route": "api",
+      "fetched_at": "2026-11-15T03:00:00Z"
+    },
+    {
+      "metric": "municipality_soy_ha",
+      "label": "numbers.municipality_soy_ha",
+      "value": null,
+      "unit": "ha",
+      "basis": "retrieved",
+      "as_of": null,
+      "source": "IBGE SIDRA table 1612, API v3, variable 109, category 2713",
+      "resolution": "the municipality",
+      "route": "api",
+      "fetched_at": null
+    },
+    {
+      "metric": "state_soy_ha",
+      "label": "numbers.state_soy_ha",
+      "value": 12788611,
+      "unit": "ha",
+      "basis": "retrieved",
+      "as_of": "2025-12-31",
+      "source": "IBGE SIDRA table 1612, API v3, variable 109, category 2713",
+      "resolution": "the state",
+      "route": "api",
+      "fetched_at": "2026-11-15T03:00:00Z"
+    },
+    {
+      "metric": "polygon_share",
+      "label": "numbers.polygon_share",
+      "value": null,
+      "unit": "percent",
+      "basis": "modelled",
+      "as_of": null,
+      "source": "IBGE SIDRA table 1612, API v3, variable 109, category 2713",
+      "resolution": "not applicable",
+      "route": "derived",
+      "fetched_at": null
+    }
+  ],
+  "gaps": [
+    {
+      "section": "smap",
+      "cause": "the SMAP palette ramp is not in this repository, so the palette position of the served tile cannot be read in wave 1; no day carries a value",
+      "source": "NASA GIBS SMAP layers through the block 4 tile proxy",
+      "status": "palette reader not built",
+      "date": "2026-11-12",
+      "remediation": "block 6 wave 2"
+    },
+    {
+      "section": "ndvi",
+      "cause": "the B04, B08 and SCL zonal statistic needs a cloud optimised GeoTIFF reader that is not approved, so no valid_fraction is computed; 3 of 13 scenes are below 20 percent cloud",
+      "source": "Element84 Earth Search, collection sentinel-2-l2a, assets B04, B08 and SCL",
+      "status": "reader not approved",
+      "date": "2026-11-11",
+      "remediation": "OD-01"
+    },
+    {
+      "section": "rotation",
+      "cause": "the polygon_mapbiomas sidecar is absent at data/polygons/polygon-mapbiomas.sqlite",
+      "source": "polygon-mapbiomas.sqlite, table polygon_mapbiomas (CO-B6-01)",
+      "status": "file absent",
+      "date": null,
+      "remediation": "CO-B6-01"
+    },
+    {
+      "section": "municipality",
+      "cause": "municipality code is unresolved for this field: the IBGE municipal join is not built, so the municipal row and the share abstain",
+      "source": "IBGE SIDRA table 1612, API v3, variable 109, category 2713",
+      "status": "unresolved",
+      "date": null,
+      "remediation": "CO-B6-06"
+    },
+    {
+      "section": "fragment",
+      "cause": "the request carries no area_ha, so the R-50 clip check is not computed",
+      "source": "request ring",
+      "status": "absent",
+      "date": "2026-11-12",
+      "remediation": "block 5 R-24"
+    },
+    {
+      "section": "header",
+      "cause": "the request carries no area_ha",
+      "source": "request body area_ha (block 5 polygon source)",
+      "status": "absent",
+      "date": "2026-11-12",
+      "remediation": "block 5 R-24"
+    }
+  ]
+}

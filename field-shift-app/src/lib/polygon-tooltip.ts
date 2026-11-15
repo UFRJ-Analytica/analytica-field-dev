@@ -7,6 +7,22 @@
  * element; nothing here reads or writes the column's state (R-46).
  */
 
+import { t } from '@/strings'
+import { classDisplay, noCdlYearOf } from './polygon-style'
+import type { RegionAdapter } from './regions'
+
+/**
+ * R-27 and AC-23: the tooltip prints one string and nothing else. A United States null or absent
+ * `cdl{Y}` prints `No CDL class for {Y}` (catalog key `polygon.no_cdl_class`), the same string the
+ * readout prints. Every other unmapped polygon prints `class not mapped` (`polygon.class_not_mapped`),
+ * and a mapped one prints its table name. Brazil keeps its own split (R-21).
+ */
+export function polygonTooltipText(region: RegionAdapter, classValue: number | null, date: string): string {
+  const year = noCdlYearOf(region, classValue, date)
+  if (year !== null) return t('polygon.no_cdl_class', { year })
+  return classDisplay(region, classValue).name ?? t('polygon.class_not_mapped')
+}
+
 export const POLYGON_TOOLTIP_OFFSET = 12
 export const POLYGON_TOOLTIP_MAX_WIDTH = 200
 

@@ -3,8 +3,30 @@ import { cleanup, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { RotationFlipCard } from './RotationFlipCard'
 import type { RotationScenario } from './ScenarioCards'
+import { useMapStore } from '@/lib/map-store'
+import { numbersLastReadKey } from '@/lib/numbers-api'
+import type { NumbersPayload } from '@/lib/numbers'
+import recorded from '@/test/numbers-recorded.json'
 
-const FACT_LABELS = ['Why', 'Evidence', 'Benefit', 'Gap', 'Risk']
+const RECORDED = recorded as unknown as NumbersPayload
+const FIELD_ID = RECORDED.field_id
+const DATE = RECORDED.query.date
+
+/** A scenario as the route sends it, with the falsifier object of R-39 the type does not carry. */
+function withFalsifier(falsifier: Record<string, unknown> | undefined): RotationScenario {
+  return { ...scenarios[0], falsifier } as unknown as RotationScenario
+}
+
+function seedPayload(payload: NumbersPayload | null = RECORDED) {
+  useMapStore.setState({
+    selectedFieldId: FIELD_ID,
+    chosenDate: DATE,
+    numbersLastRead: payload === null ? {} : { [numbersLastReadKey(FIELD_ID, DATE)]: payload },
+  })
+}
+
+// Block 6 AM-03: the back face carries six labelled fields, the falsifier after Benefit.
+const FACT_LABELS = ['Why', 'Evidence', 'Benefit', 'Falsifier', 'Gap', 'Risk']
 const VISUAL_LABELS = ['SMAP soil moisture', 'Crop history']
 
 const smapRow = {
@@ -96,7 +118,7 @@ describe('RotationFlipCard', () => {
     }
   })
 
-  it('moves one card to the back face with the five facts and no visuals (R-11, R-13, AC-07)', async () => {
+  it('moves one card to the back face with the six facts and no visuals (R-11, R-13, AC-07)', async () => {
     const user = userEvent.setup()
     const { cards } = renderCards()
     const currentCard = cards[0]
@@ -107,10 +129,13 @@ describe('RotationFlipCard', () => {
     expect(trigger.getAttribute('aria-expanded')).toBe('true')
     expect(trigger.getAttribute('aria-label')).toBe('Details for Current sequence')
     expect(within(currentCard).getAllByRole('term').map((term) => term.textContent)).toEqual(FACT_LABELS)
+    // R-40: no payload is read in this render, so every scenario takes the abstention of the
+    // falsifier slot. The five block 1 facts are unchanged around it.
     expect(within(currentCard).getAllByRole('definition').map((definition) => definition.textContent)).toEqual([
       scenarios[0].why,
       scenarios[0].evidence,
       scenarios[0].benefit,
+      'No counter evidence recorded',
       scenarios[0].gap,
       scenarios[0].risk,
     ])
@@ -257,5 +282,61 @@ describe('RotationFlipCard', () => {
 
     expect(within(cards[2]).getByText('Not reported for this option')).toBeTruthy()
     expect(cards[2].textContent).not.toContain('0.28')
+  })
+
+  describe('AC-38, the falsifier slot with a scenario that carries one (R-39)', () => {
+    const falsifier = {
+      metric: 'dry_spell_days',
+      operator: '>' as const,
+      threshold: 10,
+      unit: 'days',
+      text_key: 'scenarios.falsifier.placeholder',
+    }
+
+    it('prints six labels in the order Why, Evidence, Benefit, Falsifier, Gap, Risk', async () => {
+      seedPayload()
+      const user = userEvent.setup()
+      const { cards } = renderCards([withFalsifier(falsifier)])
+      await user.click(within(cards[0]).getByRole('button', { name: /^Charts for|^Details for/ }))
+      expect(within(cards[0]).getAllByRole('term').map((term) => term.textContent)).toEqual([
+        'Why', 'Evidence', 'Benefit', 'Falsifier', 'Gap', 'Risk',
+      ])
+    })
+
+    it('prints the sentence of the five keys and the metric value with its basis and its date', async () => {
+      seedPayload()
+      const user = userEvent.setup()
+      const { cards } = renderCards([withFalsifier(falsifier)])
+      await user.click(within(cards[0]).getByRole('button', { name: /^Charts for|^Details for/ }))
+      const slot = cards[0].querySelector('[data-falsifier]') as HTMLElement
+      expect(slot.getAttribute('data-falsifier')).toBe('dry_spell_days')
+      const text = slot.textContent ?? ''
+      expect(text).toContain('The recommendation is refused when dry spell days exceed 10.')
+      expect(text).toContain('7')
+      expect(text).toContain('days')
+      expect(text).toContain('modelled')
+      expect(text).toContain('2026-11-11')
+    })
+
+    it('does not print a falsifier whose metric the payload does not hold (R-39)', async () => {
+      seedPayload()
+      const user = userEvent.setup()
+      const { cards } = renderCards([withFalsifier({ ...falsifier, metric: 'metric_not_in_payload' })])
+      await user.click(within(cards[0]).getByRole('button', { name: /^Charts for|^Details for/ }))
+      const slot = cards[0].querySelector('[data-falsifier]') as HTMLElement
+      expect(slot.getAttribute('data-falsifier')).toBe('absent')
+      expect(slot.querySelector('dd')?.textContent).toBe('No counter evidence recorded')
+      expect(slot.textContent).not.toContain('exceed 10')
+    })
+
+    it('treats a falsifier that misses one of the five keys as absent (R-39, R-40)', async () => {
+      seedPayload()
+      const user = userEvent.setup()
+      const { cards } = renderCards([withFalsifier({ metric: 'dry_spell_days', operator: '>', threshold: 10, unit: 'days' })])
+      await user.click(within(cards[0]).getByRole('button', { name: /^Charts for|^Details for/ }))
+      const slot = cards[0].querySelector('[data-falsifier]') as HTMLElement
+      expect(slot.getAttribute('data-falsifier')).toBe('absent')
+      expect(slot.querySelector('dd')?.textContent).toBe('No counter evidence recorded')
+    })
   })
 })

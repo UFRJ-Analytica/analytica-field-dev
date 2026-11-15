@@ -1,0 +1,48 @@
+AC-04 overview tier at its own last zoom, round 2 rework, branch block5/one-string-per-state
+
+ROOT CAUSE. src/lib/polygon-source.ts set both overview layers' `maxzoom` to the tier's
+`overview_maxzoom`. A MapLibre layer draws while `minzoom <= z < maxzoom`, so the layer stopped one
+zoom short of its own range: the United States overview (3 to 5) drew at 3 and 4 only, and the Brazil
+overview (5 to 7) drew at 5 and 6 only. The detail tier is unchanged: no `maxzoom`, so it overzooms
+above 14 (R-05).
+
+FIX. `layerMaxzoomFor(tier)` returns `tier.maxzoom + 1`, and both overview layers take it. The tier
+numbers themselves stay the contract (Table G for the United States, Table B for Brazil), and the
+overview's layer range now ends exactly where the detail's begins.
+
+METHOD. Running app (vite dev server, backend on :8000, both build files present), real MapLibre,
+CDP 1440x900, one page load per region, `queryRenderedFeatures` over `polygon-overview-fill` and
+`polygon-fill` after `idle`. The "old range" rows are the same page with the previous layer range
+restored on it with `map.setLayerZoomRange`, which is the value the gate measured.
+
+UNITED STATES, centre [-97.17, 46.93] (the pilot box of R-05), manifest detail 6 to 14, overview 3 to 5
+
+  zoom  overview range  overview features  detail features
+  ----------------------------------------------------------
+  4     3 to 6 (shipped) 38                 0
+  5     3 to 6 (shipped) 53                 0
+  5     3 to 5 (old)      0                 0     <- the gate's AC-04 failure, on the same page
+  6     3 to 6 (shipped)  0                85
+  8     (no overview)     0               107
+
+  The gate measured 0 overview features and 0 overview requests at zoom 5, and 53 features once the
+  layer range was widened to 6. The shipped range is that widening, from the tier's own number.
+
+BRAZIL, centre [-55.27, -11.91], Table B detail 8 to 12, overview 5 to 7
+
+  zoom  overview range  overview features  detail features
+  ----------------------------------------------------------
+  5     5 to 8 (shipped) 51485              0
+  6     5 to 8 (shipped) 17499              0
+  7     5 to 8 (shipped) 43363              0
+  7     5 to 7 (old)         0              0     <- the gate's AC-04 failure, on the same page
+  8     5 to 8 (shipped)     0          21189     <- the overview stops where the detail begins
+
+  Feature counts are `queryRenderedFeatures` hits, which count a feature once per rendered tile
+  fragment; AC-06's `querySourceFeatures` budget reading is a different measurement and is not made
+  here.
+
+NOT MEASURED. The non-interactive clause of AC-04 (hover and click on an overview shape) and the
+MultiPolygon merge clause, which the gate reports against the built file; neither is changed by this
+rework. The AC-04 build recipe rows (`-l trazo`, the overview's coalesce flags) are CO-B5-01 and
+CO-B5-02 and are untouched.

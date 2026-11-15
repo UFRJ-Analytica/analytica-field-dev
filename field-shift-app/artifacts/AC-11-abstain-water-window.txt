@@ -1,0 +1,16 @@
+AC-11: the water balance window abstention names the window, its source and the cause when the payload carries no window
+field: mt-santa-carmem-01
+payload: artifacts/block6/numbers-offline-payload.json, the capture with POWER unreachable: query.window and water_balance.window all null, water_balance.error ConnectError, and the water balance gap row
+written: 2026-11-15T06:53:46.497Z
+
+metric: water_balance.window
+row value: null
+rendered text: Water balance window not read: ConnectError. Source: https://power.larc.nasa.gov/api/temporal/daily/point.
+gap row: {"section":"water_balance","cause":"network unavailable (offline state)","source":"https://power.larc.nasa.gov/api/temporal/daily/point","status":"offline","date":"2026-11-12","remediation":""}
+
+payload: src/test/numbers-recorded.json with water_balance.window all null, water_balance.error null, water_balance.missing null and no water balance gap row: the fallback that has no recorded cause
+
+metric: water_balance.window
+row value: null
+rendered text: Water balance window not read: the reason was not recorded in the payload or the gap register. Source: https://power.larc.nasa.gov/api/temporal/daily/point.
+gap row: no gap row for section water_balance

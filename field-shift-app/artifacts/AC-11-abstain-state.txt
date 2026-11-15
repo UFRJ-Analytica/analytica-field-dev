@@ -1,0 +1,9 @@
+AC-11: the state row abstention names the input, its source and the state cause
+field: mt-santa-carmem-01
+payload: src/test/numbers-recorded.json, the recorded response of POST /fields/mt-santa-carmem-01/numbers
+written: 2026-11-15T06:14:27.759Z
+
+metric: state_soy_ha
+row value: null
+rendered text: State value not read: state code is unresolved for this field, so the state total does not print. Source: IBGE SIDRA table 1612, API v3, variable 109, category 2713.
+gap row: {"section":"municipality","cause":"state code is unresolved for this field, so the state total does not print","source":"IBGE SIDRA table 1612, API v3, variable 109, category 2713","status":"unresolved","date":null,"remediation":"CO-B6-06"}

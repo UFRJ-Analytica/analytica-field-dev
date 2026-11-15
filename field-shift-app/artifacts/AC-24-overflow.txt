@@ -1,0 +1,80 @@
+AC-24 overflow measurement, round 2 rework, branch block5/one-string-per-state
+
+METHOD. Throwaway Vite page (ac24-probe.html + src/ac24-probe.tsx), untracked and removed after the
+run. It renders the real src/components/FieldsPanel.tsx inside the real
+.app-shell > .left-stack > .overlay.anchor-left.field-list-anchor.layer-chips chain with the real
+src/index.css, in a real browser (CDP Emulation.setDeviceMetricsOverride), one page load per width so
+the panel mounts at that width and the media query is read at mount, `document.fonts.status` loaded
+before every row. The chip carries a United States null class with the painted year 2025, so the
+label is `No CDL class for 2025` (long form, catalog key `polygon.no_cdl_class`) or `No CDL 2025`
+(short form, `polygon.no_cdl_class_short`).
+
+Per width, two readings:
+  1. the form the build prints (button[data-polygon-chip] text), and
+  2. the long form forced into the same chip (span.field-chip-name textContent replaced with
+     `No CDL class for 2025`, layout re-read, then restored), which is the width the long form needs
+     at that width.
+
+OVERFLOW is the chip button border box against the .field-list-anchor right edge (the panel box that
+carries contain: layout paint), plus span.scrollWidth against span.clientWidth (the text against its
+own box).
+
+width  printed form            chip box  chip right  panel right  past panel  span scroll/client
+------------------------------------------------------------------------------------------------
+360    No CDL class for 2025   153.16    296.00      296.00        0.00       131/131
+640    No CDL class for 2025   153.16    576.00      576.00        0.00       131/131
+641    No CDL 2025             99.63     175.63      166.66        8.97       78/78
+                               122.66*   198.66*     166.66        32.00*     131/102*  (ellipsized)
+700    No CDL 2025             -         175.63      182.00       -6.37       78/78
+                               138.00*   214.00*     182.00        32.00*     131/117*  (ellipsized)
+767    No CDL 2025             -         177.41      199.41      -22.00       78/78
+                               153.16*   229.16*     199.41        29.75*     131/131*
+780    No CDL 2025             104.80    180.80      202.80      -22.00       78/78
+                               153.16*   229.16*     202.80        26.36*     131/131*
+800    No CDL 2025             -         186.00      208.00      -22.00       78/78
+                               153.16*   229.16*     208.00        21.16*     131/131*
+840    No CDL 2025             -         196.39      218.39      -22.00       78/78
+                               153.16*   229.16*     218.39        10.77*     131/131*
+860    No CDL 2025             -         201.59      223.59      -22.00       78/78
+                               153.16*   229.16*     223.59         5.57*     131/131*
+881    No CDL 2025             -         207.05      229.05      -22.00       78/78
+                               153.16*   229.16*     229.05         0.11*     131/131*
+882    No CDL class for 2025   153.16    229.16      229.31       -0.15       131/131
+950    No CDL class for 2025   153.16    229.16      247.00      -17.84       131/131
+1000   No CDL class for 2025   162.00    238.00      260.00      -22.00       131/131
+1023   No CDL class for 2025   167.97    243.97      265.97      -22.00       131/131
+1024   No CDL class for 2025   168.23    244.23      266.23      -22.00       131/131
+1440   No CDL class for 2025   221.06    298.00      320.00      -22.00       131/131
+
+  * row measured with the long form forced into the chip, so the box and text width are the long
+  form's. Where the printed form is already the long form the two readings are the same row.
+  `-` for a chip box means the box is the short form's; the forced long form's box is on the
+  starred line below it.
+
+READING
+- Below 641 the narrow single column holds the long form: its box ends exactly on the panel's right
+  edge at 640 and at 360 (0.00 px past it), with the text at 131 of 131 px.
+- From 641 to 881 inclusive the long form does not fit: at 641 and 700 it is ellipsized inside its own
+  box (102 and 117 px of the 131 px it needs) and its box runs 32.00 px past the panel; from 767 to
+  881 its box runs past the panel edge (29.75 px at 767 down to 0.11 px at 881), which
+  contain: layout paint cuts.
+- From 882 upward the long form fits with the panel edge clear of it (0.15 px at 882, 17.84 px at 950,
+  22.00 px at 1000 and above).
+- Measured band: 641 to 881 inclusive, both edges measured widths, so the shipped query is
+  `(min-width: 641px) and (max-width: 881px)`. The rows at 641 and 882 are the edges the previous band
+  (`768px` to `1023px`) got wrong at both ends: it printed the long form at 641 to 767, where the long
+  form is cut, and the short form at 882 to 1023, where the long form fits.
+- The short form is not itself inside the panel at 641: its box (99.63 px) starts at x 76 and ends at
+  175.63 against the 166.66 px panel right, so it runs 8.97 px past the edge there. From 700 up the
+  short form sits inside (-6.37 px at 700). AC-24's falsifier is the form printed against the long
+  form's measured overflow, not the short form's own box, so this row is recorded and not claimed as
+  a pass for the box.
+
+The two edges are pinned by vitest in src/components/FieldsPanel.polygon.test.tsx, describe `the
+short-form band edges (R-28, AC-24)`: the tests parse the exported query and evaluate it against the
+width (`queryMatchesAt`), so `641` must print `No CDL 2025` and `882` must print
+`No CDL class for 2025`. With the previous band both tests fail (measured: 5 failed, 57 passed on the
+mutated band).
+
+NOT MEASURED: the running App with a polygon from a real tile, so the chip here is the real component
+with a real selection object, not a clicked polygon. No map and no backend in the probe.

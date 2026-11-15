@@ -1,0 +1,737 @@
+{
+  "schema_version": "1",
+  "field_id": "mt-santa-carmem-01",
+  "region": "br",
+  "query": {
+    "ring": [
+      [
+        -55.27214905922219,
+        -11.912149059222187
+      ],
+      [
+        -55.26785094077782,
+        -11.912149059222187
+      ],
+      [
+        -55.26785094077782,
+        -11.907850940777813
+      ],
+      [
+        -55.27214905922219,
+        -11.907850940777813
+      ]
+    ],
+    "centroid": [
+      -55.27,
+      -11.91
+    ],
+    "area_ha": 22.4,
+    "date": "2026-11-12",
+    "window": {
+      "start": null,
+      "end": null,
+      "days": null,
+      "valid_days": null,
+      "dropped_days": null
+    }
+  },
+  "sections": {
+    "climate": {
+      "state": "unavailable",
+      "source": "https://power.larc.nasa.gov/api/temporal/daily/point",
+      "as_of": null,
+      "basis": "modelled",
+      "resolution": "0.5 degree cell",
+      "fetched_at": null,
+      "cached": false,
+      "window": null,
+      "aggregates": {},
+      "series": {},
+      "error": "ConnectError",
+      "normals": {
+        "of_years": 0,
+        "excluded_years": [],
+        "error": "ConnectError"
+      }
+    },
+    "water_balance": {
+      "state": "unavailable",
+      "source": "https://power.larc.nasa.gov/api/temporal/daily/point",
+      "as_of": null,
+      "basis": "modelled",
+      "resolution": null,
+      "fetched_at": null,
+      "cached": false,
+      "in": null,
+      "out": null,
+      "remaining": null,
+      "unit": "mm",
+      "out_label": "EVLAND, land surface evaporation from POWER. It is not crop transpiration and not a crop water demand; no reference evapotranspiration is used.",
+      "formula": "remaining = in - out",
+      "statement": "An estimate built from modelled fluxes, not a measurement.",
+      "window": null,
+      "error": "ConnectError"
+    },
+    "smap": {
+      "state": "abstained",
+      "source": "NASA GIBS SMAP layers through the block 4 tile proxy",
+      "as_of": null,
+      "basis": "retrieved",
+      "resolution": "9 km posting, 36 km radiometer footprint",
+      "fetched_at": null,
+      "cached": false,
+      "axis": "0 to 100 percent of the served palette",
+      "disclosure": "palette, not a physical unit",
+      "shared_cell": "One 9 km cell is about 8,100 ha, and about 88 of the 900 polygons measured at the field point share one value.",
+      "days": []
+    },
+    "ndvi": {
+      "state": "unavailable",
+      "source": "Element84 Earth Search, collection sentinel-2-l2a, assets B04, B08 and SCL",
+      "as_of": null,
+      "basis": "retrieved",
+      "resolution": "10 m",
+      "fetched_at": null,
+      "cached": false,
+      "scene_count": null,
+      "clear_count": null,
+      "scenes": [],
+      "error": "search window unknown: climate source unavailable"
+    },
+    "soil": {
+      "state": "ok",
+      "source": "https://rest.isric.org/soilgrids/v2.0/properties/query",
+      "as_of": "2026-11-15",
+      "basis": "modelled",
+      "resolution": "250 m static model",
+      "fetched_at": "2026-11-15T03:00:00Z",
+      "cached": false,
+      "model_note": "SoilGrids is a static 250 m model sampled at the centroid, not a map of the field.",
+      "depths": [
+        {
+          "label": "0-5cm",
+          "depth": "0_5",
+          "clay_g_kg": 225,
+          "sand_g_kg": 635,
+          "ph": 5.0,
+          "soc_g_kg": 22.2
+        },
+        {
+          "label": "5-15cm",
+          "depth": "5_15",
+          "clay_g_kg": 223,
+          "sand_g_kg": 639,
+          "ph": 5.1,
+          "soc_g_kg": 16.2
+        },
+        {
+          "label": "15-30cm",
+          "depth": "15_30",
+          "clay_g_kg": 265,
+          "sand_g_kg": 601,
+          "ph": 5.1,
+          "soc_g_kg": 9.1
+        }
+      ],
+      "d_factor": {
+        "clay": 10,
+        "sand": 10,
+        "phh2o": 10,
+        "soc": 10
+      }
+    },
+    "rotation": {
+      "basis": "modelled",
+      "source": "polygon-mapbiomas.sqlite, table polygon_mapbiomas (CO-B6-01)",
+      "sidecar": "data/polygons/polygon-mapbiomas.sqlite",
+      "collection": "MapBiomas Collection 11",
+      "collection_year": null,
+      "as_of": null,
+      "first_crop": null,
+      "second_crop": null,
+      "state": "unavailable",
+      "error": "sidecar file absent: data/polygons/polygon-mapbiomas.sqlite"
+    },
+    "municipality": {
+      "state": "abstained",
+      "source": "IBGE SIDRA table 1612, API v3, variable 109, category 2713",
+      "as_of": null,
+      "basis": "retrieved",
+      "resolution": "the municipality",
+      "fetched_at": null,
+      "cached": false,
+      "municipality": null
+    },
+    "fragment": {
+      "state": "ok",
+      "ring_area_ha": 22.39999999996241,
+      "area_ha": 22.4,
+      "difference_percent": 1.6780228000763082e-10,
+      "is_fragment": false
+    }
+  },
+  "provenance": [
+    {
+      "metric": "area",
+      "label": "numbers.area",
+      "value": 22.4,
+      "unit": "ha",
+      "basis": "modelled",
+      "as_of": "2026-11-12",
+      "source": "request body area_ha (block 5 polygon source)",
+      "resolution": "the polygon",
+      "route": "feature",
+      "fetched_at": null
+    },
+    {
+      "metric": "ring_area",
+      "label": "numbers.ring_area",
+      "value": 22.4,
+      "unit": "ha",
+      "basis": "retrieved",
+      "as_of": "2026-11-12",
+      "source": "request ring, spherical area",
+      "resolution": "the polygon",
+      "route": "request",
+      "fetched_at": null
+    },
+    {
+      "metric": "rain_total",
+      "label": "numbers.rain_total",
+      "value": null,
+      "unit": "mm",
+      "basis": "modelled",
+      "as_of": null,
+      "source": "https://power.larc.nasa.gov/api/temporal/daily/point",
+      "resolution": "0.5 degree cell",
+      "route": "api",
+      "fetched_at": null
+    },
+    {
+      "metric": "dry_spell_days",
+      "label": "numbers.dry_spell_days",
+      "value": null,
+      "unit": "days",
+      "basis": "modelled",
+      "as_of": null,
+      "source": "https://power.larc.nasa.gov/api/temporal/daily/point",
+      "resolution": "0.5 degree cell",
+      "route": "api",
+      "fetched_at": null
+    },
+    {
+      "metric": "gdd10",
+      "label": "numbers.gdd10",
+      "value": null,
+      "unit": "C day",
+      "basis": "modelled",
+      "as_of": null,
+      "source": "https://power.larc.nasa.gov/api/temporal/daily/point",
+      "resolution": "0.5 degree cell",
+      "route": "api",
+      "fetched_at": null
+    },
+    {
+      "metric": "frost_days",
+      "label": "numbers.frost_days",
+      "value": null,
+      "unit": "days",
+      "basis": "modelled",
+      "as_of": null,
+      "source": "https://power.larc.nasa.gov/api/temporal/daily/point",
+      "resolution": "0.5 degree cell",
+      "route": "api",
+      "fetched_at": null
+    },
+    {
+      "metric": "tmin_min",
+      "label": "numbers.tmin_min",
+      "value": null,
+      "unit": "C",
+      "basis": "modelled",
+      "as_of": null,
+      "source": "https://power.larc.nasa.gov/api/temporal/daily/point",
+      "resolution": "0.5 degree cell",
+      "route": "api",
+      "fetched_at": null
+    },
+    {
+      "metric": "gwetroot_mean",
+      "label": "numbers.gwetroot_mean",
+      "value": null,
+      "unit": "unit 1",
+      "basis": "modelled",
+      "as_of": null,
+      "source": "https://power.larc.nasa.gov/api/temporal/daily/point",
+      "resolution": "0.5 degree cell",
+      "route": "api",
+      "fetched_at": null
+    },
+    {
+      "metric": "rain_day",
+      "label": "numbers.rain_day",
+      "value": null,
+      "unit": "mm",
+      "basis": "modelled",
+      "as_of": null,
+      "source": "https://power.larc.nasa.gov/api/temporal/daily/point",
+      "resolution": "0.5 degree cell",
+      "route": "api",
+      "fetched_at": null
+    },
+    {
+      "metric": "tmax_day",
+      "label": "numbers.tmax_day",
+      "value": null,
+      "unit": "C",
+      "basis": "modelled",
+      "as_of": null,
+      "source": "https://power.larc.nasa.gov/api/temporal/daily/point",
+      "resolution": "0.5 degree cell",
+      "route": "api",
+      "fetched_at": null
+    },
+    {
+      "metric": "tmin_day",
+      "label": "numbers.tmin_day",
+      "value": null,
+      "unit": "C",
+      "basis": "modelled",
+      "as_of": null,
+      "source": "https://power.larc.nasa.gov/api/temporal/daily/point",
+      "resolution": "0.5 degree cell",
+      "route": "api",
+      "fetched_at": null
+    },
+    {
+      "metric": "rain_median",
+      "label": "numbers.rain_median",
+      "value": null,
+      "unit": "mm",
+      "basis": "modelled",
+      "as_of": null,
+      "source": "https://power.larc.nasa.gov/api/temporal/daily/point",
+      "resolution": "0.5 degree cell",
+      "route": "api",
+      "fetched_at": null
+    },
+    {
+      "metric": "rain_min",
+      "label": "numbers.rain_min",
+      "value": null,
+      "unit": "mm",
+      "basis": "modelled",
+      "as_of": null,
+      "source": "https://power.larc.nasa.gov/api/temporal/daily/point",
+      "resolution": "0.5 degree cell",
+      "route": "api",
+      "fetched_at": null
+    },
+    {
+      "metric": "rain_max",
+      "label": "numbers.rain_max",
+      "value": null,
+      "unit": "mm",
+      "basis": "modelled",
+      "as_of": null,
+      "source": "https://power.larc.nasa.gov/api/temporal/daily/point",
+      "resolution": "0.5 degree cell",
+      "route": "api",
+      "fetched_at": null
+    },
+    {
+      "metric": "rain_rank",
+      "label": "numbers.rain_rank",
+      "value": null,
+      "unit": "years",
+      "basis": "modelled",
+      "as_of": null,
+      "source": "https://power.larc.nasa.gov/api/temporal/daily/point",
+      "resolution": "0.5 degree cell",
+      "route": "derived",
+      "fetched_at": null
+    },
+    {
+      "metric": "rain_percentile",
+      "label": "numbers.rain_percentile",
+      "value": null,
+      "unit": "percent",
+      "basis": "modelled",
+      "as_of": null,
+      "source": "https://power.larc.nasa.gov/api/temporal/daily/point",
+      "resolution": "0.5 degree cell",
+      "route": "derived",
+      "fetched_at": null
+    },
+    {
+      "metric": "hot_days",
+      "label": "numbers.hot_days",
+      "value": null,
+      "unit": "days",
+      "basis": "modelled",
+      "as_of": null,
+      "source": "https://power.larc.nasa.gov/api/temporal/daily/point",
+      "resolution": "0.5 degree cell",
+      "route": "api",
+      "fetched_at": null
+    },
+    {
+      "metric": "hot_days_median",
+      "label": "numbers.hot_days_median",
+      "value": null,
+      "unit": "days",
+      "basis": "modelled",
+      "as_of": null,
+      "source": "https://power.larc.nasa.gov/api/temporal/daily/point",
+      "resolution": "0.5 degree cell",
+      "route": "api",
+      "fetched_at": null
+    },
+    {
+      "metric": "wb_in",
+      "label": "numbers.wb_in",
+      "value": null,
+      "unit": "mm",
+      "basis": "modelled",
+      "as_of": null,
+      "source": "https://power.larc.nasa.gov/api/temporal/daily/point",
+      "resolution": "0.5 degree cell",
+      "route": "derived",
+      "fetched_at": null
+    },
+    {
+      "metric": "wb_out",
+      "label": "numbers.wb_out",
+      "value": null,
+      "unit": "mm",
+      "basis": "modelled",
+      "as_of": null,
+      "source": "https://power.larc.nasa.gov/api/temporal/daily/point",
+      "resolution": "0.5 degree cell",
+      "route": "derived",
+      "fetched_at": null
+    },
+    {
+      "metric": "wb_remaining",
+      "label": "numbers.wb_remaining",
+      "value": null,
+      "unit": "mm",
+      "basis": "modelled",
+      "as_of": null,
+      "source": "https://power.larc.nasa.gov/api/temporal/daily/point",
+      "resolution": "0.5 degree cell",
+      "route": "derived",
+      "fetched_at": null
+    },
+    {
+      "metric": "smap_surface",
+      "label": "numbers.smap_surface",
+      "value": null,
+      "unit": "percent of the served palette",
+      "basis": "retrieved",
+      "as_of": null,
+      "source": "NASA GIBS SMAP layers through the block 4 tile proxy",
+      "resolution": "9 km posting, 36 km radiometer footprint",
+      "route": "canvas",
+      "fetched_at": null
+    },
+    {
+      "metric": "smap_rootzone",
+      "label": "numbers.smap_rootzone",
+      "value": null,
+      "unit": "percent of the served palette",
+      "basis": "retrieved",
+      "as_of": null,
+      "source": "NASA GIBS SMAP layers through the block 4 tile proxy",
+      "resolution": "9 km",
+      "route": "canvas",
+      "fetched_at": null
+    },
+    {
+      "metric": "ndvi_scene_count",
+      "label": "numbers.ndvi_scene_count",
+      "value": null,
+      "unit": "scenes",
+      "basis": "retrieved",
+      "as_of": null,
+      "source": "Element84 Earth Search, collection sentinel-2-l2a, assets B04, B08 and SCL",
+      "resolution": "not applicable",
+      "route": "api",
+      "fetched_at": null
+    },
+    {
+      "metric": "ndvi_clear_count",
+      "label": "numbers.ndvi_clear_count",
+      "value": null,
+      "unit": "scenes",
+      "basis": "retrieved",
+      "as_of": null,
+      "source": "Element84 Earth Search, collection sentinel-2-l2a, assets B04, B08 and SCL",
+      "resolution": "not applicable",
+      "route": "api",
+      "fetched_at": null
+    },
+    {
+      "metric": "ndvi_mean",
+      "label": "numbers.ndvi_mean",
+      "value": null,
+      "unit": "unitless",
+      "basis": "retrieved",
+      "as_of": null,
+      "source": "Element84 Earth Search, collection sentinel-2-l2a, assets B04, B08 and SCL",
+      "resolution": "10 m",
+      "route": "cogs",
+      "fetched_at": null
+    },
+    {
+      "metric": "ndvi_valid_fraction",
+      "label": "numbers.ndvi_valid_fraction",
+      "value": null,
+      "unit": "fraction",
+      "basis": "retrieved",
+      "as_of": null,
+      "source": "Element84 Earth Search, collection sentinel-2-l2a, assets B04, B08 and SCL",
+      "resolution": "10 m",
+      "route": "cogs",
+      "fetched_at": null
+    },
+    {
+      "metric": "soil.clay.0_5",
+      "label": "numbers.clay",
+      "value": 225,
+      "unit": "g/kg",
+      "basis": "modelled",
+      "as_of": "2026-11-15",
+      "source": "https://rest.isric.org/soilgrids/v2.0/properties/query",
+      "resolution": "250 m static model",
+      "route": "api",
+      "fetched_at": "2026-11-15T03:00:00Z"
+    },
+    {
+      "metric": "soil.sand.0_5",
+      "label": "numbers.sand",
+      "value": 635,
+      "unit": "g/kg",
+      "basis": "modelled",
+      "as_of": "2026-11-15",
+      "source": "https://rest.isric.org/soilgrids/v2.0/properties/query",
+      "resolution": "250 m static model",
+      "route": "api",
+      "fetched_at": "2026-11-15T03:00:00Z"
+    },
+    {
+      "metric": "soil.ph.0_5",
+      "label": "numbers.ph",
+      "value": 5.0,
+      "unit": "pH",
+      "basis": "modelled",
+      "as_of": "2026-11-15",
+      "source": "https://rest.isric.org/soilgrids/v2.0/properties/query",
+      "resolution": "250 m static model",
+      "route": "api",
+      "fetched_at": "2026-11-15T03:00:00Z"
+    },
+    {
+      "metric": "soil.soc.0_5",
+      "label": "numbers.soc",
+      "value": 22.2,
+      "unit": "g/kg",
+      "basis": "modelled",
+      "as_of": "2026-11-15",
+      "source": "https://rest.isric.org/soilgrids/v2.0/properties/query",
+      "resolution": "250 m static model",
+      "route": "api",
+      "fetched_at": "2026-11-15T03:00:00Z"
+    },
+    {
+      "metric": "soil.clay.5_15",
+      "label": "numbers.clay",
+      "value": 223,
+      "unit": "g/kg",
+      "basis": "modelled",
+      "as_of": "2026-11-15",
+      "source": "https://rest.isric.org/soilgrids/v2.0/properties/query",
+      "resolution": "250 m static model",
+      "route": "api",
+      "fetched_at": "2026-11-15T03:00:00Z"
+    },
+    {
+      "metric": "soil.sand.5_15",
+      "label": "numbers.sand",
+      "value": 639,
+      "unit": "g/kg",
+      "basis": "modelled",
+      "as_of": "2026-11-15",
+      "source": "https://rest.isric.org/soilgrids/v2.0/properties/query",
+      "resolution": "250 m static model",
+      "route": "api",
+      "fetched_at": "2026-11-15T03:00:00Z"
+    },
+    {
+      "metric": "soil.ph.5_15",
+      "label": "numbers.ph",
+      "value": 5.1,
+      "unit": "pH",
+      "basis": "modelled",
+      "as_of": "2026-11-15",
+      "source": "https://rest.isric.org/soilgrids/v2.0/properties/query",
+      "resolution": "250 m static model",
+      "route": "api",
+      "fetched_at": "2026-11-15T03:00:00Z"
+    },
+    {
+      "metric": "soil.soc.5_15",
+      "label": "numbers.soc",
+      "value": 16.2,
+      "unit": "g/kg",
+      "basis": "modelled",
+      "as_of": "2026-11-15",
+      "source": "https://rest.isric.org/soilgrids/v2.0/properties/query",
+      "resolution": "250 m static model",
+      "route": "api",
+      "fetched_at": "2026-11-15T03:00:00Z"
+    },
+    {
+      "metric": "soil.clay.15_30",
+      "label": "numbers.clay",
+      "value": 265,
+      "unit": "g/kg",
+      "basis": "modelled",
+      "as_of": "2026-11-15",
+      "source": "https://rest.isric.org/soilgrids/v2.0/properties/query",
+      "resolution": "250 m static model",
+      "route": "api",
+      "fetched_at": "2026-11-15T03:00:00Z"
+    },
+    {
+      "metric": "soil.sand.15_30",
+      "label": "numbers.sand",
+      "value": 601,
+      "unit": "g/kg",
+      "basis": "modelled",
+      "as_of": "2026-11-15",
+      "source": "https://rest.isric.org/soilgrids/v2.0/properties/query",
+      "resolution": "250 m static model",
+      "route": "api",
+      "fetched_at": "2026-11-15T03:00:00Z"
+    },
+    {
+      "metric": "soil.ph.15_30",
+      "label": "numbers.ph",
+      "value": 5.1,
+      "unit": "pH",
+      "basis": "modelled",
+      "as_of": "2026-11-15",
+      "source": "https://rest.isric.org/soilgrids/v2.0/properties/query",
+      "resolution": "250 m static model",
+      "route": "api",
+      "fetched_at": "2026-11-15T03:00:00Z"
+    },
+    {
+      "metric": "soil.soc.15_30",
+      "label": "numbers.soc",
+      "value": 9.1,
+      "unit": "g/kg",
+      "basis": "modelled",
+      "as_of": "2026-11-15",
+      "source": "https://rest.isric.org/soilgrids/v2.0/properties/query",
+      "resolution": "250 m static model",
+      "route": "api",
+      "fetched_at": "2026-11-15T03:00:00Z"
+    },
+    {
+      "metric": "municipality_soy_ha",
+      "label": "numbers.municipality_soy_ha",
+      "value": null,
+      "unit": "ha",
+      "basis": "retrieved",
+      "as_of": null,
+      "source": "IBGE SIDRA table 1612, API v3, variable 109, category 2713",
+      "resolution": "the municipality",
+      "route": "api",
+      "fetched_at": null
+    },
+    {
+      "metric": "state_soy_ha",
+      "label": "numbers.state_soy_ha",
+      "value": null,
+      "unit": "ha",
+      "basis": "retrieved",
+      "as_of": null,
+      "source": "IBGE SIDRA table 1612, API v3, variable 109, category 2713",
+      "resolution": "the state",
+      "route": "api",
+      "fetched_at": null
+    },
+    {
+      "metric": "polygon_share",
+      "label": "numbers.polygon_share",
+      "value": null,
+      "unit": "percent",
+      "basis": "modelled",
+      "as_of": null,
+      "source": "IBGE SIDRA table 1612, API v3, variable 109, category 2713",
+      "resolution": "not applicable",
+      "route": "derived",
+      "fetched_at": null
+    }
+  ],
+  "gaps": [
+    {
+      "section": "climate",
+      "cause": "network unavailable (offline state)",
+      "source": "https://power.larc.nasa.gov/api/temporal/daily/point",
+      "status": "offline",
+      "date": "2026-11-12",
+      "remediation": ""
+    },
+    {
+      "section": "water_balance",
+      "cause": "network unavailable (offline state)",
+      "source": "https://power.larc.nasa.gov/api/temporal/daily/point",
+      "status": "offline",
+      "date": "2026-11-12",
+      "remediation": ""
+    },
+    {
+      "section": "smap",
+      "cause": "the SMAP palette ramp is not in this repository, so the palette position of the served tile cannot be read in wave 1; no day carries a value",
+      "source": "NASA GIBS SMAP layers through the block 4 tile proxy",
+      "status": "palette reader not built",
+      "date": "2026-11-12",
+      "remediation": "block 6 wave 2"
+    },
+    {
+      "section": "ndvi",
+      "cause": "search window unknown: the climate source is unavailable, so the 42 day window that bounds the search cannot be set",
+      "source": "Element84 Earth Search, collection sentinel-2-l2a, assets B04, B08 and SCL",
+      "status": "window unknown",
+      "date": "2026-11-12",
+      "remediation": ""
+    },
+    {
+      "section": "rotation",
+      "cause": "the polygon_mapbiomas sidecar is absent at data/polygons/polygon-mapbiomas.sqlite",
+      "source": "polygon-mapbiomas.sqlite, table polygon_mapbiomas (CO-B6-01)",
+      "status": "file absent",
+      "date": null,
+      "remediation": "CO-B6-01"
+    },
+    {
+      "section": "municipality",
+      "cause": "municipality code is unresolved for this field: the IBGE municipal join is not built, so the municipal row and the share abstain",
+      "source": "IBGE SIDRA table 1612, API v3, variable 109, category 2713",
+      "status": "unresolved",
+      "date": null,
+      "remediation": "CO-B6-06"
+    },
+    {
+      "section": "municipality",
+      "cause": "state code is unresolved for this field, so the state total does not print",
+      "source": "IBGE SIDRA table 1612, API v3, variable 109, category 2713",
+      "status": "unresolved",
+      "date": null,
+      "remediation": "CO-B6-06"
+    }
+  ]
+}

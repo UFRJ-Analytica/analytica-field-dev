@@ -1,0 +1,9 @@
+AC-11: the normals abstention names the input and its source and says the reason was not recorded
+field: mt-santa-carmem-01
+payload: src/test/numbers-recorded.json with the seven normals values set to null, climate.error null and no normals.error, and no climate gap row: the malformed POWER normals branch of backend/field_numbers.py before it carries an error
+written: 2026-11-15T06:14:27.804Z
+
+metric: rain_median
+row value: null
+rendered text: Normals not computed: the reason was not recorded in the payload or the gap register. Source: https://power.larc.nasa.gov/api/temporal/daily/point.
+gap row: no gap row for section climate

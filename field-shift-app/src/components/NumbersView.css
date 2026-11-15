@@ -125,6 +125,36 @@
   white-space: nowrap;
 }
 
+/*
+ * R-03 and AC-03: the Area fact carries three cells (the area value, its basis and the ring_area
+ * row), and the layout note allows a value to wrap but never to truncate. Its dd wraps, and the
+ * area value wraps with it, so at 360 the value prints in full on its own line and the ring cell
+ * takes the next one. The ellipsis rule above still guards the class, date and window facts.
+ */
+.numbers-header-fact-area dd {
+  flex-wrap: wrap;
+}
+
+.numbers-header-fact-area dd > span:first-child {
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+}
+
+/* R-07: the ring area is a second cell inside the Area fact, so R-03's four header values keep
+   their places at every width. */
+.numbers-header-ring {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  min-width: 0;
+}
+
+.numbers-header-ring-label {
+  color: #6b7a66;
+  font-size: 11px;
+}
+
 .numbers-body {
   flex: 0 0 auto;
   box-sizing: border-box;
@@ -158,6 +188,12 @@
 .numbers-cards .numbers-card:nth-child(5) { grid-column: 1 / span 4; }
 .numbers-cards .numbers-card:nth-child(6) { grid-column: 5 / span 4; }
 .numbers-cards .numbers-card:nth-child(7) { grid-column: 9 / span 4; }
+/* Block 6 F-13: the counter evidence card spans the whole grid at every width (Table E). */
+.numbers-cards .numbers-card:nth-child(8) { grid-column: 1 / -1; }
+.numbers-counter-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.numbers-counter-list li { display: grid; grid-template-columns: minmax(120px, 200px) minmax(0, 1fr); gap: 8px; }
+.numbers-counter-name { color: var(--fs-muted); }
+.numbers-counter-count { margin: 8px 0 0; color: var(--fs-muted); }
 
 .numbers-card h3,
 .numbers-provenance h3,

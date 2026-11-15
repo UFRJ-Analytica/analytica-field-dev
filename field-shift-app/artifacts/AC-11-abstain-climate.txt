@@ -1,0 +1,43 @@
+AC-11: the aggregate abstention names the Table A input and the source when the payload carries no aggregate object
+field: mt-santa-carmem-01
+payload: src/test/numbers-recorded.json with climate.aggregates = {}, climate.error null and no climate gap row: the hollow section a route sends before it records a cause
+written: 2026-11-15T06:32:46.136Z
+
+metric: rain_total
+row value: null
+rendered text: Not computed: the climate payload carries no aggregate over PRECTOTCORR: the reason was not recorded in the payload or the gap register. Source: https://power.larc.nasa.gov/api/temporal/daily/point.
+gap row: no gap row for section climate
+
+metric: gdd10
+row value: null
+rendered text: Not computed: the climate payload carries no aggregate over T2M_MAX and T2M_MIN: the reason was not recorded in the payload or the gap register. Source: https://power.larc.nasa.gov/api/temporal/daily/point.
+gap row: no gap row for section climate
+
+payload: artifacts/block6/numbers-offline-payload.json, the capture with POWER unreachable: climate error ConnectError, aggregates {}, and the climate gap row
+
+metric: rain_total
+row value: null
+rendered text: Not computed: the climate payload carries no aggregate over PRECTOTCORR: ConnectError. Source: https://power.larc.nasa.gov/api/temporal/daily/point.
+gap row: {"section":"climate","cause":"network unavailable (offline state)","source":"https://power.larc.nasa.gov/api/temporal/daily/point","status":"offline","date":"2026-11-12","remediation":""}
+
+metric: gdd10
+row value: null
+rendered text: Not computed: the climate payload carries no aggregate over T2M_MAX and T2M_MIN: ConnectError. Source: https://power.larc.nasa.gov/api/temporal/daily/point.
+gap row: {"section":"climate","cause":"network unavailable (offline state)","source":"https://power.larc.nasa.gov/api/temporal/daily/point","status":"offline","date":"2026-11-12","remediation":""}
+
+AC-11: the climate window abstention names the window, its source and the cause when the payload carries no window
+field: mt-santa-carmem-01
+payload: artifacts/block6/numbers-offline-payload.json, the capture with POWER unreachable: query.window and climate.window all null, climate.error ConnectError, and the climate gap row
+written: 2026-11-15T06:53:46.497Z
+
+metric: climate.window
+row value: null
+rendered text: Climate window not read: ConnectError. Source: https://power.larc.nasa.gov/api/temporal/daily/point.
+gap row: {"section":"climate","cause":"network unavailable (offline state)","source":"https://power.larc.nasa.gov/api/temporal/daily/point","status":"offline","date":"2026-11-12","remediation":""}
+
+payload: src/test/numbers-recorded.json with query.window and climate.window all null, climate.error null and no climate gap row: the fallback that has no recorded cause
+
+metric: climate.window
+row value: null
+rendered text: Climate window not read: the reason was not recorded in the payload or the gap register. Source: https://power.larc.nasa.gov/api/temporal/daily/point.
+gap row: no gap row for section climate

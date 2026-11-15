@@ -1,0 +1,9 @@
+AC-11: the SMAP card abstention names the input, its source and the cause
+field: mt-santa-carmem-01
+payload: src/test/numbers-recorded.json, the recorded response of POST /fields/mt-santa-carmem-01/numbers
+written: 2026-11-15T06:14:27.747Z
+
+metric: smap_surface
+row value: null
+rendered text: SMAP palette not read: the SMAP palette ramp is not in this repository, so the palette position of the served tile cannot be read in wave 1; no day carries a value. Source: NASA GIBS SMAP layers through the block 4 tile proxy.
+gap row: {"section":"smap","cause":"the SMAP palette ramp is not in this repository, so the palette position of the served tile cannot be read in wave 1; no day carries a value","source":"NASA GIBS SMAP layers through the block 4 tile proxy","status":"palette reader not built","date":"2026-11-12","remediation":"block 6 wave 2"}

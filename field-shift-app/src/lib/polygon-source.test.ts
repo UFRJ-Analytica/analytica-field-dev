@@ -8,6 +8,7 @@ import {
   POLYGON_OVERVIEW_SOURCE_ID,
   addPolygonLayers,
   polygonFailureFor,
+  mountedTiers,
   polygonMode,
   polygonStatusLines,
   pmtilesSourceUrl,
@@ -55,6 +56,12 @@ const modeUs = {
   overview_maxzoom: 5,
   interactive_minzoom: 8,
 }
+
+/** R-09: Brazil Mode A, both files present, so the Table B overview tier is mounted. */
+const modeBr = { region: 'br', mode: 'self-hosted', classProperty: 'mbmode24' }
+
+/** R-09: Brazil Mode B, the source-direct file, which carries no overview level (M-02). */
+const modeBrSourceDirect = { region: 'br', mode: 'source-direct', classProperty: 'mbmode24' }
 
 describe('hosting mode (R-09, AC-07)', () => {
   it('reads the mode once from the route and takes the United States bounds from the manifest', async () => {
@@ -205,7 +212,60 @@ describe('sources and layers (R-04, R-06, AC-02)', () => {
     const overviewFill = map.layers.find((layer) => layer.id === POLYGON_OVERVIEW_FILL_LAYER_ID)
     expect(fill).toMatchObject({ type: 'fill', source: 'trazo', minzoom: 6 })
     expect(fill).not.toHaveProperty('maxzoom')
-    expect(overviewFill).toMatchObject({ type: 'fill', source: 'trazo-overview', minzoom: 3, maxzoom: 5 })
+    expect(overviewFill).toMatchObject({ type: 'fill', source: 'trazo-overview', minzoom: 3, maxzoom: 6 })
+  })
+
+  /**
+   * AC-04: the overview has to draw at its own last zoom. A MapLibre layer draws while
+   * `minzoom <= z < maxzoom`, and the layer's `maxzoom` is exclusive, so `maxzoom` equal to the
+   * tier's last zoom stopped the overview one zoom short: measured on the running page, zero
+   * overview features at zoom 5 in the United States, and 0 at zoom 7 in Brazil.
+   */
+  it('draws the overview at its own last zoom, because a layer maxzoom is exclusive (AC-04)', async () => {
+    const { impl } = transport({
+      '/polygons/mode?region=us': { body: modeUs },
+      'us-38017.manifest.json': { body: manifest },
+    })
+    const usScene = await polygonMode(REGION_ADAPTERS.us, { fetch: impl, apiBase: '' })
+    const map = fakeMap()
+    addPolygonLayers(map, REGION_ADAPTERS.us, usScene, 'cdl2025')
+    // The drawn range of a layer: MapLibre draws at z when minzoom <= z < maxzoom.
+    const rangeOf = (id: string) => {
+      const layer = map.layers.find((entry) => entry.id === id)
+      return { minzoom: Number(layer?.minzoom), maxzoom: Number(layer?.maxzoom) }
+    }
+    const usOverview = rangeOf(POLYGON_OVERVIEW_FILL_LAYER_ID)
+    expect(usOverview.minzoom).toBe(3)
+    // The tier's last zoom is 5 (Table G, overview_maxzoom), so the layer must draw at 5.
+    expect(usOverview.minzoom <= 5 && 5 < usOverview.maxzoom).toBe(true)
+    // And it must stop where the detail begins, so no field is drawn by both tiers.
+    expect(usOverview.maxzoom).toBe(rangeOf(POLYGON_FILL_LAYER_ID).minzoom)
+
+    const brScene = await polygonMode(REGION_ADAPTERS.br, {
+      fetch: transport({ '/polygons/mode?region=br': { body: modeBr } }).impl,
+      apiBase: '',
+    })
+    const brMap = fakeMap()
+    addPolygonLayers(brMap, REGION_ADAPTERS.br, brScene, 'mbmode24')
+    const brRangeOf = (id: string) => {
+      const layer = brMap.layers.find((entry) => entry.id === id)
+      return { minzoom: Number(layer?.minzoom), maxzoom: Number(layer?.maxzoom) }
+    }
+    const brOverview = brRangeOf(POLYGON_OVERVIEW_FILL_LAYER_ID)
+    expect(brOverview.minzoom).toBe(5)
+    expect(brOverview.minzoom <= 7 && 7 < brOverview.maxzoom).toBe(true)
+    expect(brOverview.maxzoom).toBe(brRangeOf(POLYGON_FILL_LAYER_ID).minzoom)
+  })
+
+  it('keeps the overview source on the tier range, so MapLibre overzooms nothing above it (AC-04)', async () => {
+    const { impl } = transport({
+      '/polygons/mode?region=us': { body: modeUs },
+      'us-38017.manifest.json': { body: manifest },
+    })
+    const scene = await polygonMode(REGION_ADAPTERS.us, { fetch: impl, apiBase: '' })
+    const map = fakeMap()
+    addPolygonLayers(map, REGION_ADAPTERS.us, scene, 'cdl2025')
+    expect(map.sources.get(POLYGON_OVERVIEW_SOURCE_ID)).toMatchObject({ minzoom: 3, maxzoom: 5 })
   })
 
   it('puts the polygon layers above the style and below its symbols', async () => {
@@ -304,6 +364,54 @@ describe('status lines (R-07, R-12, AC-09)', () => {
     expect(lines.failure).toBeNull()
     expect(lines.zoomLine).toEqual({ lowest: 5 })
     expect(lines.selectLine).toEqual({ interactive: 10 })
+  })
+
+  /** AC-05, AC-09: Brazil Mode A mounts both tiers, so the line names the overview's 5. */
+  it('names zoom 5 in Brazil Mode A, where the overview file is mounted', async () => {
+    const { impl } = transport({ '/polygons/mode?region=br': { body: modeBr } })
+    const scene = await polygonMode(REGION_ADAPTERS.br, { fetch: impl, apiBase: '' })
+    expect(mountedTiers(scene)).toEqual({
+      detail: { minzoom: 8, maxzoom: 12 },
+      overview: { minzoom: 5, maxzoom: 7 },
+      interactiveMinzoom: 10,
+    })
+    for (const zoom of [4, 6, 7, 9, 10, 11]) {
+      expect(polygonStatusLines(scene, zoom).zoomLine).toEqual({ lowest: 5 })
+    }
+    expect(polygonStatusLines(scene, 6).selectLine).toEqual({ interactive: 10 })
+    expect(polygonStatusLines(scene, 10).selectLine).toBeNull()
+  })
+
+  /**
+   * AC-05, AC-09: Brazil Mode B mounts no overview tier, and the zoom line named 5 anyway while the
+   * lowest mounted tier was the detail at 8. The line reads the mounted tiers, never the Table B row.
+   */
+  it('names zoom 8 in Brazil Mode B, where only the detail tier is mounted', async () => {
+    const { impl } = transport({ '/polygons/mode?region=br': { body: modeBrSourceDirect } })
+    const scene = await polygonMode(REGION_ADAPTERS.br, { fetch: impl, apiBase: '' })
+    expect(scene.overviewUrl).toBeNull()
+    // The Table B overview numbers are still in the scene; they are not mounted.
+    expect(scene.tiers?.overview).toEqual({ minzoom: 5, maxzoom: 7 })
+    expect(mountedTiers(scene)?.overview).toBeNull()
+    for (const zoom of [6, 7, 9, 10, 11]) {
+      expect(polygonStatusLines(scene, zoom).zoomLine).toEqual({ lowest: 8 })
+    }
+    expect(polygonStatusLines(scene, 6).selectLine).toEqual({ interactive: 10 })
+    expect(polygonStatusLines(scene, 10).selectLine).toBeNull()
+    expect(polygonStatusLines(scene, 6).failure).toBeNull()
+  })
+
+  /** AC-05, AC-09: the no-tier state prints the failure line and neither R-12 line. */
+  it('prints no tier line at all when the region mounts no tier', () => {
+    const noTier = { regionId: 'br' as const, mode: 'unavailable' as const, classSource: null,
+      tiers: { detail: { minzoom: 8, maxzoom: 12 }, overview: null, interactiveMinzoom: 10 },
+      detailUrl: null, overviewUrl: null, failure: 'polygon.source_unavailable' as const }
+    expect(mountedTiers(noTier)).toBeNull()
+    expect(polygonStatusLines(noTier, 9)).toEqual({
+      failure: 'polygon.source_unavailable',
+      zoomLine: null,
+      selectLine: null,
+    })
   })
 })
 

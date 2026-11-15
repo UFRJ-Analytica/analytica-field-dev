@@ -1,0 +1,47 @@
+AC-38, the sixth labelled field of the rotation card, branch block7/field-record
+
+WHAT WAS WRONG. The back face printed five labelled fields, Why, Evidence, Benefit, Gap and Risk.
+`grep -rn "falsifier" src` returned nothing: no slot, no catalog key, no test. R-39 asks for a sixth,
+`Falsifier`, immediately after `Benefit`, carrying the five keys of the scenario's falsifier object
+and the current value of its metric with that value's own basis label and date.
+
+WHAT WAS BUILT.
+- src/lib/falsifier.ts: `Falsifier` (`metric`, `operator` of `<`, `<=`, `>`, `>=`, `threshold`,
+  `unit`, `text_key`), `falsifierOf` which refuses any object missing one of the five keys, a blank
+  key or an operator outside the four, `metricRowOf` which reads the payload's provenance row for the
+  metric, and `falsifierReading` which returns the value, the unit, the basis label and the `as_of`
+  date together or null. R-39's last clause is implemented there: a falsifier whose metric has no row
+  in the payload is not printed.
+- src/components/RotationFlipCard.tsx: the slot is the fourth of six, between `Benefit` and `Gap`.
+  It reads the falsifier from the scenario object it already receives, and the metric value from the
+  numbers payload of the same field and window that the store keeps (R-48), so the card gained no
+  prop and ScenarioCards.tsx is untouched (R-49).
+- src/strings/en.ts: `scenarios.falsifier` (`Falsifier`), `scenarios.falsifier_reading`
+  (`Current value {value} {unit} ({basis}, {as_of})`) and `scenarios.no_counter_evidence`
+  (`No counter evidence recorded`). `scenarios.falsifier.placeholder` is the slot's one placeholder
+  sentence until CO-B6-02 lands the nine real ones.
+
+THE SIX LABELS, IN ORDER, AS THE TEST READS THEM (vitest, RotationFlipCard.test.tsx, AC-38 group):
+  ['Why', 'Evidence', 'Benefit', 'Falsifier', 'Gap', 'Risk']
+
+THE FALSIFIER TEXT WITH ITS VALUE, BASIS AND DATE. Injected scenario, `current-sequence`, falsifier
+`{ metric: dry_spell_days, operator: '>', threshold: 10, unit: 'days',
+text_key: 'scenarios.falsifier.placeholder' }`, and the recorded payload
+src/test/numbers-recorded.json, whose provenance row is
+  {"metric":"dry_spell_days","value":7,"unit":"days","basis":"modelled","as_of":"2026-11-11", ...}
+The slot printed, and the test asserts each part:
+  The recommendation is refused when dry spell days exceed 10. Current value 7 days (modelled, 2026-11-11)
+
+THE FOUR CASES PINNED BY TESTS
+  1. six labels in the order above, falsifier after Benefit.
+  2. the sentence of the five keys, plus value 7, unit days, basis modelled, date 2026-11-11.
+  3. a falsifier whose metric is not in the payload prints the R-40 abstention and not the sentence.
+  4. a falsifier missing `text_key` is treated as absent, per R-39's "all five required".
+
+NOT VERIFIED. The nine real falsifier sentences are CO-B6-02 and have not landed: the only catalog
+key that states a rule today is `scenarios.falsifier.placeholder`, and every fixture scenario in the
+tree carries no falsifier object, so in the running app every card prints `No counter evidence
+recorded`. AC-38's verdict on the real content stays not verified with AC-39's completeness clause.
+
+RUN. npx vitest run src/components/RotationFlipCard.test.tsx src/lib/falsifier.test.ts
+  Tests 28 passed (15 + 13), including the four AC-38 cases and the R-39 unit cases.

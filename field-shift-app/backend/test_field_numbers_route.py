@@ -6,6 +6,7 @@ The live smoke test is skipped unless BLOCK6_LIVE=1 is set. Rule ids point at th
 
 from __future__ import annotations
 
+import importlib.util
 import json
 import os
 import re
@@ -14,6 +15,7 @@ import unittest
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from types import ModuleType
 from unittest.mock import patch
 
 from fastapi.testclient import TestClient
@@ -193,13 +195,15 @@ class RouteSectionTests(RouteCase):
         self.assertEqual(rows["soil.clay.0_5"]["basis"], "modelled")
         self.assertEqual(rows["soil.clay.0_5"]["resolution"], "250 m static model")
 
-    def test_r37_r38_municipal_abstains_with_the_named_reason_and_no_inferred_code(self) -> None:
+    def test_r37_r38_the_municipal_row_abstains_and_the_state_row_prints(self) -> None:
         payload = self.ok_payload()
         municipal = payload["sections"]["municipality"]
         self.assertEqual(municipal["state"], "abstained")
+        self.assertIsNone(municipal["municipality"], "no municipality code is inferred from a name")
+        self.assertEqual(municipal["state_row"]["code"], "51")
         rows = {row["metric"]: row for row in payload["provenance"]}
         self.assertIsNone(rows["municipality_soy_ha"]["value"])
-        self.assertIsNone(rows["state_soy_ha"]["value"])
+        self.assertEqual(rows["state_soy_ha"]["value"], 12788611)
         causes = " ".join(g["cause"] + " " + g["remediation"] for g in payload["gaps"] if g["section"] == "municipality")
         self.assertIn("CO-B6-06", causes)
 
@@ -304,9 +308,11 @@ class RouteSourceHostTests(RouteCase):
         self.ok_payload()
         hosts = self.transport.hosts()
         self.assertFalse(any("google" in host or "mapbiomas" in host for host in hosts), hosts)
+        # The state row of R-37 reads IBGE SIDRA, so its host is part of the documented set now.
         self.assertEqual(
             hosts,
-            {"power.larc.nasa.gov", "rest.isric.org", "earth-search.aws.element84.com"},
+            {"power.larc.nasa.gov", "rest.isric.org", "earth-search.aws.element84.com",
+             "servicodados.ibge.gov.br"},
         )
 
 
@@ -342,13 +348,90 @@ class RoutePartialFailureTests(RouteCase):
         response = self.post()
         self.assertEqual(response.status_code, 200)
         payload = response.json()
-        for name in ("climate", "water_balance", "ndvi", "soil"):
+        # R-48: every section whose source is the network answers `unavailable`, SIDRA included.
+        for name in ("climate", "water_balance", "ndvi", "soil", "municipality"):
             self.assertEqual(payload["sections"][name]["state"], "unavailable", name)
-        self.assertEqual(payload["sections"]["municipality"]["state"], "abstained")
-        for name in ("climate", "water_balance", "soil"):
+        for name in ("climate", "water_balance", "soil", "municipality"):
             self.assertTrue(any(g["section"] == name for g in payload["gaps"]), name)
         network_gaps = [g for g in payload["gaps"] if "network" in g["cause"] or "offline" in g["cause"]]
         self.assertGreaterEqual(len(network_gaps), 3)
+
+
+class RouteMalformedNormalsTests(RouteCase):
+    """AC-16 and R-20: a malformed normals response is readable from the normals payload itself.
+
+    t_c2709ec2: the malformed branch used to record the cause only in the gap register, while the
+    SourceFailure branch set `normals.error`. Both branches of the same source now agree.
+    """
+
+    def test_ac16_malformed_normals_sets_the_error_and_keeps_its_gap_row(self) -> None:
+        # Only the normals request (1991 to 2025) is answered without the parameter table: the daily
+        # climate request must keep succeeding, or the section returns before `_normals` runs.
+        recorded = self.transport._power
+
+        def power(url: str) -> dict:
+            if "start=19910101" in url:
+                return {"header": {"fill_value": -999.0}, "properties": {}}
+            return recorded(url)
+
+        with patch.object(self.transport, "_power", side_effect=power):
+            response = self.post()
+        self.assertEqual(response.status_code, 200, response.text)
+        payload = response.json()
+        normals = payload["sections"]["climate"]["normals"]
+        self.assertEqual(normals["error"], "malformed POWER normals response")
+        self.assertEqual(normals["of_years"], 0)
+        self.assertEqual(normals["excluded_years"], [])
+        # The same three keys the SourceFailure branch returns: a failure never carries metric keys.
+        self.assertEqual(set(normals), {"of_years", "excluded_years", "error"})
+        rows = {row["metric"]: row for row in payload["provenance"]}
+        self.assertIsNone(rows["rain_median"]["value"])
+        gaps = [g for g in payload["gaps"]
+                if g["section"] == "climate" and g["cause"] == "malformed POWER normals response"]
+        self.assertEqual(len(gaps), 1)
+        self.assertEqual(gaps[0]["status"], "malformed")
+        self.assertEqual(payload["sections"]["climate"]["window"]["days"], 42)  # the daily read still landed
+
+
+class RouteNormalsFailureAbstainTests(RouteCase):
+    """R-19 and R-20: a failed normals payload is never a 500, even when every aggregate abstains.
+
+    The unguarded read predates block 6 wave 1: `_climate` read `normals["rain_median"]` only when all
+    six aggregates were None, and the two `_normals` failure branches carry the three keys `of_years`,
+    `excluded_years` and `error` and no metric key, so that read raised `KeyError` inside the route.
+    A mostly fill POWER daily response (one valid `PRECTOTCORR` day, so the 42 day window still
+    resolves) together with a malformed normals response is the shape that reaches it.
+    """
+
+    def test_a_malformed_normals_payload_with_every_aggregate_abstaining_answers_200(self) -> None:
+        recorded = self.transport._power
+
+        def power(url: str) -> dict:
+            if "start=19910101" in url:  # the normals request (1991 to 2025)
+                return {"header": {"fill_value": -999.0}, "properties": {}}
+            # The daily climate request: fill on every day of every parameter, then one valid rain day.
+            payload = recorded(url)
+            params = payload["properties"]["parameter"]
+            rain_days = sorted(params.get("PRECTOTCORR", {}))
+            for series in params.values():
+                for key in list(series):
+                    series[key] = -999.0
+            params["PRECTOTCORR"][rain_days[-1]] = 3.0
+            return payload
+
+        with patch.object(self.transport, "_power", side_effect=power):
+            response = self.post()
+        self.assertEqual(response.status_code, 200, response.text)
+        climate = response.json()["sections"]["climate"]
+        self.assertEqual(climate["state"], "abstained")
+        # The run must reach the failed normals read, not return early on a missing window.
+        self.assertIsNotNone(climate["window"])
+        self.assertEqual(climate["window"]["valid_days"], 1)
+        self.assertEqual(len(climate["aggregates"]), 6)
+        for name, item in climate["aggregates"].items():
+            self.assertIsNone(item["value"], name)
+        self.assertEqual(climate["normals"]["error"], "malformed POWER normals response")
+        self.assertEqual(climate["normals"]["of_years"], 0)
 
 
 class RouteCacheTests(RouteCase):
@@ -383,6 +466,39 @@ class RouteCacheTests(RouteCase):
         self.clock["now"] = FROZEN_NOW + timedelta(minutes=5)
         payload = self.ok_payload()
         self.assertEqual(payload["sections"]["climate"]["fetched_at"], "2026-11-15T03:05:00Z")
+
+
+APP_ROOT = Path(__file__).resolve().parents[1]
+RECORDER = APP_ROOT / "scripts" / "record_numbers_fixture.py"
+
+
+def _load_recorder() -> ModuleType:
+    """Load the recorder by path: it is a command, not a backend module."""
+    spec = importlib.util.spec_from_file_location("record_numbers_fixture", RECORDER)
+    if spec is None or spec.loader is None:  # pragma: no cover - a missing script is the failure itself
+        raise FileNotFoundError(RECORDER)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+class RecordedFixtureTests(unittest.TestCase):
+    """Block 6 contract repair: the committed frontend fixture is a tested claim about the backend.
+
+    `scripts/record_numbers_fixture.py --check` catches a payload the committed fixture no longer
+    matches, but nothing in the repository ran it, and the route test read only provenance rows.
+    A regression in the soil depth entry (`label`, the Table A token as `depth`, and the Table E
+    keys) therefore kept every suite green while the app blanked (defect D1 of the repair). This
+    test runs the same recorder over the same frozen clock and compares the bytes the frontend
+    renders, so the fixture cannot drift from the producer silently.
+    """
+
+    def test_the_committed_frontend_fixture_is_the_payload_the_backend_produces(self) -> None:
+        recorder = _load_recorder()
+        produced = (json.dumps(recorder.record(), indent=2, ensure_ascii=False) + "\n").encode("utf-8")
+        committed = recorder.FIXTURE.read_bytes()
+        if produced != committed:
+            self.fail(f"MISMATCH: {recorder.FIXTURE} is not the payload the backend produces")
 
 
 class RouteLiveSmokeTests(unittest.TestCase):

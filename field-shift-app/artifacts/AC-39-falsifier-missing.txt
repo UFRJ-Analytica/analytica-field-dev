@@ -1,0 +1,43 @@
+AC-39, the falsifier slot of a scenario without counter evidence, branch block7/field-record
+
+WHAT WAS MISSING. `No counter evidence recorded` existed in no catalog key and no component, and no
+completeness counter existed anywhere. R-40 asks for both: the slot prints that text, the surface's
+gap register carries the scenario id and the field id, and no threshold and no other scenario's
+falsifier prints.
+
+WHAT WAS BUILT.
+- The same slot as AC-38: a scenario with no falsifier, or with one that misses a key or whose metric
+  the payload does not hold, prints `No counter evidence recorded` in the falsifier slot. The scenario
+  stays on the card and the other five facts print unchanged.
+- src/lib/falsifier.ts `falsifierGaps(scenarios, fieldId, date)` returns one gap row per scenario
+  without a falsifier, carrying both ids:
+    section counter_evidence, cause `scenario <id> of field <field id> carries no falsifier`,
+    source CO-B6-02, status missing, remediation CO-B6-02.
+  The surface merges those rows into the gap register it already prints, after the payload's own gaps.
+- src/components/NumbersView.tsx `CounterEvidenceCard`, rendered as the eighth card of the grid
+  (columns 1 to 12 at 1440, 1 to 6 at 780, full width at 360, per Table E of the spec), prints one
+  line per scenario, the falsifier text or the abstention, and the completeness line. For a polygon
+  with no fixture scenario it prints the empty text naming that a polygon has no rotation scenario.
+- src/lib/falsifier.ts `falsifierCompleteness` reports `{ total, withFalsifier, missing, status }`,
+  where status is `passed` only when every scenario on screen carries a falsifier and `not verified`
+  otherwise.
+
+THE SLOT TEXT AND THE GAP, AS THE TESTS READ THEM (vitest, NumbersView.counter.test.tsx)
+  slot:      No counter evidence recorded
+  gap row:   counter_evidence | scenario soy-cotton of field mt-santa-carmem-01 carries no falsifier |
+             CO-B6-02 | missing | 2026-11-12 | CO-B6-02
+  threshold: absent from the card, asserted with `not.toContain('exceed 10')`
+  scenario:  still on the card, its name printed
+
+THE COMPLETENESS COUNT, WITH ITS STATUS
+  two scenarios, one with a falsifier:  "1 of 2 scenarios carry a falsifier; not verified"
+  one scenario with a falsifier:        "1 of 1 scenarios carry a falsifier; passed"
+  no scenario (a polygon):              the empty text, and `data-counter-status="not verified"`
+  The count is measured from the scenarios on screen, never written down as nine.
+
+STATUS OF THE CONTENT. CO-B6-02 has not landed: none of the nine fixture scenarios in the tree
+carries a `falsifier` object, so the count in the running app is `0 of 9 ... not verified`, and
+AC-39's completeness clause reports NOT VERIFIED, which is the state revision 2 records for it.
+
+RUN. npx vitest run src/components/NumbersView.counter.test.tsx src/lib/falsifier.test.ts
+  Tests 18 passed (5 + 13).

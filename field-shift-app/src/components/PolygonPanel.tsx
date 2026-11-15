@@ -101,10 +101,10 @@ export function PolygonPanel() {
       {legendRows.length > 0 && (
         <ul aria-label={t('polygon.legend_label')} className="polygon-legend">
           {legendRows.map((row) => (
-            <li className="polygon-legend-row" key={row.classId ?? 'unmapped'}>
+            <li className="polygon-legend-row" key={row.nameKey ?? row.classId}>
               <span aria-hidden="true" className="polygon-legend-swatch" style={{ background: row.hex }} />
               {/* R-44: class names are data values of the class tables, not catalog text. */}
-              <span data-dynamic-content>{row.nameKey ? t(row.nameKey) : row.name}</span>
+              <span data-dynamic-content>{row.nameKey ? t(row.nameKey, row.params) : row.name}</span>
             </li>
           ))}
         </ul>

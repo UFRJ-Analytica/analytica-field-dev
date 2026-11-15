@@ -1,0 +1,11 @@
+npm notice run field-shift-app@0.0.0 npx
+npm notice run 'vitest' run src/components/NumbersView.test.tsx src/components/NumbersView.contract.test.tsx
+
+ RUN  v5.1.0 /run/media/carloshnp/D/Programming/afd-wt-t_e60dd62e/field-shift-app
+
+
+ Test Files  2 passed (2)
+      Tests  40 passed (40)
+   Start at  03:16:06
+   Duration  1.62s (tests 60%, environment 27%, setup 5%, transform 4%, import 4%)
+

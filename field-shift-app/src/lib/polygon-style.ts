@@ -110,6 +110,18 @@ export function paintedClassYear(region: RegionAdapter, date: string, classSourc
 }
 
 /**
+ * R-21, R-27, R-28 and R-37: the one rule that picks the `No CDL class for {Y}` string over
+ * `class not mapped`. A United States null or absent class has no class for the year, so it gets
+ * the year text, with the painted year. Every other unmapped value (a United States 0, a nonzero
+ * code the table does not hold, and every Brazil value) is a gap in our table and returns null,
+ * which keeps `class not mapped`. The tooltip, the fields chip and the legend all call this.
+ */
+export function noCdlYearOf(region: RegionAdapter, classValue: number | null, date: string): number | null {
+  if (region.id !== 'us' || classValue !== null) return null
+  return paintedClassYear(region, date)
+}
+
+/**
  * R-13 and R-18: the property the paint and the readout read. The United States uses
  * `cdl{Y}` of the clamped year, so one paint expression reads one property; Brazil uses the
  * one class property `/polygons/mode` reports for the load.
