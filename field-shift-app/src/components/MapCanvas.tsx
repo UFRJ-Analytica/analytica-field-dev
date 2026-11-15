@@ -680,6 +680,9 @@ export function MapCanvas({ fields, selectedField, onTileChange, children }: Map
   useEffect(() => {
     const map = mapRef.current
     if (!mapReady || !map) return
+    // The one press the layer scoped handler has already spoken for. A fresh press carries a fresh
+    // `originalEvent`, so a stale value can never swallow a later empty click.
+    const handledPressRef: { current: Event | null } = { current: null }
     type PolygonFeature = { id?: string | number; properties?: Record<string, unknown> | null }
     type PolygonEvent = MapMouseEvent & { features?: PolygonFeature[] }
 
@@ -746,6 +749,9 @@ export function MapCanvas({ fields, selectedField, onTileChange, children }: Map
       // Block 7 revision 10 R-63: while the boundary drawing mode takes the pointer events, a press
       // on the map adds a vertex and never selects the polygon under it.
       if (usePanelStore.getState().draft !== null) return
+      // Block 5.5 W6: this listener only runs when a fill layer feature is under the press, so it
+      // tells the map level handler that this press is spoken for, whatever `currentFeature` decides.
+      handledPressRef.current = event.originalEvent ?? null
       const found = currentFeature(event)
       if (!found) return
       // R-22: the map handler runs the command and never calls the store action itself.
@@ -753,29 +759,30 @@ export function MapCanvas({ fields, selectedField, onTileChange, children }: Map
     }
 
     /**
-     * Block 5.5, U5 and B8: a press on the map that lands on no polygon clears the selection. The
-     * layer scoped handler above only runs when the press hits the fill layer, so a press on empty
-     * map, on the basemap or on a label never deselected anything.
+     * Block 5.5, U4, U5 and W6. The two handlers share one fact instead of each running its own hit
+     * test: the layer scoped `handleClick` runs only when a feature of the fill layer is under the
+     * press, so "the layer handler ran" IS the hit test. It records the press it handled and the map
+     * level handler returns at once for that same press.
      *
-     * The hit test asks the map at the pressed point and never reads `event.features`: MapLibre sets
-     * that field only for a layer scoped listener and deletes it the moment that listener returns
-     * (maplibre-gl `map.ts` assigns `e.features` before the call and runs `delete e.features` after
-     * it). The layer scoped `handleClick` above runs first and writes the selection, so on the same
-     * event this handler used to see a selection with `event.features` already gone, and cleared the
-     * selection it had just been given in the same tick.
+     * Neither handler may read `event.features`: MapLibre sets that field only for a layer scoped
+     * listener and deletes it the moment that listener returns, so the map level handler never sees
+     * it. A `queryRenderedFeatures(event.point, ...)` in this handler was tried and still cleared a
+     * press that did select, which is why the shared press is used rather than a second query.
      */
     const handleMapClick = (event: PolygonEvent) => {
+      const original = event.originalEvent ?? null
+      if (original !== null && original === handledPressRef.current) {
+        handledPressRef.current = null
+        return
+      }
       const store = useMapStore.getState()
+      // R-63: while the drawing mode takes the pointer events, a press adds a vertex.
       if (usePanelStore.getState().draft !== null) {
         usePanelStore.getState().addVertex([event.lngLat.lng, event.lngLat.lat])
         return
       }
       if (store.selectedPolygonId === null) return
-      // A missing layer cannot answer a query and `queryRenderedFeatures` throws on an unknown
-      // layer id, so the map is asked only once the fill layer is mounted.
-      if (!map.getLayer(POLYGON_FILL_LAYER_ID)) return
-      const hit = map.queryRenderedFeatures(event.point, { layers: [POLYGON_FILL_LAYER_ID] })
-      if (hit.length === 0) store.clearPolygonSelection()
+      store.clearPolygonSelection()
     }
 
     map.on('mousemove', POLYGON_FILL_LAYER_ID, handleMove)
