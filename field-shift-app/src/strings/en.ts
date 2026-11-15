@@ -95,7 +95,7 @@ export const en = {
   'scenarios.fixture.rotation-b.benefit': 'Additional outlet',
   'scenarios.fixture.rotation-b.gap': 'Credit terms unknown',
   'scenarios.fixture.rotation-b.risk': 'Higher input demand',
-  'evidence.supporting_data': 'Supporting data',
+  'evidence.supporting_data': 'Data Info',
   'evidence.title': 'Evidence',
   'evidence.loading': 'Loading evidence',
   'evidence.no_evidence_available': 'No evidence available',
@@ -259,11 +259,11 @@ export const en = {
   'polygon.provenance.mbmode': 'Trazo3 mbMode, 2024, collection not verified, modelled',
   'polygon.provenance.collection11': 'MapBiomas Collection 11, 2025, modelled',
   'polygon.fields_chip': 'Selected polygon: {name}',
-  // Block 6: the Field numbers surface. Every visible string and accessible name of the
+  // Block 6: the Field Data panel. Every visible string and accessible name of the
   // surface is here (R-11). The labels of Table A are catalog keys under `numbers.`; the unit
   // symbols and the class names are data values of Tables A and D and are not catalogued.
-  'numbers.open': 'Field numbers',
-  'numbers.region': 'Field numbers',
+  'numbers.open': 'Field Data',
+  'numbers.region': 'Field Data',
   'numbers.back': 'Back to map',
   'numbers.no_field': 'No field selected',
   'numbers.header.class': 'Class',

@@ -6,7 +6,6 @@ import { EvidencePanel, type EvidenceRow } from '@/components/EvidencePanel'
 import { TimelineDock } from '@/components/TimelineDock'
 import { AbstentionNotice } from '@/components/AbstentionNotice'
 import { FieldsPanel } from '@/components/FieldsPanel'
-import { AgentBar, CommandToggle, useCommandToggle } from '@/components/CommandToggle'
 import { PolygonPanel } from '@/components/PolygonPanel'
 import { PanelHost, type PanelSpec } from '@/components/PanelHost'
 import { PANEL_TOGGLE_ATTR, usePanelStore, type PanelId } from '@/lib/panel-store'
@@ -14,17 +13,8 @@ import { RotationToggle } from '@/components/RotationToggle'
 import { SUPPORTING_DATA_PANEL_ID, SupportingDataToggle, useSupportingDataToggle } from '@/components/SupportingDataToggle'
 import { NumbersToggle } from '@/components/NumbersToggle'
 import { NumbersView } from '@/components/NumbersView'
-import { DecisionToggle } from '@/components/DecisionToggle'
-import { FieldRecordToggle } from '@/components/FieldRecordToggle'
-import { DecisionView, type CalendarTarget } from '@/components/DecisionView'
-import { FieldRecordView } from '@/components/FieldRecordView'
-import snapshotJson from '../artifacts/zarc-mt-snapshot.json'
-import usWindowsJson from '../artifacts/us-windows-cass-nd.json'
 import { chosenDateOf, useMapStore, type FieldSummary } from '@/lib/map-store'
-import { heldSeasonsOf, type SeasonlessPayload, type ZarcWindowRow } from '@/lib/planting-calendar'
-import { loadFields, loadProducer, type RegisteredField } from '@/lib/producer-store'
-import { ringCentroid } from '@/lib/field-ring'
-import { parseFieldLocation } from '@/lib/timeline'
+import { loadFields, loadProducer } from '@/lib/producer-store'
 import { useLayers } from '@/lib/use-layers'
 import { seasonForDate } from '@/lib/timeline'
 import {
@@ -97,7 +87,6 @@ function App() {
   const polygonRaw = useMapStore((state) => state.polygonRaw)
   const polygonDate = useMapStore(chosenDateOf)
   const panelOpen = usePanelStore((state) => state.open)
-  const command = useCommandToggle()
   const supportingData = useSupportingDataToggle()
   const [fields, setFields] = useState<FieldSummary[]>([])
   const [mapTile, setMapTile] = useState<{ z: number; x: number; y: number } | null>(null)
@@ -113,9 +102,6 @@ function App() {
   const [isLoadingScenarios, setIsLoadingScenarios] = useState(false)
   const noticeRef = useRef<HTMLDivElement | null>(null)
   const [noticeHeight, setNoticeHeight] = useState(0)
-  // R-40: which right edge panel was opened last. The transition into 360 keeps it
-  // and closes the other; leaving 360 never reopens anything (R-35).
-  const lastRightPanelRef = useRef<'command' | 'supporting' | null>(null)
 
   // R-40, R-51, R-52: the two block 4 toggle states. Each takes the default of the width
   // the app loads at, once, and is never re-derived: a resize keeps the value the user's
@@ -170,7 +156,6 @@ function App() {
   }, [panelOpen])
 
   const registeredFields = useMapStore((state) => state.registeredFields)
-  const producerData = useMapStore((state) => state.producerData)
 
   // R-52, R-53 and R-54: the two keys are read once when the app loads and again after an explicit
   // action on the `Field record` surface. Nothing is written here.
@@ -380,83 +365,17 @@ function App() {
     setTimelineExpanded((current) => !current)
   }, [])
 
-  const handleToggleCommand = useCallback(() => {
-    const willOpen = !command.isOpen
-    if (isNarrowViewport() && willOpen) supportingData.close()
-    if (willOpen) lastRightPanelRef.current = 'command'
-    command.toggle()
-  }, [command, supportingData])
-
   const handleToggleSupportingData = useCallback(() => {
-    const willOpen = !supportingData.isOpen
-    if (isNarrowViewport() && willOpen) command.close()
-    if (willOpen) lastRightPanelRef.current = 'supporting'
     supportingData.toggle()
-  }, [command, supportingData])
-
-  // R-40: the one resize transition that changes a toggle state. When the viewport
-  // becomes 360 while both panels are open, the panel opened last stays and the older
-  // one closes. Both closes are programmatic, so neither pulls focus (the command
-  // form's close skips its focus restore), and focus stays where it was.
-  useEffect(() => {
-    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return
-    const query = window.matchMedia(NARROW_QUERY)
-    const handleChange = (event: MediaQueryListEvent) => {
-      if (!event.matches || !command.isOpen || !supportingData.isOpen) return
-      if (lastRightPanelRef.current === 'supporting') command.close()
-      else supportingData.close()
-    }
-    query.addEventListener('change', handleChange)
-    return () => query.removeEventListener('change', handleChange)
-  }, [command.isOpen, supportingData.isOpen, command.close, supportingData.close])
-
-  // Block 7, R-28 to R-34 and R-41: the data the two surfaces read. The window rows are the artifact
-  // block 4's band already bundles (TimelineDock imports the same file), so this block adds no
-  // request and no reader of its own; the calendar groups the rows of the field's municipality and
-  // season, and the seasonless payload is the recorded United States source of AC-57.
-  const windowRows = snapshotJson.rows as unknown as ZarcWindowRow[]
-  const heldBySeason = useMemo(() => heldSeasonsOf(windowRows), [windowRows])
-  const selectedRegistered: RegisteredField | null = registeredFields.find((field) => field.id === selectedFieldId) ?? null
-  const calendarFieldName = selectedRegistered?.name ?? selectedField?.name ?? null
-  const calendarPlace = selectedRegistered === null ? parseFieldLocation(selectedField?.location ?? null) : null
-  const calendarSeasonless = regionId === 'us' ? (usWindowsJson as unknown as SeasonlessPayload) : null
-  const calendarTarget: CalendarTarget | null = useMemo(() => {
-    if (selectedRegistered !== null) {
-      return {
-        fieldId: selectedRegistered.id,
-        ring: selectedRegistered.ring,
-        centroid: ringCentroid(selectedRegistered.ring),
-        areaHa: selectedRegistered.area_ha,
-      }
-    }
-    if (selectedField !== null) {
-      return {
-        fieldId: selectedField.id,
-        ring: selectedField.boundary.coordinates[0] as [number, number][],
-        centroid: selectedField.center,
-        areaHa: null,
-      }
-    }
-    if (selectedPolygonId !== null) {
-      return null
-    }
-    return null
-  }, [selectedRegistered, selectedField, selectedPolygonId])
-  const selectedHistory = selectedFieldId === null ? [] : (producerData[selectedFieldId]?.history ?? [])
-  const selectedFieldName = calendarFieldName
-
-  const handleFieldDeleted = useCallback((fieldId: string) => {
-    const store = useMapStore.getState()
-    if (store.selectedFieldId === fieldId) useMapStore.setState({ selectedFieldId: null })
-  }, [])
+  }, [supportingData])
 
   // Block 5.5, B5: `Rotation outlook` and `Field numbers` are disabled while nothing is selected,
   // with the reason in their accessible name. A fixture field is a selection too (block 6 R-03).
   const hasSelection = selectedPolygonId !== null || selectedFieldId !== null
 
   /**
-   * Block 5.5, W2 and the plan's R3: the four panels are data. A fifth panel is one more entry
-   * here, and `PanelHost` renders whichever one is open without a branch of its own.
+   * Block 5.5, W2 and the plan's R3: the panels are data. A later panel is one more entry here, and
+   * `PanelHost` renders whichever one is open without a branch of its own.
    */
   const panelSpecs: PanelSpec[] = [
     {
@@ -501,43 +420,6 @@ function App() {
       needsSelection: true,
       content: hasSelection ? <NumbersView scenarios={scenarios} selectedField={selectedField} /> : null,
     },
-    {
-      id: 'decision',
-      labelKey: 'calendar.open',
-      needsSelection: false,
-      content: (
-        <DecisionView
-          chosenDate={chosenDate}
-          fieldName={calendarFieldName}
-          heldSeasons={heldBySeason}
-          history={selectedHistory}
-          numbersTarget={calendarTarget}
-          place={calendarPlace}
-          seasonless={calendarSeasonless}
-          windowRows={calendarSeasonless === null ? windowRows : null}
-        />
-      ),
-    },
-    {
-      id: 'record',
-      labelKey: 'record.open',
-      needsSelection: false,
-      content: (
-        <FieldRecordView
-          chosenDate={chosenDate}
-          heldSeasons={heldBySeason}
-          onChanged={refreshProducer}
-          onFieldDeleted={handleFieldDeleted}
-          onSelectField={handleSelectField}
-          place={calendarPlace}
-          regionId={regionId}
-          rotationRows={[]}
-          selectedFieldId={selectedFieldId}
-          selectedFieldName={selectedFieldName}
-          windowRows={calendarSeasonless === null ? windowRows : null}
-        />
-      ),
-    },
   ]
 
   // Block 5.5, B1: the map screen is never hidden. The shell carries no state class for a panel,
@@ -578,15 +460,12 @@ function App() {
         <div className="overlay-interactive topbar-meta">
           <span className="top-chip workspace-label">{t('map.field_intelligence')}</span>
           <span className="top-chip profile-avatar" aria-label={t('map.grower_profile')}>GM</span>
-          <CommandToggle isOpen={command.isOpen} buttonRef={command.buttonRef} onToggle={handleToggleCommand} />
           <SupportingDataToggle isOpen={supportingData.isOpen} onToggle={handleToggleSupportingData} />
           {/* Block 5.5, W3 and block 7 revision 10 R-08: the four buttons in the fixed order
               `Rotation outlook`, `Field numbers`, `Planting calendar`, `Field record`, to the
               right of `Supporting data`, which block 4 R-41 freezes as the anchor. */}
           <RotationToggle hasSelection={hasSelection} />
           <NumbersToggle hasSelection={hasSelection} />
-          <DecisionToggle />
-          <FieldRecordToggle />
         </div>
       </div>
 
@@ -648,18 +527,9 @@ function App() {
         </div>
       </div>
 
-      {(command.isOpen || supportingData.isOpen) && (
+      {supportingData.isOpen && (
         <div className="overlay anchor-right-column">
           <div className="right-column-stack">
-            {command.isOpen && (
-              <div className="overlay-interactive panel-surface agent-anchor layer-agent" style={{ zIndex: ZOrder.agentBar }}>
-                <AgentBar
-                  draft={command.draft}
-                  commandNameInputRef={command.commandNameInputRef}
-                  onDraftChange={command.updateDraft}
-                />
-              </div>
-            )}
             {supportingData.isOpen && (
               <div
                 id={SUPPORTING_DATA_PANEL_ID}
