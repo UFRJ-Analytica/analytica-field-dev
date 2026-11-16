@@ -20,7 +20,6 @@ import {
   type CompositionPreset,
   type FieldSummary,
 } from '@/lib/map-store'
-import { usePanelStore } from '@/lib/panel-store'
 import { activeBasemapAdapter, BASEMAP_ADAPTERS, type BasemapAdapter } from '@/lib/basemap-adapters'
 import { probeLayerTile } from '@/lib/tile-guard'
 import { regionAdapter, regionFromSearch, type RegionAdapter } from '@/lib/regions'
@@ -746,9 +745,6 @@ export function MapCanvas({ fields, selectedField, onTileChange, children }: Map
     }
     const handleLeave = () => clearHover()
     const handleClick = (event: PolygonEvent) => {
-      // Block 7 revision 10 R-63: while the boundary drawing mode takes the pointer events, a press
-      // on the map adds a vertex and never selects the polygon under it.
-      if (usePanelStore.getState().draft !== null) return
       // Block 5.5 W6: this listener only runs when a fill layer feature is under the press, so it
       // tells the map level handler that this press is spoken for, whatever `currentFeature` decides.
       handledPressRef.current = event.originalEvent ?? null
@@ -776,11 +772,6 @@ export function MapCanvas({ fields, selectedField, onTileChange, children }: Map
         return
       }
       const store = useMapStore.getState()
-      // R-63: while the drawing mode takes the pointer events, a press adds a vertex.
-      if (usePanelStore.getState().draft !== null) {
-        usePanelStore.getState().addVertex([event.lngLat.lng, event.lngLat.lat])
-        return
-      }
       if (store.selectedPolygonId === null) return
       store.clearPolygonSelection()
     }

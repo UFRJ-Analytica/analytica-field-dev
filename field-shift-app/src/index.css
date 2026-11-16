@@ -884,14 +884,15 @@
      panel boxes do not move when it appears above them (R-35, R-36, R-46). */
   .anchor-timeline-dock { position: fixed; inset: 0; pointer-events: none; z-index: 45; }
 
-  /* R-35, R-36: bottom edge 8 px above the rotation panel's measured top edge, and top
-     edge never above the y 450 floor. `--fs-rotation-top` is measured from the panel at
-     runtime; 900px is only the pre-measure fallback, which the floor turns into y 450. */
+  /* Block 4 R-35, R-36 used to anchor this dock's bottom edge 8 px above the rotation panel's
+     measured top edge, and its top edge never above the y 450 floor. The rotation panel is gone, so
+     `--fs-rotation-top` is now the fixed 882px those measurements produced at 1440 and 780, which
+     keeps the dock exactly where it was; the y 450 floor and the offsets are unchanged. */
   .timeline-dock {
     position: fixed;
     left: 22px;
     right: calc(34px + min(400px, 45vw));
-    top: max(450px, calc(var(--fs-rotation-top, 900px) - 100px));
+    top: max(450px, calc(var(--fs-rotation-top, 882px) - 100px));
     z-index: 45;
     display: flex;
     width: auto;
@@ -912,7 +913,7 @@
   .timeline-toggle {
     position: fixed;
     left: 22px;
-    top: calc(max(450px, calc(var(--fs-rotation-top, 900px) - 100px)) - 52px);
+    top: calc(max(450px, calc(var(--fs-rotation-top, 882px) - 100px)) - 52px);
     display: flex;
     width: 44px;
     min-width: 44px;
@@ -939,7 +940,7 @@
   /* Collapsed the button takes the dock's own slot: full width of the anchor column at
      780x900, the 288 px band at 360x640, with its bottom 8 px above the panel's top. */
   .timeline-toggle[aria-expanded="false"] {
-    top: calc(var(--fs-rotation-top, 900px) - 52px);
+    top: calc(var(--fs-rotation-top, 882px) - 52px);
     right: calc(34px + min(400px, 45vw));
     width: auto;
     min-width: 0;
