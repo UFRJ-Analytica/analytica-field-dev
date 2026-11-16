@@ -174,16 +174,17 @@ describe('Field Shift AI panel', () => {
     setup()
     const panel = await openPanel()
     await within(panel).findByText('Indicators loaded from the numbers service.')
-    fireEvent.click(within(panel).getByRole('button', { name: 'Compare crop water demand.' }))
+    fireEvent.click(within(panel).getByRole('button', { name: 'Compare the water demand of maize and soybean.' }))
     expect(panel.querySelector('.fsai-answer')?.textContent).toContain('197.6 mm')
     fireEvent.click(within(panel).getByRole('button', { name: 'PT-BR' }))
     expect(localStorage.getItem('fs.locale')).toBe('pt-BR')
     const panelPt = screen.getByRole('complementary')
     expect(panelPt.getAttribute('lang')).toBe('pt-BR')
     expect(within(panelPt).getByText('Assistente agrícola')).toBeTruthy()
-    expect(panelPt.querySelector('.fsai-question')?.textContent).toContain('Compare a demanda hídrica.')
+    expect(panelPt.querySelector('.fsai-question')?.textContent).toContain('Compare a demanda hídrica do milho e da soja.')
     expect(panelPt.querySelector('.fsai-answer')?.textContent).toContain('197,6 mm')
-    expect(panelPt.querySelectorAll('.fsai-answer [data-metric]').length).toBe(7)
+    // ET0, then per crop ETc, rain minus ETc and Kc, then the three pairwise ETc differences.
+    expect(panelPt.querySelectorAll('.fsai-answer [data-metric]').length).toBe(13)
     fireEvent.click(within(panelPt).getByRole('button', { name: 'EN' }))
     expect(screen.getByRole('complementary').querySelector('.fsai-answer')?.textContent).toContain('197.6 mm')
   })
@@ -192,14 +193,14 @@ describe('Field Shift AI panel', () => {
     const view = setup(FIELD_01)
     const panel = await openPanel()
     await within(panel).findByText('Indicators loaded from the numbers service.')
-    fireEvent.click(within(panel).getByRole('button', { name: 'Compare crop water demand.' }))
+    fireEvent.click(within(panel).getByRole('button', { name: 'Compare the water demand of maize and soybean.' }))
     expect(panel.querySelector('.fsai-answer')?.getAttribute('data-status')).toBe('answered')
     view.rerender(<><FieldShiftAIToggle /><FieldShiftAIPanel selectedField={FIELD_02} /></>)
     expect(screen.getByRole('complementary').querySelector('.fsai-answer')).toBeNull()
     expect(screen.getByText(/The field or the date changed/)).toBeTruthy()
     await screen.findByText('Indicators loaded from the numbers service.')
     expect(screen.getByTestId('fsai-field').textContent).toBe('Field 02')
-    fireEvent.click(screen.getByRole('button', { name: 'Compare crop water demand.' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Compare the water demand of maize and soybean.' }))
     const answer = screen.getByRole('complementary').querySelector('.fsai-answer') as HTMLElement
     expect(answer.dataset.field).toBe('mt-santa-carmem-02')
     expect(answer.dataset.status).toBe('unavailable')
@@ -320,6 +321,40 @@ describe('Field Shift AI agent (milestone 2)', () => {
     expect(answer.textContent).toContain('não é uma previsão')
   })
 
+  it('milestone 3: an agent water answer prints the difference and a table built only from its verified evidence', async () => {
+    enableAgent()
+    const common = { unit: 'mm', decimals: 1, source: 'NASA POWER; FAO-56', asOf: '2026-11-11',
+      period: { start: '2026-10-01', end: '2026-11-11' }, basis: 'fixture', sourceBasis: 'modelled',
+      resolution: '0.5 degree cell', route: 'snapshot', limitations: ['experimental_snapshot'] }
+    agentReply = (body) => {
+      const fieldId = String(body.field_id)
+      return agentAnswer(fieldId, 'en', {
+        answer: [[{ t: 'text', text: 'Maize needs ' }, { t: 'value', evidence: 'crop_water.diff.maize_minus_soybean' },
+          { t: 'text', text: ' more water than soybean.' }]],
+        evidence: [
+          { ...common, fieldId, id: 'crop_water.et0_total', metric: 'et0_total', value: 197.6 },
+          { ...common, fieldId, id: 'crop_water.maize.etc_total', metric: 'etc_total.maize', value: 237.2 },
+          { ...common, fieldId, id: 'crop_water.soybean.etc_total', metric: 'etc_total.soybean', value: 227.3 },
+          { ...common, fieldId, id: 'crop_water.maize.kc_mid', metric: 'kc_mid.maize', value: 1.2, unit: null, decimals: 2 },
+          { ...common, fieldId, id: 'crop_water.diff.maize_minus_soybean', metric: 'etc_difference.maize.soybean', value: 9.9 },
+        ],
+      })
+    }
+    const panel = await openReady()
+    await within(panel).findByText('Agent with tools (experimental)')
+    typeQuestion(panel, 'Compare the water demand of maize and soybean')
+    const answer = await waitFor(() => {
+      const found = panel.querySelector('[data-mode="agent"]') as HTMLElement
+      expect(found).toBeTruthy()
+      return found
+    })
+    expect(answer.textContent).toContain('Maize needs 9.9 mm more water than soybean.')
+    const rows = [...answer.querySelectorAll('[data-testid="fsai-water-table"] tbody tr')].map((tr) => [...tr.children].map((c) => c.textContent))
+    // Soybean's Kc and both balances were not cited, so they are not shown: a dash or "no value", never a guess.
+    expect(rows).toEqual([['Maize', '1.20', '237.2 mm', 'no value'], ['Soybean', '—', '227.3 mm', 'no value']])
+    expect(within(answer).getByText('ETc difference, Maize minus soybean')).toBeTruthy()
+  })
+
   it('falls back to the deterministic answer, and says why, when the backend falls back', async () => {
     enableAgent()
     agentReply = (body) => ({ ...agentAnswer(String(body.field_id), 'en'), status: 'fallback', mode: 'fallback',
@@ -395,5 +430,88 @@ describe('Field Shift AI agent (milestone 2)', () => {
     expect(answer.textContent).toContain('Esses dados não bastam para escolher uma cultura.')
     expect(answer.textContent).toContain('Nenhuma cultura é recomendada')
     expect(answer.textContent).toContain('O comparador de rotações ainda não foi construído')
+  })
+})
+
+describe('milestone 3: guided demo and farmer view', () => {
+  it('opens Santa Carmem from a United States start: region, field and the recorded window date', async () => {
+    useMapStore.setState({ regionId: 'us', selectedFieldId: null, chosenDate: '2026-11-14' })
+    setup(null)
+    const panel = await openPanel()
+    fireEvent.click(within(panel).getByRole('button', { name: 'Open Santa Carmem, Brazil' }))
+    const state = useMapStore.getState()
+    expect(state.regionId).toBe('br')
+    expect(state.selectedFieldId).toBe('mt-santa-carmem-01')
+    expect(state.chosenDate).toBe('2026-11-11')
+  })
+
+  it('switches back to the United States without carrying the Brazilian date or field', async () => {
+    setup()
+    const panel = await openPanel()
+    fireEvent.click(within(panel).getByRole('button', { name: 'Open Cass County, United States' }))
+    const state = useMapStore.getState()
+    expect(state.regionId).toBe('us')
+    expect(state.selectedFieldId).toBe('381825001868504')
+  })
+
+  it('runs the demo steps in order and renders the crop water comparison as a table', async () => {
+    setup()
+    const panel = await openPanel()
+    await within(panel).findByText('Indicators loaded from the numbers service.')
+    const steps = within(panel.querySelector('.fsai-steps') as HTMLElement).getAllByRole('button').map((b) => b.textContent)
+    expect(steps).toEqual(['Open Santa Carmem, Brazil', 'Open Cass County, United States', 'What do the environmental indicators show?',
+      'Was rainfall below normal?', 'Compare the water demand of maize and soybean.', 'What are the planting windows?',
+      'Where does this data come from?'])
+    fireEvent.click(within(panel).getByRole('button', { name: 'Compare the water demand of maize and soybean.' }))
+    const table = within(panel).getByTestId('fsai-water-table')
+    const rows = [...table.querySelectorAll('tbody tr')].map((tr) => [...tr.children].map((cell) => cell.textContent))
+    expect(rows).toContainEqual(['Maize', '1.20', '237.2 mm', '-65.2 mm'])
+    expect(table.querySelector('tr[data-highest="true"]')?.getAttribute('data-crop')).toBe('maize')
+    expect(table.textContent).toContain('recorded experiment, not a live value')
+  })
+
+  it('does not show a crop water table for a field outside the recorded experiment', async () => {
+    useMapStore.setState({ selectedFieldId: FIELD_02.id })
+    setup(FIELD_02)
+    const panel = await openPanel()
+    await within(panel).findByText('Indicators loaded from the numbers service.')
+    fireEvent.click(within(panel).getByRole('button', { name: 'Compare the water demand of maize and soybean.' }))
+    expect(within(panel).queryByTestId('fsai-water-table')).toBeNull()
+  })
+
+  it('answers the rain and planting steps in Portuguese with conclusions first', async () => {
+    localStorage.setItem('fs.locale', 'pt-BR')
+    setup()
+    const panel = await openPanel()
+    await within(panel).findByText('Indicadores carregados do serviço de números.')
+    fireEvent.click(within(panel).getByRole('button', { name: 'Choveu menos que o normal?' }))
+    fireEvent.click(within(panel).getByRole('button', { name: 'Quais são as janelas de plantio?' }))
+    const answers = panel.querySelectorAll('.fsai-answer')
+    expect(answers[0].getAttribute('data-intent')).toBe('rainfall')
+    expect(answers[0].querySelector('p:nth-of-type(2)')?.textContent).toMatch(/^Choveu abaixo do usual/)
+    expect(answers[1].getAttribute('data-intent')).toBe('planting')
+    expect(answers[1].textContent).toContain('ZARC')
+    expect(panel.textContent).not.toMatch(/assistant\.|answer\.|gloss\./)
+  })
+
+  it('hides the developer command console by default and shows it on request', async () => {
+    localStorage.removeItem('fs.fsai.devTools')
+    setup()
+    expect(document.documentElement.dataset.fsaiDevTools).toBe('off')
+    const panel = await openPanel()
+    expect(document.documentElement.dataset.fsaiOpen).toBe('true')
+    fireEvent.click(within(panel).getByRole('checkbox', { name: 'Show developer tools (COMMAND)' }))
+    expect(document.documentElement.dataset.fsaiDevTools).toBe('on')
+    fireEvent.click(within(panel).getByRole('button', { name: 'Close Field Shift AI' }))
+    expect(document.documentElement.dataset.fsaiOpen).toBeUndefined()
+    localStorage.removeItem('fs.fsai.devTools')
+  })
+
+  it('explains the acronyms it uses', async () => {
+    setup()
+    const panel = await openPanel()
+    const glossary = within(panel).getByText('What do these terms mean?').closest('details') as HTMLElement
+    expect(glossary.textContent).toMatch(/ET0: reference evapotranspiration/)
+    expect(glossary.textContent).toMatch(/ZARC: Agricultural Climate Risk Zoning/)
   })
 })

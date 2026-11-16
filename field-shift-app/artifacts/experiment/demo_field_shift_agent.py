@@ -102,6 +102,49 @@ DEMOS = {
                 "irrigation requirement."],
             [], ["needs_sowing_date"])]),
     },
+    "4_water_difference_and_kc": {
+        "pt-BR": ("Compare a demanda hídrica do milho e da soja.", [use("get_crop_water_demand"), answer(
+            "answered", [
+                "O milho precisa de {{value:crop_water.diff.maize_minus_soybean}} a mais de água que a soja em "
+                "{{period:crop_water.et0_total}}, porque seu coeficiente de cultura (Kc) no pico é "
+                "{{value:crop_water.maize.kc_mid}}, contra {{value:crop_water.soybean.kc_mid}} da soja.",
+                "A ETc é o Kc vezes a ET0, a evapotranspiração de referência, que foi de "
+                "{{value:crop_water.et0_total}}. É um resultado experimental gravado e não indica qual cultura "
+                "produz mais."],
+            ["crop_water.diff.maize_minus_soybean", "crop_water.maize.kc_mid", "crop_water.soybean.kc_mid",
+             "crop_water.et0_total"], ["needs_sowing_date"])]),
+        "en": ("Compare the water demand of maize and soybean.", [use("get_crop_water_demand"), answer(
+            "answered", [
+                "Maize needs {{value:crop_water.diff.maize_minus_soybean}} more water than soybean over "
+                "{{period:crop_water.et0_total}}, because its peak crop coefficient (Kc) is "
+                "{{value:crop_water.maize.kc_mid}}, against {{value:crop_water.soybean.kc_mid}} for soybean.",
+                "ETc is Kc times ET0, the reference evapotranspiration, which was {{value:crop_water.et0_total}}. "
+                "This is a recorded experimental result and says nothing about which crop yields more."],
+            ["crop_water.diff.maize_minus_soybean", "crop_water.maize.kc_mid", "crop_water.soybean.kc_mid",
+             "crop_water.et0_total"], ["needs_sowing_date"])]),
+    },
+    "5_rain_and_planting_window": {
+        "pt-BR": ("Choveu menos que o normal? Quando posso plantar soja?", [
+            use("get_environmental_indicators", "get_planting_constraints"), answer(
+                "answered", [
+                    "Choveu {{value:rain_vs_median}}: {{value:rain_total}} contra uma mediana histórica de "
+                    "{{value:rain_median}} para as mesmas datas, uma diferença de {{value:rain_minus_median}}.",
+                    "No ZARC, a janela de {{value:planting.soja.window}} vai de {{period:planting.soja.window}}, e a "
+                    "data escolhida está dentro dela. A janela indica quando semear tem baixo risco climático; não "
+                    "garante a safra nem escolhe uma data."],
+                ["rain_vs_median", "rain_total", "rain_median", "rain_minus_median", "planting.soja.window"],
+                ["historical_not_forecast", "planting_window_not_decision"])]),
+        "en": ("Was rainfall below normal? When can I plant soybean?", [
+            use("get_environmental_indicators", "get_planting_constraints"), answer(
+                "answered", [
+                    "Rain was {{value:rain_vs_median}}: {{value:rain_total}} against a historical median of "
+                    "{{value:rain_median}} for the same dates, a difference of {{value:rain_minus_median}}.",
+                    "In the ZARC, the window for {{value:planting.soja.window}} runs {{period:planting.soja.window}}, "
+                    "and the chosen date is inside it. The window says when sowing carries low climatic risk; it "
+                    "does not guarantee the season or pick a date."],
+                ["rain_vs_median", "rain_total", "rain_median", "rain_minus_median", "planting.soja.window"],
+                ["historical_not_forecast", "planting_window_not_decision"])]),
+    },
     "3_which_crop_rejected": {
         "pt-BR": ("Com esses dados, qual cultura devo plantar?", [use("get_crop_water_demand"), answer(
             "answered", ["Recomendo plantar soja, que usa menos água."], [], [])]),
@@ -112,22 +155,27 @@ DEMOS = {
         "pt-BR": ("Com esses dados, qual cultura devo plantar?", [
             use("get_evidence_gaps", "get_planting_constraints", "get_crop_water_demand"), answer(
                 "partial", [
-                    "Esses dados não bastam para escolher uma cultura. O comparador de rotações e o calendário de "
-                    "plantio não estão disponíveis, e não há data de semeadura, histórico, preços nem custos.",
+                    "Esses dados não bastam para escolher uma cultura. O comparador de rotações não está "
+                    "disponível, e não há data de semeadura, histórico, preços nem custos.",
                     "O que existe é uma estimativa gravada de demanda hídrica, maior para "
-                    "{{value:crop_water.highest_peak_demand}} com coeficientes de pico; isso sozinho não decide uma "
-                    "cultura."],
-                ["crop_water.highest_peak_demand"],
-                ["comparator_not_built", "planting_calendar_not_integrated", "needs_farm_records", "needs_sowing_date"])]),
+                    "{{value:crop_water.highest_peak_demand}} com coeficientes de pico, e as janelas do ZARC desta "
+                    "safra: {{value:planting.soja.window}} de {{period:planting.soja.window}} e "
+                    "{{value:planting.milho_2a_safra.window}} de {{period:planting.milho_2a_safra.window}}.",
+                    "Uma janela diz quando semear tem baixo risco climático, não qual cultura escolher."],
+                ["crop_water.highest_peak_demand", "planting.soja.window", "planting.milho_2a_safra.window"],
+                ["comparator_not_built", "planting_window_not_decision", "needs_farm_records", "needs_sowing_date"])]),
         "en": ("With this data, which crop should I plant?", [
             use("get_evidence_gaps", "get_planting_constraints", "get_crop_water_demand"), answer(
                 "partial", [
-                    "These data are not enough to choose a crop. The rotation comparator and the planting calendar "
-                    "are not available, and there is no sowing date, history, prices or costs.",
+                    "These data are not enough to choose a crop. The rotation comparator is not available, and "
+                    "there is no sowing date, history, prices or costs.",
                     "What exists is a recorded estimate of water demand, highest for "
-                    "{{value:crop_water.highest_peak_demand}} at peak coefficients; that alone does not decide a crop."],
-                ["crop_water.highest_peak_demand"],
-                ["comparator_not_built", "planting_calendar_not_integrated", "needs_farm_records", "needs_sowing_date"])]),
+                    "{{value:crop_water.highest_peak_demand}} at peak coefficients, and this season's ZARC windows: "
+                    "{{value:planting.soja.window}} from {{period:planting.soja.window}} and "
+                    "{{value:planting.milho_2a_safra.window}} from {{period:planting.milho_2a_safra.window}}.",
+                    "A window says when sowing carries low climatic risk, not which crop to choose."],
+                ["crop_water.highest_peak_demand", "planting.soja.window", "planting.milho_2a_safra.window"],
+                ["comparator_not_built", "planting_window_not_decision", "needs_farm_records", "needs_sowing_date"])]),
     },
 }
 

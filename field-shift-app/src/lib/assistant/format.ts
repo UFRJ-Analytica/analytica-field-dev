@@ -58,6 +58,11 @@ export function formatValue(value: number | string | null, unit: string | null, 
 /** An ISO date (YYYY-MM-DD, or an instant) in the locale's medium form, read in UTC so no day shifts. */
 export function formatDate(iso: string | null, locale: Locale): string {
   if (iso === null || iso === '') return ''
+  // A seasonless source (block 7 R-29) writes month and day with no year: print it without one.
+  if (/^\d{2}-\d{2}$/.test(iso)) {
+    return new Intl.DateTimeFormat(intlTag(locale), { day: 'numeric', month: 'short', timeZone: 'UTC' })
+      .format(new Date(`2000-${iso}T00:00:00Z`))
+  }
   const instant = new Date(iso.length === 10 ? `${iso}T00:00:00Z` : iso)
   if (Number.isNaN(instant.getTime())) return iso
   return new Intl.DateTimeFormat(intlTag(locale), {

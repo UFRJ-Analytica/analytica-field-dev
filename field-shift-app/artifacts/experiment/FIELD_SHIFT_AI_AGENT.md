@@ -49,9 +49,9 @@ Painel: o texto vem do modelo; cada valor e cada período são impressos pelo fr
 |---|---|---|
 | `get_field_context` | id, tipo, região, nome, local, data, polígono; declara que não há registros agronômicos | fixture do servidor / resolver do Bloco 6 |
 | `get_environmental_indicators` | 22 indicadores do Bloco 6 (chuva, normais 1991–2025, percentil, veranico, dias quentes, Tmin, geada, GDD, GWETROOT, balanço com EVLAND, cenas Sentinel-2, solo 0–5 cm) e a distribuição da chuva: dias com ≥ 1 mm, dia mais chuvoso, totais de 7 dias | `field_numbers.build_numbers` (cache por fonte do próprio Bloco 6), lido **uma vez por execução** |
-| `get_evidence_gaps` | lacunas registradas pelo Bloco 6 e limites estruturais (espacial, temporal, registros do agricultor, comparador ausente, calendário ausente) | payload do Bloco 6 |
+| `get_evidence_gaps` | lacunas registradas pelo Bloco 6 e limites estruturais (espacial, temporal, registros do agricultor, comparador ausente, o que uma janela de plantio não decide) | payload do Bloco 6 |
 | `get_crop_water_demand` | ET0, ETc por cultura (Kc de pico), chuva − ETc e `highest_peak_demand` calculado **em código** | `demo_crop_water_results.json` (gravado, sem rede); liberado só para o Field 01 e a janela exata de 2026-10-01 a 2026-11-11 |
-| `get_planting_constraints` | `available: false` (`planting_calendar_not_integrated`) | o Bloco 7 existe só na branch `block7/field-record`, não integrada |
+| `get_planting_constraints` | janelas de semeadura da safra da data escolhida, uma evidência por cultura (valor = nome da cultura na fonte, período = janela) e a posição da data (antes, dentro, depois). Brasil: envelope `window_risk_20` do ZARC por município (regra R-28 do Bloco 7). EUA: datas usuais NASS da Dakota do Norte, sem ano. Polígono desenhado, safra fora do snapshot ou estado fora da fonte: `available: false` | `artifacts/zarc-mt-snapshot.json` e `artifacts/us-windows-cass-nd.json`, os mesmos que a tela Planting calendar do Bloco 7 lê; os oito envelopes de Santa Carmem conferem com a Tabela F da spec do Bloco 7 (teste) |
 
 Nenhuma ferramenta recebe um id de campo do modelo, então ele não consegue consultar outro campo.
 
@@ -164,7 +164,7 @@ O adaptador ganhou a intenção `recommendation` ("qual cultura devo plantar?", 
 - O guard não verifica o sentido de comparações qualitativas escritas pelo modelo ("maior", "acima"). Para comparar culturas existe `highest_peak_demand`, calculado em código. Números por extenso ("vinte") não são detectados.
 - O idioma do texto do modelo não é verificado por código.
 - A demanda hídrica existe só para um campo e uma janela.
-- O planejamento de plantio retorna indisponível (Bloco 7 não integrado).
+- As janelas de plantio são do município (Brasil) ou do estado (EUA), não do solo do talhão; o registro do produtor do Bloco 7 (data de semeadura declarada, histórico) fica no navegador e ainda não chega ao agente.
 
 ## 13. Testes
 
@@ -197,4 +197,4 @@ Para ativar o modo LLM, que exige autorização: instale o SDK (`pip install ant
 2. **Spec:** propor emenda à `bloco-8-agente-e-voz.md` (rev. 1, F-20), que já prevê agente e superfície própria (OD-01), e decidir sobre o `pt-BR` (block 3 R-37).
 3. **Dependência:** aprovação de `anthropic` no `requirements.txt` e de um provedor e orçamento.
 4. **Validação real:** rodar as 3 demonstrações com o modelo (custo baixo) e medir a taxa de rejeição do guard.
-5. **Dados:** quando o Bloco 7 for integrado, `get_planting_constraints` passa a ler o calendário dele; quando existir uma rota aprovada de demanda hídrica, `get_crop_water_demand` lê dela em vez do snapshot.
+5. **Dados:** `get_planting_constraints` já lê as fontes do calendário do Bloco 7; falta levar ao agente a data de semeadura declarada (fica em `localStorage`), que permitiria o Kc pela curva; quando existir uma rota aprovada de demanda hídrica, `get_crop_water_demand` lê dela em vez do snapshot.

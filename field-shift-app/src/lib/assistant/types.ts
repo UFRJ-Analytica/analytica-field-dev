@@ -47,11 +47,15 @@ export type LimitationCode =
   | 'needs_sowing_date'
   | 'needs_farm_records'
   | 'comparator_not_built'
-  | 'planting_calendar_not_integrated'
+  | 'planting_window_not_decision'
+  | 'zarc_municipal_envelope'
+  | 'seasonless_state_average'
 
 export type Intent =
   | 'explain_field'
   | 'environment'
+  | 'rainfall'
+  | 'planting'
   | 'water_demand'
   | 'sources'
   | 'missing'
@@ -73,6 +77,8 @@ export type AssistantResponse = {
   status: 'answered' | 'partial' | 'unavailable'
   /** `deterministic` in this milestone. `agent` is reserved for the LLM tool-calling backend. */
   mode: 'deterministic' | 'agent'
+  /** The recorded crop water set the answer compared, rendered as a compact table. */
+  cropWater?: CropWaterSet | null
 }
 
 export type NumbersStatus =

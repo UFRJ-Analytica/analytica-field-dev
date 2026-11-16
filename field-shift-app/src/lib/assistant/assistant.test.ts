@@ -121,13 +121,13 @@ describe('question classification', () => {
 describe('milestone 2 questions in the deterministic fallback', () => {
   it.each([
     ['Quais são os principais indicadores ambientais desta propriedade?', 'environment'],
-    ['Como foi a distribuição das chuvas?', 'environment'],
+    ['Como foi a distribuição das chuvas?', 'rainfall'],
     ['O milho apresenta maior demanda hídrica que a soja?', 'water_demand'],
     ['Por que essa análise não é suficiente para determinar a melhor cultura?', 'recommendation'],
     ['Quais informações faltam para avaliar minha próxima safra?', 'missing'],
     ['De onde vêm os dados apresentados?', 'sources'],
     ['What are the main environmental indicators for this field?', 'environment'],
-    ['How was rainfall distributed?', 'environment'],
+    ['How was rainfall distributed?', 'rainfall'],
     ['Does corn have a higher estimated water demand than soybean?', 'water_demand'],
     ['Why is this analysis insufficient to determine the best crop?', 'recommendation'],
     ['What information is missing to evaluate my next growing season?', 'missing'],
@@ -141,7 +141,7 @@ describe('milestone 2 questions in the deterministic fallback', () => {
   it.each(LOCALES)('declines a crop choice with the same evidence and limits (%s)', (locale) => {
     const response = answerIntent('recommendation', { context: context(), locale, id: 'a' })
     expect(response.status).toBe('partial')
-    expect(response.limitations).toEqual(expect.arrayContaining(['comparator_not_built', 'planting_calendar_not_integrated']))
+    expect(response.limitations).toEqual(expect.arrayContaining(['comparator_not_built', 'planting_window_not_decision']))
     expect(response.evidence.map((e) => e.metric).sort()).toEqual(['etc_total.cotton', 'etc_total.maize', 'etc_total.soybean'])
   })
 
@@ -152,6 +152,15 @@ describe('milestone 2 questions in the deterministic fallback', () => {
     const top = { ...week, id: 'crop_water.highest_peak_demand', metric: 'highest_peak_demand', value: 'cotton,soybean', unit: null }
     expect(evidenceValue(top, 'pt-BR')).toBe('algodão e soja')
     expect(evidenceValue(top, 'en')).toBe('cotton and soybean')
+  })
+
+  it('labels a planting window by its source crop name and prints a yearless period without a year', () => {
+    const base = summaryEvidence(recordedNumbersPayload(), RECORDED_FIELD_ID)[0]
+    const soja = { ...base, id: 'planting.soja.window', metric: 'planting_window', value: 'Soja', unit: null }
+    expect(evidenceLabel(soja, 'pt-BR')).toBe('Janela de semeadura, Soja')
+    expect(evidenceLabel(soja, 'en')).toBe('Sowing window, Soja')
+    expect(formatDate('04-26', 'en')).toBe('Apr 26')
+    expect(formatDate('2026-10-01', 'pt-BR')).toContain('2026')
   })
 })
 
@@ -304,5 +313,170 @@ describe('crop water demand (recorded FAO-56 experiment)', () => {
   it('is not released for a polygon or without block 6 numbers', () => {
     expect(cropWaterFor({ fieldId: RECORDED_FIELD_ID, kind: 'polygon', center: FIELD_01_CENTER }, recordedNumbersPayload())).toBeNull()
     expect(cropWaterFor({ fieldId: RECORDED_FIELD_ID, kind: 'fixture', center: FIELD_01_CENTER }, null)).toBeNull()
+  })
+})
+
+describe('milestone 3: paraphrases reach the same intent', () => {
+  it.each([
+    // Rain, PT-BR and EN (the audit's failing phrasings included).
+    ['Choveu pouco?', 'rainfall'],
+    ['A chuva foi abaixo do normal?', 'rainfall'],
+    ['Como está a precipitação?', 'rainfall'],
+    ['A chuva recente foi suficiente?', 'rainfall'],
+    ['O que a chuva recente indica?', 'rainfall'],
+    ['Was rainfall low?', 'rainfall'],
+    ['Has rainfall been below normal?', 'rainfall'],
+    ['Has rainfall been unusually low?', 'rainfall'],
+    ['How much rain did this field receive?', 'rainfall'],
+    ['Was there enough rainfall?', 'rainfall'],
+    ['Quanto choveu nesta janela?', 'rainfall'],
+    // Planting windows.
+    ['Quando posso plantar milho?', 'planting'],
+    ['O que significa essa janela de plantio?', 'planting'],
+    ['A data selecionada está dentro da janela?', 'planting'],
+    ['When is the typical corn planting window?', 'planting'],
+    ['What does this planting window mean?', 'planting'],
+    ['What do the planting windows mean?', 'planting'],
+    ['Is the selected date inside the window?', 'planting'],
+    // Water demand, missing information and a crop choice.
+    ['Qual é a diferença entre a demanda hídrica do milho e da soja?', 'water_demand'],
+    ['Can you compare corn and soybean water demand?', 'water_demand'],
+    ['Qual cultura usa mais água?', 'water_demand'],
+    ['Quais informações estão faltando para uma recomendação mais confiável?', 'missing'],
+    ['What information would make this assessment more reliable?', 'missing'],
+    ['Qual cultura devo plantar agora?', 'recommendation'],
+    ['Which crop should I plant next?', 'recommendation'],
+    ['Como estão as condições ambientais da minha propriedade?', 'environment'],
+    ['What do the environmental indicators show about my field?', 'environment'],
+    // Out of scope stays out of scope.
+    ['Qual será o preço da soja ano que vem?', 'unsupported'],
+  ])('%s -> %s', (question, intent) => {
+    expect(classifyIntent(question)).toBe(intent)
+  })
+})
+
+describe('milestone 3: rain answers lead with the comparison', () => {
+  // Recorded block 6 payload of Field 01: rain 171.9 mm, median 224.9 mm, rank 7, percentile 20.
+  it('says the rain was below the median, by how much, and what the percentile is not', () => {
+    const response = answerQuestion('Choveu menos que o normal?', { context: context(), locale: 'pt-BR', id: 'r' })
+    expect(response.intent).toBe('rainfall')
+    expect(response.status).toBe('answered')
+    expect(response.answer[0]).toMatch(/^Choveu abaixo do usual/)
+    expect(response.answer[0]).toContain('171,9 mm')
+    expect(response.answer[0]).toContain('224,9 mm')
+    expect(response.answer[0]).toContain('53,0 mm a menos')
+    expect(response.answer[0]).toContain('24% abaixo')
+    expect(response.answer.join(' ')).toContain('percentil 20: em 7 dos anos')
+    expect(response.answer.join(' ')).toContain('quinto mais seco')
+    expect(response.answer.join(' ')).toMatch(/não é uma probabilidade/)
+    expect(response.evidence.map((e) => e.metric)).toEqual(expect.arrayContaining(['rain_total', 'rain_median', 'rain_percentile', 'rain_rank']))
+  })
+
+  it('answers in English with the same evidence', () => {
+    const pt = answerQuestion('A chuva foi abaixo do normal?', { context: context(), locale: 'pt-BR', id: 'r' })
+    const en = answerQuestion('Was rainfall low?', { context: context(), locale: 'en', id: 'r' })
+    expect(en.answer[0]).toMatch(/^Rain was below the usual for these dates: 171\.9 mm/)
+    expect(en.evidence.map((e) => e.id)).toEqual(pt.evidence.map((e) => e.id))
+  })
+
+  it('adds the sufficiency caveat, and the recorded rain minus ETc, only when sufficiency is asked', () => {
+    const plain = answerQuestion('Was rainfall low?', { context: context(), locale: 'en', id: 'r' })
+    expect(plain.answer.join(' ')).not.toMatch(/rain alone/)
+    const enough = answerQuestion('Was there enough rainfall?', { context: context(), locale: 'en', id: 'r' })
+    expect(enough.answer.join(' ')).toMatch(/not answered by rain alone/)
+    expect(enough.answer.join(' ')).toMatch(/-65\.2 mm for maize/)
+    expect(enough.evidence.some((e) => e.metric === 'rain_minus_etc.maize')).toBe(true)
+  })
+
+  it('does not call the rain low or high without the historical median', () => {
+    const payload = recordedNumbersPayload()
+    payload.provenance = payload.provenance.filter((row) => row.metric !== 'rain_median')
+    const response = answerQuestion('Was rainfall low?', { context: context({}, payload), locale: 'en', id: 'r' })
+    expect(response.status).toBe('partial')
+    expect(response.answer[0]).toMatch(/cannot be called above or below normal/)
+  })
+})
+
+describe('milestone 3: crop water comparison', () => {
+  it('leads with the maize minus soybean difference, computed from the recorded totals', () => {
+    const response = answerQuestion('Compare a demanda hídrica estimada do milho e da soja.', { context: context(), locale: 'pt-BR', id: 'w' })
+    expect(response.intent).toBe('water_demand')
+    expect(response.status).toBe('answered')
+    // 237.2 - 227.3 = 9.9 mm, 4.4% of 227.3; peak Kc 1.20 against 1.15.
+    expect(response.answer[0]).toBe('O milho precisa de 9,9 mm a mais de água que a soja nesta janela (4,4% a mais), porque seu coeficiente de cultura no pico é maior (Kc 1,20 contra 1,15).')
+    expect(response.answer.join(' ')).toMatch(/ETc = Kc × ET0/)
+    expect(response.cropWater?.crops.map((c) => c.cropId).sort()).toEqual(['cotton', 'maize', 'soybean'])
+    const diff = response.evidence.find((e) => e.id === 'crop_water.diff.maize_minus_soybean')
+    expect(diff?.value).toBe(9.9)
+    expect(response.limitations).toContain('needs_sowing_date')
+  })
+
+  it('compares the pair the question names, in its order', () => {
+    const response = answerQuestion('Compare cotton and maize water demand', { context: context(), locale: 'en', id: 'w' })
+    expect(response.answer[0]).toMatch(/^Maize needs 9\.9 mm more water than cotton/)
+  })
+
+  it('says cotton and soybean have the same demand when FAO-56 gives them the same peak Kc', () => {
+    const response = answerQuestion('Compare soybean and cotton water use', { context: context(), locale: 'en', id: 'w' })
+    expect(response.answer[0]).toMatch(/^Soybean and cotton have the same estimated demand \(227\.3 mm\)/)
+  })
+
+  it('never gives the comparison to another field or window, and points to the demo instead', () => {
+    const other = answerQuestion('Compare the water demand', { context: context({ fieldId: 'mt-santa-carmem-02', center: [-55.24, -11.94] }), locale: 'en', id: 'w' })
+    expect(other.status).toBe('unavailable')
+    expect(other.cropWater).toBeUndefined()
+    expect(other.answer.join(' ')).toMatch(/guided demo/)
+  })
+
+  it('does not attach the peak-coefficient limit to a crop choice without crop water evidence', () => {
+    const response = answerIntent('recommendation', { context: context({ fieldId: 'mt-santa-carmem-02', center: [-55.24, -11.94] }), locale: 'en', id: 'a' })
+    expect(response.limitations).not.toContain('needs_sowing_date')
+    expect(response.evidence).toEqual([])
+  })
+})
+
+describe('milestone 3: planting windows', () => {
+  it('explains the ZARC windows of the season of the chosen date, with the date position', () => {
+    const response = answerQuestion('Quais são as janelas de plantio?', { context: context(), locale: 'pt-BR', id: 'p' })
+    expect(response.intent).toBe('planting')
+    expect(response.status).toBe('answered')
+    expect(response.answer[0]).toContain('Santa Carmem (MT), safra 2026/2027')
+    const text = response.answer.join(' ')
+    expect(text).toContain('Soja: de 1 de out. de 2026 a 10 de jan. de 2027. A data escolhida (12 de nov. de 2026) está dentro desta janela.')
+    expect(text).toContain('Milho 2ª Safra: de 1 de jan. de 2027 a 10 de mar. de 2027. A data escolhida (12 de nov. de 2026) está antes desta janela.')
+    expect(text).toMatch(/nível de risco de 20%/)
+    expect(text).toMatch(/não garante uma boa safra e não é uma data de semeadura recomendada/)
+    expect(response.evidence.map((e) => e.id)).toEqual(['planting.soja.window', 'planting.milho_1a_safra.window',
+      'planting.milho_2a_safra.window', 'planting.algodao_herbaceo.window'])
+    expect(response.limitations).toEqual(expect.arrayContaining(['zarc_municipal_envelope', 'planting_window_not_decision']))
+  })
+
+  it('narrows to the crop the question names', () => {
+    const response = answerQuestion('When can I plant corn?', { context: context(), locale: 'en', id: 'p' })
+    expect(response.evidence.map((e) => e.value)).toEqual(['Milho 1ª Safra', 'Milho 2ª Safra'])
+  })
+
+  it('uses the NASS usual dates, without a year, for a United States field', () => {
+    const response = answerQuestion('When is the typical corn planting window?', {
+      context: context({ fieldId: '381825001868504', name: 'Cass Field 01', location: 'Cass County, North Dakota', regionId: 'us', date: '2026-05-10', center: [-97.17, 46.93] }),
+      locale: 'en', id: 'p',
+    })
+    expect(response.answer[0]).toMatch(/NASS/)
+    expect(response.answer[1]).toBe('Corn: Apr 26 to Jun 4. The chosen date (May 10, 2026) is inside this window.')
+    expect(response.answer.join(' ')).toMatch(/not a climatic risk rating/)
+    expect(response.limitations).toContain('seasonless_state_average')
+  })
+
+  it('names the seasons the snapshot holds instead of inventing a window', () => {
+    const response = answerQuestion('Quando posso plantar soja?', { context: context({ date: '2028-01-05' }), locale: 'pt-BR', id: 'p' })
+    expect(response.status).toBe('unavailable')
+    expect(response.answer[0]).toContain('2025/2026 e 2026/2027')
+    expect(response.evidence).toEqual([])
+  })
+
+  it('has no window for a drawn polygon', () => {
+    const response = answerQuestion('What are the planting windows?', { context: context({ fieldId: 'trazo:1', kind: 'polygon', name: null, location: null }), locale: 'en', id: 'p' })
+    expect(response.status).toBe('unavailable')
+    expect(response.evidence).toEqual([])
   })
 })

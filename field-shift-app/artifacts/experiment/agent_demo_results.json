@@ -212,6 +212,178 @@
         "answer_segments": 17
       }
     },
+    "4_water_difference_and_kc": {
+      "pt-BR": {
+        "question": "Compare a demanda hídrica do milho e da soja.",
+        "mode": "agent",
+        "status": "answered",
+        "fallback_reason": null,
+        "tools_used": [
+          "get_crop_water_demand"
+        ],
+        "evidence": {
+          "crop_water.diff.maize_minus_soybean": [
+            9.9,
+            "mm",
+            "fixture"
+          ],
+          "crop_water.et0_total": [
+            197.6,
+            "mm",
+            "fixture"
+          ],
+          "crop_water.maize.kc_mid": [
+            1.2,
+            null,
+            "fixture"
+          ],
+          "crop_water.soybean.kc_mid": [
+            1.15,
+            null,
+            "fixture"
+          ]
+        },
+        "limitations": [
+          "needs_sowing_date",
+          "experimental_snapshot",
+          "standard_kc",
+          "coarse_cell",
+          "modelled_not_measured"
+        ],
+        "answer_segments": 12
+      },
+      "en": {
+        "question": "Compare the water demand of maize and soybean.",
+        "mode": "agent",
+        "status": "answered",
+        "fallback_reason": null,
+        "tools_used": [
+          "get_crop_water_demand"
+        ],
+        "evidence": {
+          "crop_water.diff.maize_minus_soybean": [
+            9.9,
+            "mm",
+            "fixture"
+          ],
+          "crop_water.et0_total": [
+            197.6,
+            "mm",
+            "fixture"
+          ],
+          "crop_water.maize.kc_mid": [
+            1.2,
+            null,
+            "fixture"
+          ],
+          "crop_water.soybean.kc_mid": [
+            1.15,
+            null,
+            "fixture"
+          ]
+        },
+        "limitations": [
+          "needs_sowing_date",
+          "experimental_snapshot",
+          "standard_kc",
+          "coarse_cell",
+          "modelled_not_measured"
+        ],
+        "answer_segments": 12
+      }
+    },
+    "5_rain_and_planting_window": {
+      "pt-BR": {
+        "question": "Choveu menos que o normal? Quando posso plantar soja?",
+        "mode": "agent",
+        "status": "answered",
+        "fallback_reason": null,
+        "tools_used": [
+          "get_environmental_indicators",
+          "get_planting_constraints"
+        ],
+        "evidence": {
+          "rain_vs_median": [
+            "below",
+            null,
+            "derived"
+          ],
+          "rain_total": [
+            171.9,
+            "mm",
+            "modelled"
+          ],
+          "rain_median": [
+            224.9,
+            "mm",
+            "modelled"
+          ],
+          "rain_minus_median": [
+            -53.0,
+            "mm",
+            "derived"
+          ],
+          "planting.soja.window": [
+            "Soja",
+            null,
+            "retrieved"
+          ]
+        },
+        "limitations": [
+          "historical_not_forecast",
+          "planting_window_not_decision",
+          "coarse_cell",
+          "modelled_not_measured",
+          "zarc_municipal_envelope"
+        ],
+        "answer_segments": 14
+      },
+      "en": {
+        "question": "Was rainfall below normal? When can I plant soybean?",
+        "mode": "agent",
+        "status": "answered",
+        "fallback_reason": null,
+        "tools_used": [
+          "get_environmental_indicators",
+          "get_planting_constraints"
+        ],
+        "evidence": {
+          "rain_vs_median": [
+            "below",
+            null,
+            "derived"
+          ],
+          "rain_total": [
+            171.9,
+            "mm",
+            "modelled"
+          ],
+          "rain_median": [
+            224.9,
+            "mm",
+            "modelled"
+          ],
+          "rain_minus_median": [
+            -53.0,
+            "mm",
+            "derived"
+          ],
+          "planting.soja.window": [
+            "Soja",
+            null,
+            "retrieved"
+          ]
+        },
+        "limitations": [
+          "historical_not_forecast",
+          "planting_window_not_decision",
+          "coarse_cell",
+          "modelled_not_measured",
+          "zarc_municipal_envelope"
+        ],
+        "answer_segments": 14
+      }
+    },
     "3_which_crop_rejected": {
       "pt-BR": {
         "question": "Com esses dados, qual cultura devo plantar?",
@@ -254,17 +426,28 @@
             "maize",
             null,
             "fixture"
+          ],
+          "planting.soja.window": [
+            "Soja",
+            null,
+            "retrieved"
+          ],
+          "planting.milho_2a_safra.window": [
+            "Milho 2ª Safra",
+            null,
+            "retrieved"
           ]
         },
         "limitations": [
           "comparator_not_built",
-          "planting_calendar_not_integrated",
+          "planting_window_not_decision",
           "needs_farm_records",
           "needs_sowing_date",
           "experimental_snapshot",
-          "standard_kc"
+          "standard_kc",
+          "zarc_municipal_envelope"
         ],
-        "answer_segments": 4
+        "answer_segments": 13
       },
       "en": {
         "question": "With this data, which crop should I plant?",
@@ -281,17 +464,28 @@
             "maize",
             null,
             "fixture"
+          ],
+          "planting.soja.window": [
+            "Soja",
+            null,
+            "retrieved"
+          ],
+          "planting.milho_2a_safra.window": [
+            "Milho 2ª Safra",
+            null,
+            "retrieved"
           ]
         },
         "limitations": [
           "comparator_not_built",
-          "planting_calendar_not_integrated",
+          "planting_window_not_decision",
           "needs_farm_records",
           "needs_sowing_date",
           "experimental_snapshot",
-          "standard_kc"
+          "standard_kc",
+          "zarc_municipal_envelope"
         ],
-        "answer_segments": 4
+        "answer_segments": 13
       }
     }
   }

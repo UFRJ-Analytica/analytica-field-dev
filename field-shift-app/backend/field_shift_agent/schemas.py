@@ -30,7 +30,9 @@ LIMITATION_CODES = (
     "needs_sowing_date",
     "needs_farm_records",
     "comparator_not_built",
-    "planting_calendar_not_integrated",
+    "planting_window_not_decision",
+    "zarc_municipal_envelope",
+    "seasonless_state_average",
 )
 
 

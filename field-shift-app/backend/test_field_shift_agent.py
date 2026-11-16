@@ -24,8 +24,8 @@ from field_shift_agent import orchestrator
 from field_shift_agent.context import AgentInputError, resolve_context
 from field_shift_agent.evidence_guard import GuardRejected, validate
 from field_shift_agent.orchestrator import Limits, run
-from field_shift_agent.provider import (AnthropicProvider, ProviderError, ProviderTurn, ToolCall, provider_config,
-                                        provider_from_env)
+from field_shift_agent.provider import (AnthropicProvider, OpenAIProvider, ProviderError, ProviderTurn, ToolCall,
+                                        provider_config, provider_from_env)
 from field_shift_agent.routes import get_provider
 from field_shift_agent.schemas import ChatRequest, Evidence
 from field_shift_agent.tools import CROP_WATER_SNAPSHOT, ToolBox
@@ -181,10 +181,72 @@ class ToolTests(Block6Recorded):
         self.assertFalse(self.toolbox(field_id="mt-santa-carmem-02").get_crop_water_demand()["available"])
         self.assertFalse(self.toolbox(day="2026-11-01").get_crop_water_demand()["available"])
 
-    def test_planting_constraints_are_unavailable_and_invent_nothing(self) -> None:
+    def test_rain_is_compared_with_the_median_in_code(self) -> None:
+        box = self.toolbox()
+        box.get_environmental_indicators()
+        rain, median = box.evidence["rain_total"].value, box.evidence["rain_median"].value
+        self.assertEqual(box.evidence["rain_vs_median"].value, "below" if rain < median else "above")
+        self.assertAlmostEqual(box.evidence["rain_minus_median"].value, round(rain - median, 1), places=6)
+        self.assertEqual(box.evidence["rain_minus_median"].basis, "derived")
+
+    def test_crop_water_registers_kc_and_pairwise_differences(self) -> None:
+        box = self.toolbox()
+        box.get_crop_water_demand()
+        crops = SNAPSHOT["crops_peak_kc"]
+        self.assertEqual(box.evidence["crop_water.maize.kc_mid"].value, crops["maize"]["kc_values"]["mid"])
+        diff = box.evidence["crop_water.diff.maize_minus_soybean"].value
+        self.assertAlmostEqual(diff, round(crops["maize"]["etc_total_mm"] - crops["soybean"]["etc_total_mm"], 1), places=6)
+        self.assertEqual(sorted(k for k in box.evidence if k.startswith("crop_water.diff.")),
+                         ["crop_water.diff.cotton_minus_maize", "crop_water.diff.cotton_minus_soybean",
+                          "crop_water.diff.maize_minus_soybean"])
+
+    def test_planting_windows_match_block_7_table_f(self) -> None:
+        # Block 7 spec, Table F (2026/2027, Santa Carmem, window_risk_20 envelope over soils and cycles).
         box = self.toolbox()
         result = box.get_planting_constraints()
-        self.assertFalse(result["available"])
+        self.assertTrue(result["available"])
+        self.assertEqual(result["season"], "2026/2027")
+        expected = {"planting.soja.window": ("Soja", "2026-10-01", "2027-01-10", 18, "inside_window"),
+                    "planting.milho_1a_safra.window": ("Milho 1ª Safra", "2026-10-01", "2026-12-31", 18, "inside_window"),
+                    "planting.milho_2a_safra.window": ("Milho 2ª Safra", "2027-01-01", "2027-03-10", 12, "before_window"),
+                    "planting.algodao_herbaceo.window": ("Algodão Herbáceo", "2026-12-21", "2027-02-20", 6, "before_window")}
+        self.assertEqual(set(box.evidence), set(expected))
+        for window in result["windows"]:
+            eid = window["evidence"]["id"]
+            crop, start, end, rows, where = expected[eid]
+            item = box.evidence[eid]
+            self.assertEqual((item.value, item.period.start, item.period.end), (crop, start, end))
+            self.assertEqual((window["rows_enveloped"], window["chosen_date_position"]), (rows, where))
+            self.assertEqual((item.basis, item.fieldId), ("retrieved", FIELD))
+            self.assertIn("zarc_municipal_envelope", item.limitations)
+        self.assertIn("Port.202_de_03-07-2026", box.evidence["planting.soja.window"].source)
+
+    def test_planting_windows_follow_the_season_of_the_chosen_date(self) -> None:
+        box = self.toolbox(day="2025-12-01")
+        self.assertEqual(box.get_planting_constraints()["season"], "2025/2026")
+        self.assertEqual(box.evidence["planting.milho_1a_safra.window"].period.start, "2025-10-11")
+
+    def test_a_season_the_snapshot_does_not_hold_invents_nothing(self) -> None:
+        box = self.toolbox(day="2028-01-01")
+        result = box.get_planting_constraints()
+        self.assertEqual((result["available"], result["reason"]), (False, "season_not_held"))
+        self.assertEqual(result["held_seasons"], ["2025/2026", "2026/2027"])
+        self.assertEqual(box.evidence, {})
+
+    def test_us_fixture_reads_the_seasonless_north_dakota_source(self) -> None:
+        box = self.toolbox(field_id="381825001868504", day="2026-05-10")
+        result = box.get_planting_constraints()
+        self.assertTrue(result["available"])
+        corn = box.evidence["planting.corn.window"]
+        self.assertEqual((corn.period.start, corn.period.end), ("04-26", "06-04"))
+        self.assertIn("seasonless_state_average", corn.limitations)
+        self.assertNotIn("planting.canola.window", box.evidence)  # null window in the source stays absent
+        self.assertIn({"crop": "Canola", "window": None}, result["windows"])
+
+    def test_a_drawn_polygon_has_no_municipality_and_no_window(self) -> None:
+        box = self.toolbox(field_id="trazo:123", ring=[[-55.3, -11.9], [-55.2, -11.9], [-55.2, -11.8], [-55.3, -11.9]],
+                           centroid=[-55.25, -11.87])
+        self.assertEqual(box.get_planting_constraints()["reason"], "municipality_not_resolved")
         self.assertEqual(box.evidence, {})
 
     def test_gaps_carry_recorded_gaps_and_structural_limits(self) -> None:
@@ -318,6 +380,37 @@ class AgentTests(Block6Recorded):
         response = self.run_agent(provider, request("Compare a demanda hídrica", field_id="mt-santa-carmem-02"))
         self.assertEqual(response.fallback_reason, "guard_unknown_evidence")
 
+    def test_milestone_3_water_comparison_with_kc_and_a_computed_difference_passes(self) -> None:
+        provider = ScriptedProvider([use("get_crop_water_demand"), submit("answered", [
+            "O milho precisa de {{value:crop_water.diff.maize_minus_soybean}} a mais de água que a soja em "
+            "{{period:crop_water.et0_total}}, porque seu coeficiente de cultura (Kc) no pico é "
+            "{{value:crop_water.maize.kc_mid}} contra {{value:crop_water.soybean.kc_mid}}.",
+            "A ETc é o Kc vezes a ET0, a evapotranspiração de referência, que foi {{value:crop_water.et0_total}}. "
+            "Isso não indica qual cultura produz mais.",
+        ], ["crop_water.diff.maize_minus_soybean", "crop_water.maize.kc_mid", "crop_water.soybean.kc_mid",
+            "crop_water.et0_total"], ["needs_sowing_date"])])
+        response = self.run_agent(provider, request("Compare a demanda hídrica do milho e da soja"))
+        self.assertEqual((response.mode, response.status), ("agent", "answered"))
+        self.assertIn("standard_kc", response.limitations)
+
+    def test_milestone_3_a_model_that_does_its_own_arithmetic_is_refused(self) -> None:
+        provider = ScriptedProvider([use("get_crop_water_demand"), submit("answered", [
+            "O milho precisa de cerca de 10 mm a mais que a soja."], [], [])])
+        response = self.run_agent(provider, request("Compare a demanda hídrica do milho e da soja"))
+        self.assertEqual(response.fallback_reason, "guard_unverified_number")
+
+    def test_milestone_3_rain_comparison_and_planting_window_pass(self) -> None:
+        provider = ScriptedProvider([use("get_environmental_indicators", "get_planting_constraints"), submit("answered", [
+            "Choveu {{value:rain_vs_median}}: {{value:rain_total}} contra {{value:rain_median}}, "
+            "uma diferença de {{value:rain_minus_median}}.",
+            "A janela do ZARC para {{value:planting.soja.window}} vai de {{period:planting.soja.window}}, e a data "
+            "escolhida está dentro dela; isso diz quando semear tem baixo risco, não garante a safra.",
+        ], ["rain_vs_median", "rain_total", "rain_median", "rain_minus_median", "planting.soja.window"],
+            ["historical_not_forecast", "planting_window_not_decision"])])
+        response = self.run_agent(provider, request("Choveu menos que o normal e quando posso plantar soja?"))
+        self.assertEqual((response.mode, response.status), ("agent", "answered"))
+        self.assertIn("zarc_municipal_envelope", response.limitations)
+
     def test_demo_3_a_crop_recommendation_is_refused_by_the_guard(self) -> None:
         provider = ScriptedProvider([use("get_crop_water_demand", "get_planting_constraints"),
                                      submit("answered", ["Recomendo plantar milho nesta safra."], [])])
@@ -328,16 +421,38 @@ class AgentTests(Block6Recorded):
         provider = ScriptedProvider([use("get_evidence_gaps", "get_planting_constraints", "get_crop_water_demand"),
                                      submit("partial", [
                                          "Esses dados não bastam para escolher uma cultura: o comparador de rotações "
-                                         "e o calendário de plantio não estão disponíveis, e não há registros da "
-                                         "propriedade.",
+                                         "não está disponível e não há registros da propriedade.",
                                          "O que existe é a demanda hídrica estimada, que é maior para "
-                                         "{{value:crop_water.highest_peak_demand}} com coeficientes de pico.",
-                                     ], ["crop_water.highest_peak_demand"],
-                                         ["comparator_not_built", "planting_calendar_not_integrated", "needs_farm_records"])])
+                                         "{{value:crop_water.highest_peak_demand}} com coeficientes de pico, e a "
+                                         "janela do ZARC de {{value:planting.soja.window}}, de "
+                                         "{{period:planting.soja.window}}, que diz quando semear tem baixo risco, "
+                                         "não qual cultura escolher.",
+                                     ], ["crop_water.highest_peak_demand", "planting.soja.window"],
+                                         ["comparator_not_built", "planting_window_not_decision", "needs_farm_records"])])
         response = self.run_agent(provider, request("Com esses dados, qual cultura devo plantar?"))
         self.assertEqual((response.mode, response.status), ("agent", "partial"))
         self.assertEqual(response.tools_used, ["get_evidence_gaps", "get_planting_constraints", "get_crop_water_demand"])
         self.assertIn("comparator_not_built", response.limitations)
+
+    def test_consecutive_tool_turns_and_english_follow_up_are_guarded(self) -> None:
+        provider = ScriptedProvider([
+            use("get_field_context"),
+            use("get_evidence_gaps"),
+            use("get_crop_water_demand", "get_planting_constraints"),
+            submit("partial", [
+                "The available evidence is not enough to choose a crop because farm records and a rotation "
+                "comparator are missing.",
+                "It does show the highest recorded experimental water demand for "
+                "{{value:crop_water.highest_peak_demand}} and the planting window for "
+                "{{value:planting.soja.window}} ({{period:planting.soja.window}}), but neither is a crop ranking.",
+            ], ["crop_water.highest_peak_demand", "planting.soja.window"],
+                ["needs_farm_records", "comparator_not_built", "planting_window_not_decision"]),
+        ])
+        response = self.run_agent(provider, request("With this information, which crop should I plant?", locale="en"))
+        self.assertEqual((response.mode, response.status), ("agent", "partial"))
+        self.assertEqual(response.tools_used, ["get_field_context", "get_evidence_gaps",
+                                               "get_crop_water_demand", "get_planting_constraints"])
+        self.assertEqual(len(provider.calls), 4)
 
     def test_provider_failures_fall_back_without_leaking_details(self) -> None:
         for error, code in ((ProviderError("provider_unreachable"), "provider_unreachable"),
@@ -376,6 +491,9 @@ class ProviderTests(unittest.TestCase):
         self.assertEqual(provider_config({}).reason, "not_configured")
         self.assertEqual(provider_config({"ANTHROPIC_API_KEY": "k", "ANTHROPIC_BASE_URL": "u"}).reason, "not_configured")
         self.assertEqual(provider_config({"FIELD_SHIFT_AI_PROVIDER": "anthropic"}).reason, "missing_key")
+        self.assertEqual(provider_config({"FIELD_SHIFT_AI_PROVIDER": "openai"}).reason, "missing_key")
+        self.assertEqual(provider_config({"FIELD_SHIFT_AI_PROVIDER": "openai", "OPENAI_API_KEY": "ambient"}).reason,
+                         "missing_key")
         self.assertEqual(provider_config({"FIELD_SHIFT_AI_PROVIDER": "acme", "FIELD_SHIFT_AI_API_KEY": "k"}).reason,
                          "unknown_provider")
         self.assertIsNone(provider_from_env({}))
@@ -414,6 +532,107 @@ class ProviderTests(unittest.TestCase):
             provider.run_turn("sys", [], [])
         self.assertEqual(failed.exception.code, "provider_unreachable")
 
+    def test_openai_responses_adapter_uses_stateless_function_calling_and_records_usage(self) -> None:
+        provider = provider_from_env({
+            "FIELD_SHIFT_AI_PROVIDER": "openai",
+            "FIELD_SHIFT_AI_OPENAI_API_KEY": "test-key",
+            "FIELD_SHIFT_AI_OPENAI_MODEL": "gpt-6-luna",
+        })
+        self.assertIsInstance(provider, OpenAIProvider)
+
+        class FakeResponse:
+            status_code = 200
+            def json(self):
+                return {"status": "completed", "output": [
+                    {"type": "reasoning", "id": "rs_1", "encrypted_content": "opaque"},
+                    {"type": "function_call", "call_id": "call_1", "name": "get_field_context",
+                     "arguments": "{}", "status": "completed"},
+                ], "usage": {"input_tokens": 100, "output_tokens": 20, "total_tokens": 120,
+                              "input_tokens_details": {"cached_tokens": 10}}}
+
+        class FakeClient:
+            def __init__(self):
+                self.path = None
+                self.payload = None
+            def post(self, path, json):
+                self.path, self.payload = path, json
+                return FakeResponse()
+
+        fake = FakeClient()
+        provider._client.close()
+        provider._client = fake
+        turn = provider.run_turn("system", [{"role": "user", "content": "question"}], [
+            {"name": "get_field_context", "description": "field", "strict": True,
+             "input_schema": {"type": "object", "properties": {}, "required": [],
+                              "additionalProperties": False}},
+        ])
+        self.assertEqual((fake.path, turn.stop_reason, turn.tool_calls[0].id),
+                         ("responses", "tool_use", "call_1"))
+        self.assertEqual(fake.payload["model"], "gpt-6-luna")
+        self.assertEqual(fake.payload["reasoning"], {"effort": "medium"})
+        self.assertEqual(fake.payload["max_output_tokens"], 4096)
+        self.assertFalse(fake.payload["store"])
+        self.assertEqual(fake.payload["tools"][0]["type"], "function")
+        self.assertEqual(fake.payload["tools"][0]["parameters"]["additionalProperties"], False)
+        self.assertEqual(provider.telemetry[0].total_tokens, 120)
+        self.assertGreater(provider.telemetry[0].estimated_cost_usd, 0)
+
+    def test_openai_replays_reasoning_and_returns_consecutive_function_outputs_by_call_id(self) -> None:
+        provider = OpenAIProvider("test-key", "gpt-6-luna", "medium", 20, None)
+
+        class FakeResponse:
+            status_code = 200
+            def json(self):
+                return {"status": "completed", "output": [
+                    {"type": "function_call", "call_id": "call_2", "name": "get_evidence_gaps",
+                     "arguments": "{}", "status": "completed"},
+                ], "usage": {"input_tokens": 50, "output_tokens": 10, "total_tokens": 60}}
+
+        class FakeClient:
+            payload = None
+            def post(self, path, json):
+                self.payload = json
+                return FakeResponse()
+
+        fake = FakeClient()
+        provider._client.close()
+        provider._client = fake
+        prior = [{"type": "reasoning", "id": "rs_1", "encrypted_content": "opaque"},
+                 {"type": "function_call", "call_id": "call_1", "name": "get_field_context",
+                  "arguments": "{}", "status": "completed"}]
+        turn = provider.run_turn("system", [
+            {"role": "user", "content": "question"},
+            {"role": "assistant", "content": prior},
+            {"role": "user", "content": [{"type": "tool_result", "tool_use_id": "call_1",
+                                             "content": "{\"field_id\":\"field-1\"}"}]},
+        ], [])
+        self.assertEqual(turn.tool_calls[0].name, "get_evidence_gaps")
+        self.assertEqual(fake.payload["input"][1], prior[0])
+        self.assertEqual(fake.payload["input"][-1], {
+            "type": "function_call_output", "call_id": "call_1", "output": "{\"field_id\":\"field-1\"}"})
+
+    def test_openai_maps_errors_rejects_bad_arguments_and_enforces_budget(self) -> None:
+        provider = OpenAIProvider("test-key", "gpt-6-luna", "medium", 20, None, budget_usd=0.000001)
+        with self.assertRaises(ProviderError) as budget:
+            provider.run_turn("system", [{"role": "user", "content": "q"}], [])
+        self.assertEqual(budget.exception.code, "provider_budget_exceeded")
+
+        class BadArguments:
+            status_code = 200
+            def json(self):
+                return {"status": "completed", "output": [
+                    {"type": "function_call", "call_id": "call_1", "name": "tool", "arguments": "{"}],
+                        "usage": {}}
+        class FakeClient:
+            def post(self, path, json):
+                return BadArguments()
+        provider = OpenAIProvider("test-key", "gpt-6-luna", "medium", 20, None)
+        provider._client.close()
+        provider._client = FakeClient()
+        with self.assertRaises(ProviderError) as bad:
+            provider.run_turn("system", [{"role": "user", "content": "q"}], [])
+        self.assertEqual(bad.exception.code, "provider_invalid_tool_arguments")
+
 
 class RouteTests(Block6Recorded):
     def setUp(self) -> None:
@@ -435,6 +654,14 @@ class RouteTests(Block6Recorded):
         self.assertNotIn("sk-test-123", json.dumps(body))
         with patch.dict("os.environ", {"FIELD_SHIFT_AI_PROVIDER": ""}):
             self.assertFalse(self.client.get("/experimental/field-shift-ai/status").json()["llm_enabled"])
+
+    def test_status_reports_openai_model_and_effort_without_the_key(self) -> None:
+        env = {"FIELD_SHIFT_AI_PROVIDER": "openai", "FIELD_SHIFT_AI_OPENAI_API_KEY": "secret-test-key",
+               "FIELD_SHIFT_AI_OPENAI_MODEL": "gpt-6-luna", "FIELD_SHIFT_AI_EFFORT": "medium"}
+        with patch.dict("os.environ", env, clear=True):
+            body = self.client.get("/experimental/field-shift-ai/status").json()
+        self.assertEqual((body["provider"], body["model"], body["effort"]), ("openai", "gpt-6-luna", "medium"))
+        self.assertNotIn("secret-test-key", json.dumps(body))
 
     def test_chat_validates_its_input(self) -> None:
         self.assertEqual(self.post(field_id="nowhere-01").status_code, 404)

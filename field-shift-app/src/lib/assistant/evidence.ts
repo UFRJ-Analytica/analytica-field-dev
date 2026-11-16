@@ -80,10 +80,11 @@ export function evidenceFromRow(row: ProvenanceRow, payload: NumbersPayload): Ev
  * The summary evidence of a payload, guarded by field: a payload of another field yields nothing,
  * so an answer can never cite numbers of a field the user is not looking at.
  */
-export function summaryEvidence(payload: NumbersPayload, fieldId: string): Evidence[] {
+export function summaryEvidence(payload: NumbersPayload, fieldId: string,
+  metrics: readonly string[] = SUMMARY_METRICS): Evidence[] {
   if (payload.field_id !== fieldId) return []
   const rows = new Map(payload.provenance.map((row) => [row.metric, row]))
-  return SUMMARY_METRICS.flatMap((metric) => {
+  return metrics.flatMap((metric) => {
     const row = rows.get(metric)
     return row ? [evidenceFromRow(row, payload)] : []
   })

@@ -37,7 +37,8 @@ def get_runner() -> Any:
 def status() -> dict[str, Any]:
     config = provider_config()
     return {"experimental": True, "llm_enabled": config.name is not None, "provider": config.name,
-            "reason": config.reason, "mode": "agent" if config.name else "deterministic"}
+            "model": config.model, "effort": config.effort, "reason": config.reason,
+            "mode": "agent" if config.name else "deterministic"}
 
 
 @router.post("/chat", response_model=ChatResponse)

@@ -7,18 +7,20 @@
  * - FieldShiftAIToggle is its own launcher (bottom right), outside the frozen control strip.
  * - FieldShiftAIPanel is a retractable side panel. It reads the selected field from the app store
  *   (Context Adapter), the block 6 numbers (Evidence Adapter) and answers a fixed set of questions
- *   (Deterministic Answer Adapter). It is a direct child of the app shell, so `.is-numbers-open`
- *   hides it while the Field numbers screen is open, exactly like every other map screen child.
+ *   (Deterministic Answer Adapter). It is a direct child of the app shell. Since block 5.5 the
+ *   team's four panels live in `PanelHost` over the scenario slot, and this panel sits beside it.
  */
 import { useEffect, useId, useMemo, useRef, useState, type FormEvent } from 'react'
-import type { FieldSummary } from '@/lib/map-store'
+import { useMapStore, type FieldSummary } from '@/lib/map-store'
+import { regionAdapter, type RegionId } from '@/lib/regions'
 import { answerIntent, classifyIntent, evidenceLabel, evidenceValue } from '@/lib/assistant/answers'
 import type { AgentChatRequest, AgentChatResponse } from '@/lib/assistant/agent-api'
 import { useFieldContext } from '@/lib/assistant/context'
+import { snapshotChosenDate } from '@/lib/assistant/crop-water'
 import { OVERVIEW_METRICS, summaryEvidence } from '@/lib/assistant/evidence'
-import { formatDate, formatResolution } from '@/lib/assistant/format'
+import { formatDate, formatNumber, formatResolution, formatValue } from '@/lib/assistant/format'
 import { useLocale } from '@/lib/assistant/locale'
-import type { AssistantResponse, Evidence, Intent, LimitationCode } from '@/lib/assistant/types'
+import type { AssistantResponse, CropWaterSet, Evidence, Intent, LimitationCode } from '@/lib/assistant/types'
 import { fallbackReasonKey, useAgentAvailability, useAgentTurns, type AgentState } from '@/lib/assistant/use-agent'
 import { ASSISTANT_PANEL_ID, ASSISTANT_TOGGLE_ATTR, useAssistantUi } from '@/lib/assistant/ui-store'
 import { at, type AssistantKey } from '@/strings/assistant'
@@ -50,14 +52,54 @@ export function FieldShiftAIToggle() {
 /** A suggested question keeps its catalog key, so it follows a language switch; typed text does not change. */
 type Turn = { id: string; question: string; quickKey: AssistantKey | null; intent: Intent }
 
-const QUICK: { intent: Intent; key: AssistantKey }[] = [
-  { intent: 'explain_field', key: 'quick.explain' },
+/** Steps 2 to 6 of the guided demo, in the order a first-time user reads a field. */
+const DEMO_STEPS: { intent: Intent; key: AssistantKey }[] = [
   { intent: 'environment', key: 'quick.environment' },
+  { intent: 'rainfall', key: 'quick.rain' },
   { intent: 'water_demand', key: 'quick.water' },
-  { intent: 'missing', key: 'quick.missing' },
+  { intent: 'planting', key: 'quick.planting' },
   { intent: 'sources', key: 'quick.sources' },
+]
+
+const MORE_QUESTIONS: { intent: Intent; key: AssistantKey }[] = [
+  { intent: 'explain_field', key: 'quick.explain' },
+  { intent: 'missing', key: 'quick.missing' },
   { intent: 'recommendation', key: 'quick.recommendation' },
 ]
+
+const GLOSSARY: AssistantKey[] = ['gloss.et0', 'gloss.etc', 'gloss.kc', 'gloss.zarc', 'gloss.nass', 'gloss.power',
+  'gloss.percentile', 'gloss.gwetroot', 'gloss.evland']
+
+/**
+ * Experimental, opt-in display state written on <html>, read only by FieldShiftAI.css:
+ * `data-fsai-dev-tools="off"` hides the developer command console (COMMAND) from the farmer's view,
+ * `data-fsai-open` lets the assistant take the right-hand column while it is open. No team component
+ * is edited; removing these attributes restores the app exactly. The preference is a per-viewer
+ * convenience in localStorage, read and written defensively.
+ */
+const DEV_TOOLS_KEY = 'fs.fsai.devTools'
+
+function readDevTools(): boolean {
+  try { return window.localStorage.getItem(DEV_TOOLS_KEY) === 'on' } catch { return false }
+}
+
+function useDevToolsPreference(): [boolean, (on: boolean) => void] {
+  const [on, setOn] = useState<boolean>(() => (typeof window === 'undefined' ? false : readDevTools()))
+  useEffect(() => {
+    document.documentElement.dataset.fsaiDevTools = on ? 'on' : 'off'
+    try { window.localStorage.setItem(DEV_TOOLS_KEY, on ? 'on' : 'off') } catch { /* storage unavailable */ }
+  }, [on])
+  return [on, setOn]
+}
+
+/** The guided demo's first step: the region's first fixture field, and for Brazil the recorded window's date. */
+function openDemoField(region: RegionId): void {
+  const store = useMapStore.getState()
+  if (store.regionId !== region) store.setRegionId(region)
+  const fieldId = regionAdapter(region).fixtureIds[0]
+  if (fieldId && store.selectedFieldId !== fieldId) store.selectField(fieldId)
+  if (region === 'br') store.setChosenDate(snapshotChosenDate())
+}
 
 function statusText(kind: string, locale: Locale, status?: number): string {
   switch (kind) {
@@ -87,6 +129,13 @@ export function FieldShiftAIPanel({ selectedField }: { selectedField: FieldSumma
   const logRef = useRef<HTMLOListElement | null>(null)
   const headingId = useId()
   const inputId = useId()
+  const [devTools, setDevTools] = useDevToolsPreference()
+
+  useEffect(() => {
+    if (open) document.documentElement.dataset.fsaiOpen = 'true'
+    else delete document.documentElement.dataset.fsaiOpen
+    return () => { delete document.documentElement.dataset.fsaiOpen }
+  }, [open])
 
   // Answers belong to one field, date and ring. A change clears them, so no answer can show data
   // of a field the user is no longer looking at.
@@ -137,7 +186,9 @@ export function FieldShiftAIPanel({ selectedField }: { selectedField: FieldSumma
   // Responses are computed at render from the turn's intent and the current context, so a locale
   // switch re-renders the same answer, with the same evidence, in the other language.
   const responses: AssistantResponse[] = useMemo(
-    () => turns.map((turn) => answerIntent(turn.intent, { context, locale, id: turn.id })),
+    () => turns.map((turn) => answerIntent(turn.intent, {
+      context, locale, id: turn.id, question: turn.quickKey ? at(locale, turn.quickKey) : turn.question,
+    })),
     [turns, context, locale],
   )
 
@@ -186,6 +237,32 @@ export function FieldShiftAIPanel({ selectedField }: { selectedField: FieldSumma
       </p>
 
       <div className="fsai-scroll">
+        <section className="fsai-section fsai-demo" aria-label={at(locale, 'demo.heading')}>
+          <h3>{at(locale, 'demo.heading')}</h3>
+          <p className="fsai-hint">{at(locale, 'demo.intro')}</p>
+          <ol className="fsai-steps">
+            <li>
+              <div className="fsai-step-field">
+                <button type="button" className="fsai-primary" data-demo="br" onClick={() => openDemoField('br')}>
+                  {at(locale, 'demo.open_br')}
+                </button>
+                <button type="button" data-demo="us" onClick={() => openDemoField('us')}>{at(locale, 'demo.open_us')}</button>
+              </div>
+              <p className="fsai-hint">
+                {at(locale, 'demo.open_br_note', { date: formatDate(snapshotChosenDate(), locale) })}{' '}
+                {at(locale, 'demo.region_note')}
+              </p>
+              {fieldName && <p className="fsai-hint fsai-active" data-testid="fsai-demo-active">{at(locale, 'demo.active', { name: fieldName })}</p>}
+            </li>
+            {DEMO_STEPS.map(({ intent, key }) => (
+              <li key={key}>
+                <button type="button" className="fsai-step" disabled={context.fieldId === null}
+                  onClick={() => ask(at(locale, key), key, intent)}>{at(locale, key)}</button>
+              </li>
+            ))}
+          </ol>
+        </section>
+
         <section className="fsai-section" aria-label={at(locale, 'ctx.heading')}>
           <h3>{at(locale, 'ctx.heading')}</h3>
           <dl className="fsai-context">
@@ -223,10 +300,10 @@ export function FieldShiftAIPanel({ selectedField }: { selectedField: FieldSumma
           </section>
         )}
 
-        <section className="fsai-section" aria-label={at(locale, 'quick.heading')}>
-          <h3>{at(locale, 'quick.heading')}</h3>
+        <section className="fsai-section" aria-label={at(locale, 'quick.more')}>
+          <h3>{at(locale, 'quick.more')}</h3>
           <div className="fsai-quick">
-            {QUICK.map(({ intent, key }) => (
+            {MORE_QUESTIONS.map(({ intent, key }) => (
               <button key={key} type="button" onClick={() => ask(at(locale, key), key, intent)}>{at(locale, key)}</button>
             ))}
           </div>
@@ -254,6 +331,17 @@ export function FieldShiftAIPanel({ selectedField }: { selectedField: FieldSumma
               {at(locale, 'chat.clear')}
             </button>
           )}
+        </section>
+
+        <section className="fsai-section">
+          <details className="fsai-glossary">
+            <summary>{at(locale, 'gloss.heading')}</summary>
+            <ul>{GLOSSARY.map((key) => <li key={key}>{at(locale, key)}</li>)}</ul>
+          </details>
+          <label className="fsai-devtools">
+            <input type="checkbox" checked={devTools} onChange={(event) => setDevTools(event.target.checked)} />
+            {at(locale, 'view.dev_tools')}
+          </label>
         </section>
       </div>
 
@@ -348,6 +436,11 @@ function AgentResponseView({ response, locale, onRegenerate }: { response: Agent
       <div lang={textLocale}>
         {response.answer.map((paragraph, index) => <p key={index}>{paragraph.map(segment)}</p>)}
       </div>
+      {waterRowsFromEvidence(response.evidence).length > 0 && (
+        <WaterTable rows={waterRowsFromEvidence(response.evidence)} set={null} locale={locale}
+          period={response.evidence.find((e) => e.id === 'crop_water.et0_total')?.period ?? null}
+          et0={response.evidence.find((e) => e.id === 'crop_water.et0_total')?.value ?? null} />
+      )}
       {response.evidence.length > 0 && (
         <details className="fsai-evidence">
           <summary>{at(locale, 'answer.evidence', { count: response.evidence.length })}</summary>
@@ -375,7 +468,10 @@ function ResponseView({ response, locale }: { response: AssistantResponse; local
         <span className="fsai-who">{at(locale, 'ai.name')}</span>
         <span className={`fsai-pill is-${response.status}`}>{at(locale, `answer.status.${response.status}` as AssistantKey)}</span>
       </p>
-      {response.answer.map((line, index) => <p key={index}>{line}</p>)}
+      {/* The conclusion, then the comparison it summarises, then the explanation. */}
+      {response.answer.slice(0, 1).map((line, index) => <p key={index}>{line}</p>)}
+      {response.cropWater && <WaterTable rows={waterRowsFromSet(response.cropWater)} set={response.cropWater} locale={locale} />}
+      {response.answer.slice(1).map((line, index) => <p key={index + 1}>{line}</p>)}
       {response.evidence.length > 0 && (
         <details className="fsai-evidence">
           <summary>{at(locale, 'answer.evidence', { count: response.evidence.length })}</summary>
@@ -393,6 +489,74 @@ function ResponseView({ response, locale }: { response: AssistantResponse; local
         </div>
       )}
     </div>
+  )
+}
+
+type WaterRow = { cropId: string; kc: number | null; etc: number | null; balance: number | null }
+
+function waterRowsFromSet(set: CropWaterSet): WaterRow[] {
+  return set.crops.map((c) => ({ cropId: c.cropId, kc: c.kc.mid, etc: c.etcTotalMm, balance: c.rainMinusEtcMm }))
+}
+
+/** The same table for an agent answer, read only from the evidence the backend verified. */
+function waterRowsFromEvidence(evidence: Evidence[]): WaterRow[] {
+  const num = (id: string) => {
+    const value = evidence.find((e) => e.id === id)?.value
+    return typeof value === 'number' ? value : null
+  }
+  const ids = [...new Set(evidence.map((e) => /^crop_water\.([a-z]+)\.etc_total$/.exec(e.id)?.[1]).filter((id): id is string => Boolean(id)))]
+  return ids.map((cropId) => ({
+    cropId,
+    kc: num(`crop_water.${cropId}.kc_mid`),
+    etc: num(`crop_water.${cropId}.etc_total`),
+    balance: num(`crop_water.${cropId}.rain_minus_etc`),
+  }))
+}
+
+/**
+ * A compact comparison of the recorded FAO-56 values: one row per crop, no chart and no ranking
+ * beyond the order of the source. Every cell is a recorded value; nothing is computed here.
+ */
+function WaterTable({ rows, set, locale, period, et0 }: {
+  rows: WaterRow[]; set: CropWaterSet | null; locale: Locale
+  period?: { start: string; end: string } | null; et0?: number | string | null
+}) {
+  const window = set ? set.period : period ?? null
+  const et0Value = set ? set.crops[0]?.et0TotalMm ?? null : typeof et0 === 'number' ? et0 : null
+  const rain = set ? set.crops[0]?.rainTotalMm ?? null : null
+  const mm = (value: number | null) => formatValue(value, 'mm', 'rain_total', locale)
+  const top = Math.max(...rows.map((r) => r.etc ?? -Infinity))
+  return (
+    <table className="fsai-water" data-testid="fsai-water-table">
+      {window && (
+        <caption>{at(locale, 'water.table_caption', { start: formatDate(window.start, locale), end: formatDate(window.end, locale) })}</caption>
+      )}
+      <thead>
+        <tr>
+          <th scope="col">{at(locale, 'water.col_crop')}</th>
+          <th scope="col">{at(locale, 'water.col_kc')}</th>
+          <th scope="col">{at(locale, 'water.col_etc')}</th>
+          <th scope="col">{at(locale, 'water.col_balance')}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((row) => (
+          <tr key={row.cropId} data-crop={row.cropId} data-highest={row.etc === top ? 'true' : undefined}>
+            <th scope="row">{at(locale, `crop.${row.cropId}` as AssistantKey)}</th>
+            <td>{row.kc === null ? '—' : formatNumber(row.kc, 2, locale)}</td>
+            <td>{mm(row.etc)}</td>
+            <td>{mm(row.balance)}</td>
+          </tr>
+        ))}
+      </tbody>
+      {et0Value !== null && (
+        <tfoot>
+          <tr>
+            <td colSpan={4}>{at(locale, 'water.table_foot', { et0: mm(et0Value), rain: rain === null ? '—' : mm(rain) })}</td>
+          </tr>
+        </tfoot>
+      )}
+    </table>
   )
 }
 
