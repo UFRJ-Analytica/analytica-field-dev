@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { MapCanvas } from '@/components/MapCanvas'
 import { LayerRail } from '@/components/LayerRail'
-import { ScenarioCards, type RotationScenario } from '@/components/ScenarioCards'
+import type { RotationScenario } from '@/components/ScenarioCards'
 import { EvidencePanel, type EvidenceRow } from '@/components/EvidencePanel'
 import { TimelineDock } from '@/components/TimelineDock'
 import { AbstentionNotice } from '@/components/AbstentionNotice'
@@ -9,14 +9,12 @@ import { FieldsPanel } from '@/components/FieldsPanel'
 import { PolygonPanel } from '@/components/PolygonPanel'
 import { PanelHost, type PanelSpec } from '@/components/PanelHost'
 import { PANEL_TOGGLE_ATTR, usePanelStore, type PanelId } from '@/lib/panel-store'
-import { RotationToggle } from '@/components/RotationToggle'
 import { SUPPORTING_DATA_PANEL_ID, SupportingDataToggle, useSupportingDataToggle } from '@/components/SupportingDataToggle'
 import { NumbersToggle } from '@/components/NumbersToggle'
 import { NumbersView } from '@/components/NumbersView'
 import { chosenDateOf, useMapStore, type FieldSummary } from '@/lib/map-store'
 import { loadFields, loadProducer } from '@/lib/producer-store'
 import { useLayers } from '@/lib/use-layers'
-import { seasonForDate } from '@/lib/timeline'
 import {
   regionAdapter,
   regionFromSearch,
@@ -94,12 +92,14 @@ function App() {
   const [scenarioState, setScenarioState] = useState<ScenarioResponse['state'] | null>(null)
   const [threshold, setThreshold] = useState<string | null>(null)
   // R-30: the fixture's own season, so the panel can say when the derived season differs.
-  const [fixtureSeason, setFixtureSeason] = useState('2025/26')
   const [error, setError] = useState<string | null>(null)
   const [canRetryFields, setCanRetryFields] = useState(false)
   const [fieldsRequest, setFieldsRequest] = useState(0)
   const [isLoadingFields, setIsLoadingFields] = useState(true)
   const [isLoadingScenarios, setIsLoadingScenarios] = useState(false)
+  // The fixture's own season, written by the `/fields` response; the note that printed it lived in the
+  // rotation panel, so only the setter is kept.
+  const [, setFixtureSeason] = useState('2025/26')
   const noticeRef = useRef<HTMLDivElement | null>(null)
   const [noticeHeight, setNoticeHeight] = useState(0)
 
@@ -113,8 +113,6 @@ function App() {
   const narrowViewport = useMediaMatch(NARROW_QUERY)
   // R-35 and R-36: the dock's top edge follows the rotation panel's measured top edge, so
   // the 8 px gap and the y 450 floor are kept without hard-coding either panel height.
-  const rotationPanelRef = useRef<HTMLDivElement | null>(null)
-  const [rotationTop, setRotationTop] = useState<number | null>(null)
 
   // Block 4: one `/layers` request per chosen date and viewport tile feeds both the rail
   // and the map (R-14, R-24). The rail no longer fetches on its own.
@@ -199,33 +197,10 @@ function App() {
 
   const hasNotice = Boolean(error || (scenarioState === 'abstained' && threshold && scenarios.length > 0))
 
-  // R-35, R-36: the rotation panel's top edge is the only anchor the dock needs. It is
-  // measured, not assumed, because a collapsed panel's height is its header and a
-  // resized viewport moves it.
-  useLayoutEffect(() => {
-    const node = rotationPanelRef.current
-    if (!node) return
-    const next = node.getBoundingClientRect().top
-    setRotationTop((current) => (current === null || Math.abs(current - next) > 0.1 ? next : current))
-  })
-
-  useEffect(() => {
-    const node = rotationPanelRef.current
-    if (!node || typeof ResizeObserver === 'undefined') return
-    const measure = () => {
-      setRotationTop((current) => {
-        const next = node.getBoundingClientRect().top
-        return current === null || Math.abs(current - next) > 0.1 ? next : current
-      })
-    }
-    const observer = new ResizeObserver(measure)
-    observer.observe(node)
-    window.addEventListener('resize', measure)
-    return () => {
-      observer.disconnect()
-      window.removeEventListener('resize', measure)
-    }
-  }, [false])
+  // Block 4 R-35 and R-36 used to anchor the dock's top edge to the rotation panel's measured
+  // top edge. That panel is gone, so the dock keeps the position it had there with a fixed value:
+  // `--fs-rotation-top` defaults to 882px in the stylesheet, which is the measurement both widths
+  // produced while the panel existed, and the dock's own floor and offsets are unchanged.
 
   // The status notice and the right edge column are separate fixed overlays, so the
   // 8 px gap of R-23 is kept by measuring the notice, not by nesting it. The measure
@@ -278,9 +253,6 @@ function App() {
     }))
   }, [scenarios])
 
-  // R-29 and R-31: the dock and the band read one chosen date and one derived season.
-  const chosenDate = useMapStore((state) => state.chosenDate ?? state.axis.default)
-  const derivedSeason = seasonForDate(chosenDate)
   // The band draws the crops of the field's scenarios (Soybean, Corn and Cotton here).
   const fieldCrops = useMemo(() => {
     const seen = new Set<string>()
@@ -289,9 +261,6 @@ function App() {
     }
     return [...seen]
   }, [scenarios])
-  // R-30: the fixture scenario stays the fixture scenario, and the panel says which
-  // season its values belong to when the chosen date derives another one.
-  const showFixtureNote = selectedField !== null && derivedSeason !== fixtureSeason
 
   useEffect(() => {
     const controller = new AbortController()
@@ -379,42 +348,6 @@ function App() {
    */
   const panelSpecs: PanelSpec[] = [
     {
-      id: 'rotation',
-      labelKey: 'map.rotation_outlook',
-      needsSelection: true,
-      content: hasSelection ? (
-        <>
-          {/* AM-07 and R-26: a polygon has no coverage measurement, so the pill is unmounted
-              while a polygon is the selected field rather than printing a 0 percent. */}
-          <div className="rotation-heading-row">
-            {selectedPolygonId === null && (
-              <span className="field-coverage-pill"><span className="coverage-dot" />{t('map.data_coverage', { coverage: selectedField?.coverage ?? 0 })}</span>
-            )}
-            {showFixtureNote && (
-              <p className="fixture-season-note">
-                {t('timeline.fixture_data', { season: fixtureSeason, derived: derivedSeason })}
-              </p>
-            )}
-          </div>
-          <ScenarioCards
-            collapsed={false}
-            emptyReason={isLoadingFields || isLoadingScenarios
-              ? null
-              : error ?? (selectedPolygonId !== null
-                ? t('empty.no_rotation_scenarios')
-                : !selectedFieldId
-                  ? t('empty.select_field')
-                  : scenarios.length === 0 ? t('empty.no_rotation_scenarios') : null)}
-            isLoading={isLoadingFields || isLoadingScenarios}
-            seasonChip={selectedPolygonId === null}
-            scenarios={scenarios}
-            state={scenarioState === 'abstained' ? null : scenarioState}
-            threshold={scenarioState === 'abstained' ? null : threshold}
-          />
-        </>
-      ) : null,
-    },
-    {
       id: 'numbers',
       labelKey: 'numbers.open',
       needsSelection: true,
@@ -428,7 +361,6 @@ function App() {
 
   const shellStyle = {
     '--fs-notice-block': `${hasNotice ? noticeHeight + 8 : 0}px`,
-    ...(rotationTop === null ? {} : { '--fs-rotation-top': `${rotationTop}px` }),
   } as CSSProperties
 
   return (
@@ -464,7 +396,6 @@ function App() {
           {/* Block 5.5, W3 and block 7 revision 10 R-08: the four buttons in the fixed order
               `Rotation outlook`, `Field numbers`, `Planting calendar`, `Field record`, to the
               right of `Supporting data`, which block 4 R-41 freezes as the anchor. */}
-          <RotationToggle hasSelection={hasSelection} />
           <NumbersToggle hasSelection={hasSelection} />
         </div>
       </div>
@@ -517,9 +448,7 @@ function App() {
           note now belong to the `Rotation outlook` panel's own content. */}
       <div className="overlay anchor-bottom-left layer-cards" style={{ zIndex: ZOrder.scenarioCards }}>
         <div
-          ref={rotationPanelRef}
           className="overlay-interactive panel-surface scenario-anchor"
-          data-collapsed={panelOpen === 'rotation' ? 'false' : 'true'}
           data-rotation-panel
           style={{ zIndex: ZOrder.scenarioCards }}
         >

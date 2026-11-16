@@ -8,14 +8,13 @@
  */
 import { create } from 'zustand'
 
-export type PanelId = 'rotation' | 'numbers'
+export type PanelId = 'numbers'
 
-/** The order of the strip, `Rotation outlook` then `Field Data`. */
-export const PANEL_ORDER: readonly PanelId[] = ['rotation', 'numbers']
+/** The order of the strip: `Field Data` is the only panel left. */
+export const PANEL_ORDER: readonly PanelId[] = ['numbers']
 
 /** The data attribute each button is found by, for the focus return after a panel closes. */
 export const PANEL_TOGGLE_ATTR: Record<PanelId, string> = {
-  rotation: 'data-rotation-toggle',
   numbers: 'data-numbers-toggle',
 }
 

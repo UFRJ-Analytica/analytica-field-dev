@@ -24,7 +24,6 @@ export const en = {
   'map.field.mock-north': 'Santa Carmem North',
   'map.field.mock-south': 'Santa Carmem South',
   'map.plan_with_evidence': 'PLAN WITH EVIDENCE',
-  'map.rotation_outlook': 'Rotation outlook',
   'map.data_coverage': '{coverage}% data coverage',
   'map.satellite_coverage_quality': 'Satellite coverage quality',
   'map.brand': 'field',
@@ -222,8 +221,6 @@ export const en = {
   // Block 4, wave 4: the dock toggle (R-46) and the rotation panel toggle (R-48). The
   // names are fixed by those requirements, so neither is written in a component (R-42).
   'timeline.controls': 'Timeline controls',
-  'rotation.collapse': 'Collapse Rotation outlook',
-  'rotation.expand': 'Expand Rotation outlook',
   // Block 5: the polygon surface. The class names and hexes are NOT here (R-44): they are
   // data values of the two class tables. Every other visible string and accessible name is.
   'polygon.region_label': 'Polygon',
