@@ -11,6 +11,8 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from .map_actions import MapAction
+
 MAX_QUESTION_CHARS = 500
 MAX_RING_POINTS = 2000
 
@@ -93,3 +95,4 @@ class ChatResponse(BaseModel):
     tools_used: list[str] = Field(default_factory=list)
     errors: list[str] = Field(default_factory=list)
     fallback_reason: str | None = None
+    map_actions: list[MapAction] = Field(default_factory=list)

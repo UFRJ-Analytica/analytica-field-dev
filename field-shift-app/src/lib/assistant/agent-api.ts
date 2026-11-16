@@ -6,6 +6,7 @@
  * for a polygon, its ring and interior point. No other map state is sent.
  */
 import { NUMBERS_API_BASE } from '@/lib/numbers-api'
+import type { MapToolCall } from './map-tools'
 import type { Locale } from '@/strings'
 import type { Evidence, LimitationCode } from './types'
 
@@ -24,6 +25,8 @@ export type AgentChatResponse = {
   tools_used: string[]
   errors: string[]
   fallback_reason: string | null
+  /** Map actions the model asked for (Geospatial Agent Tools). The panel validates and runs them itself. */
+  map_actions?: MapToolCall[]
 }
 
 export type AgentChatRequest = {

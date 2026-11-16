@@ -39,6 +39,8 @@ export class MapStub {
   center = { lng: -55.27, lat: -11.91 }
   zoom = 11
   flyToCalls = 0
+  /** Field Shift AI focus_geometry: the bounds each `fitBounds` call framed. */
+  fitBoundsCalls: Array<[[number, number], [number, number]]> = []
   lastFlyTo: Record<string, unknown> | null = null
   options: Record<string, unknown>
   /** Block 5: the calls the polygon surface makes, recorded so a criterion can read them. */
@@ -200,6 +202,11 @@ export class MapStub {
       getEast: () => -54.5,
       getNorth: () => -11.3,
     }
+  }
+
+  fitBounds(bounds: [[number, number], [number, number]]) {
+    this.fitBoundsCalls.push(bounds)
+    return this
   }
 
   flyTo(options?: Record<string, unknown>) {

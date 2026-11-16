@@ -13,6 +13,7 @@ import { cropWaterEvidence, cropWaterFor, etcDifferences, snapshotPeriod } from 
 import { gapStatusKey, gapsOf, metricLabelKey, sectionKey, summaryEvidence, SUMMARY_METRICS } from './evidence'
 import { formatDate, formatList, formatNumber, formatResolution, formatValue } from './format'
 import { cropsAskedFor, plantingWindowsFor, type PlantingWindow } from './planting'
+import type { MetricVar } from './map-tools'
 import type { AssistantResponse, CropWaterSet, Evidence, FieldContext, Intent, LimitationCode } from './types'
 
 /**
@@ -78,6 +79,8 @@ export type AnswerInput = {
   id: string
   /** The question as asked, for the crop it names or a sufficiency caveat. Optional: intents need no text. */
   question?: string
+  /** For `compare`: the variables a map command named, in its order. */
+  metrics?: MetricVar[]
 }
 
 function payloadOf(context: FieldContext): NumbersPayload | null {
@@ -192,7 +195,105 @@ export function answerIntent(intent: Intent, input: AnswerInput): AssistantRespo
     case 'rainfall': return rainfallAnswer(input, payload, [...evidence, ...summaryEvidence(payload, context.fieldId, ['rain_rank'])])
     case 'sources': return sourcesAnswer(input, evidence)
     case 'missing': return missingAnswer(input, payload)
+    case 'compare': return compareAnswer(input, payload, [...evidence, ...summaryEvidence(payload, context.fieldId, ['rain_rank'])])
+    case 'water_risk': return waterRiskAnswer(input, payload, evidence)
   }
+}
+
+function windowLine(payload: NumbersPayload, locale: Locale, key: AssistantKey = 'answer.compare.window'): string | null {
+  const window = payload.query.window
+  return window?.start && window?.end
+    ? at(locale, key, { start: formatDate(window.start, locale), end: formatDate(window.end, locale), days: window.days ?? '' })
+    : null
+}
+
+/**
+ * Two or three variables over the same block 6 window. Each is described against its own baseline when
+ * block 6 holds one (rain: 1991-2025 median and percentile; hot days: median). Root-zone wetness has no
+ * baseline in block 6, so it is printed without "above" or "below". No causal link is drawn.
+ */
+function compareAnswer(input: AnswerInput, payload: NumbersPayload, evidence: Evidence[]): AssistantResponse {
+  const { locale } = input
+  const vars = (input.metrics ?? ['rain', 'soil_moisture']).filter((m) => m === 'rain' || m === 'soil_moisture' || m === 'temperature')
+  const used: Evidence[] = []
+  const take = (metric: string) => {
+    const item = valueOf(evidence, metric)
+    if (item) used.push(item)
+    return item
+  }
+  const lines: string[] = []
+  const window = windowLine(payload, locale)
+  if (window) lines.push(window)
+  const missing: string[] = []
+  for (const variable of vars) {
+    if (variable === 'rain') {
+      const rain = take('rain_total')
+      const median = take('rain_median')
+      const percentile = take('rain_percentile')
+      if (!rain) missing.push(at(locale, 'metricvar.rain'))
+      else if (median && percentile) {
+        const p = Number(percentile.value)
+        lines.push(at(locale, p <= 20 ? 'answer.compare.rain_low' : p >= 80 ? 'answer.compare.rain_high' : 'answer.compare.rain_mid', {
+          value: printed(rain, locale), median: printed(median, locale), percentile: formatNumber(p, 0, locale),
+        }))
+      } else lines.push(at(locale, 'answer.compare.rain_plain', { value: printed(rain, locale) }))
+    }
+    if (variable === 'soil_moisture') {
+      const soil = take('gwetroot_mean')
+      if (soil) lines.push(at(locale, 'answer.compare.soil', { value: printed(soil, locale) }))
+      else missing.push(at(locale, 'metricvar.soil_moisture'))
+    }
+    if (variable === 'temperature') {
+      const hot = take('hot_days')
+      const hotMedian = take('hot_days_median')
+      if (hot && hotMedian) lines.push(at(locale, 'answer.compare.hot', { value: printed(hot, locale), median: printed(hotMedian, locale) }))
+      else if (hot) lines.push(at(locale, 'answer.env.hot', { value: printed(hot, locale) }))
+      else missing.push(at(locale, 'metricvar.temperature'))
+    }
+  }
+  if (used.length === 0) return respond(input, 'compare', [at(locale, 'answer.env.none')], [], 'unavailable')
+  if (missing.length > 0) lines.push(at(locale, 'answer.env.missing', { metrics: formatList(missing, locale) }))
+  lines.push(at(locale, 'answer.compare.not_causal'))
+  if (vars.includes('soil_moisture')) lines.push(at(locale, 'answer.compare.layer_note'))
+  return respond(input, 'compare', lines, used, missing.length > 0 ? 'partial' : 'answered', ['historical_not_forecast'])
+}
+
+/**
+ * The water signals of the window, conclusion first. "Clearest signal" is only said of an indicator with a
+ * historical baseline in block 6 (rain percentile), using the same fifths the rain answer uses; the rest
+ * are listed as context. Not a forecast, an irrigation requirement or a yield risk.
+ */
+function waterRiskAnswer(input: AnswerInput, payload: NumbersPayload, evidence: Evidence[]): AssistantResponse {
+  const { locale } = input
+  const used: Evidence[] = []
+  const take = (metric: string) => {
+    const item = valueOf(evidence, metric)
+    if (item) used.push(item)
+    return item
+  }
+  const lines: string[] = []
+  const rain = take('rain_total')
+  const median = take('rain_median')
+  const percentile = take('rain_percentile')
+  if (rain && median && percentile) {
+    const p = Number(percentile.value)
+    const vars = { value: printed(rain, locale), median: printed(median, locale), percentile: formatNumber(p, 0, locale) }
+    lines.push(at(locale, p <= 20 ? 'answer.risk.lead_dry' : p >= 80 ? 'answer.risk.lead_wet' : 'answer.risk.lead_none', vars))
+  } else if (rain) {
+    lines.push(at(locale, 'answer.risk.lead_no_baseline', { value: printed(rain, locale) }))
+  }
+  const dry = take('dry_spell_days')
+  if (dry) lines.push(at(locale, 'answer.env.dry', { value: printed(dry, locale) }))
+  const hot = take('hot_days')
+  const hotMedian = take('hot_days_median')
+  if (hot && hotMedian) lines.push(at(locale, 'answer.compare.hot', { value: printed(hot, locale), median: printed(hotMedian, locale) }))
+  const soil = take('gwetroot_mean')
+  if (soil) lines.push(at(locale, 'answer.compare.soil', { value: printed(soil, locale) }))
+  if (used.length === 0) return respond(input, 'water_risk', [at(locale, 'answer.env.none')], [], 'unavailable')
+  const window = windowLine(payload, locale, 'answer.risk.window')
+  if (window) lines.push(window)
+  lines.push(at(locale, 'answer.risk.scope'))
+  return respond(input, 'water_risk', lines, used, median && percentile ? 'answered' : 'partial', ['historical_not_forecast'])
 }
 
 function explainAnswer(input: AnswerInput, payload: NumbersPayload, evidence: Evidence[]): AssistantResponse {

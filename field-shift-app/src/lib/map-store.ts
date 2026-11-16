@@ -30,6 +30,9 @@ export type FieldSummary = {
   boundary: { type: 'Polygon'; coordinates: number[][][] }
 }
 
+/** `insetRight` keeps the framed geometry clear of a panel drawn over the right side of the map. */
+export type FocusRequest = { seq: number; target: 'selected_field'; padding: number; insetRight: number }
+
 export type CompositionPreset = 'map' | 'satellite' | 'satellite-with-labels'
 
 /** One compare pair: side B's date and the divider position as a fraction of the map width. */
@@ -129,6 +132,13 @@ type MapState = {
   recordOpen: boolean
   registeredFields: RegisteredField[]
   producerData: Record<string, ProducerEntry>
+  // Field Shift AI (experiment), focus_geometry: a request to frame the selected field or polygon. The
+  // map canvas resolves the geometry from its own selection and answers through `markFocusHandled`, so
+  // the request never carries coordinates and the assistant reports only what the map actually did.
+  focusRequest: FocusRequest | null
+  focusHandled: { seq: number; ok: boolean; reason: 'framed' | 'no_selection' } | null
+  requestFocus: (padding: number, insetRight?: number) => number
+  markFocusHandled: (seq: number, ok: boolean, reason: 'framed' | 'no_selection') => void
   setCalendarOpen: (open: boolean) => void
   setRecordOpen: (open: boolean) => void
   setProducerRecords: (fields: RegisteredField[], producer: Record<string, ProducerEntry>) => void
@@ -353,6 +363,15 @@ export const useMapStore = create<MapState>((set, get) => ({
   setCalendarOpen: (calendarOpen) => set({ calendarOpen }),
   setRecordOpen: (recordOpen) => set({ recordOpen }),
   setProducerRecords: (registeredFields, producerData) => set({ registeredFields, producerData }),
+
+  focusRequest: null,
+  focusHandled: null,
+  requestFocus: (padding, insetRight = 0) => {
+    const seq = (get().focusRequest?.seq ?? 0) + 1
+    set({ focusRequest: { seq, target: 'selected_field', padding, insetRight } })
+    return seq
+  },
+  markFocusHandled: (seq, ok, reason) => set({ focusHandled: { seq, ok, reason } }),
 }))
 
 /** The chosen date, or the axis default while no control has set one. */

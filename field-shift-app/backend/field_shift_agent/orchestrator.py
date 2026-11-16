@@ -17,6 +17,7 @@ from typing import Any, Callable
 from .context import AgentInputError, resolve_context
 from .evidence_guard import GuardRejected, validate
 from .fallback import fallback
+from .map_actions import MAP_TOOL_DEFINITIONS, MAP_TOOL_NAMES, MAX_MAP_ACTIONS, MapAction, accept
 from .prompts import SUBMIT_ANSWER_TOOL, system_prompt
 from .provider import Provider, ProviderError, ProviderTurn
 from .schemas import ChatRequest, ChatResponse
@@ -57,7 +58,8 @@ def run(request: ChatRequest, provider: Provider | None, *, provider_reason: str
 
     toolbox = ToolBox(ctx, numbers_loader, snapshot_path)
     system = system_prompt(request.locale)
-    tools = [*TOOL_DEFINITIONS, SUBMIT_ANSWER_TOOL]
+    tools = [*TOOL_DEFINITIONS, *MAP_TOOL_DEFINITIONS, SUBMIT_ANSWER_TOOL]
+    map_actions: list[MapAction] = []
     messages: list[dict[str, Any]] = [{"role": "user", "content": _user_message(request)}]
     deadline = clock() + limits.total_seconds
     calls = 0
@@ -82,7 +84,7 @@ def run(request: ChatRequest, provider: Provider | None, *, provider_reason: str
                 return fallback(request, f"guard_{rejected.code}", toolbox.calls)
             return ChatResponse(status=result.status, locale=request.locale, field_id=ctx.field_id, mode="agent",
                                 answer=result.answer, evidence=result.evidence, limitations=result.limitations,
-                                tools_used=list(toolbox.calls))
+                                tools_used=list(toolbox.calls), map_actions=map_actions)
         if not turn.tool_calls:
             return fallback(request, "no_answer" if turn.stop_reason == "end_turn" else f"stop_{turn.stop_reason}",
                             toolbox.calls)
@@ -93,6 +95,17 @@ def run(request: ChatRequest, provider: Provider | None, *, provider_reason: str
             calls += 1
             if calls > limits.max_tool_calls:
                 return fallback(request, "tool_limit", toolbox.calls)
+            if call.name in MAP_TOOL_NAMES:
+                # Map actions are validated here and run in the browser; a rejected one never reaches it.
+                action, output = accept(call.name, call.input)
+                if action is not None and len(map_actions) >= MAX_MAP_ACTIONS:
+                    action, output = None, {"status": "rejected", "reason": "too_many_map_actions"}
+                if action is not None:
+                    map_actions.append(action)
+                    toolbox.calls.append(call.name)
+                results.append({"type": "tool_result", "tool_use_id": call.id, "is_error": action is None,
+                                "content": json.dumps(output, ensure_ascii=False)})
+                continue
             if call.name not in TOOL_HANDLERS:
                 results.append({"type": "tool_result", "tool_use_id": call.id, "is_error": True,
                                 "content": "unknown tool; available tools are listed in the request"})

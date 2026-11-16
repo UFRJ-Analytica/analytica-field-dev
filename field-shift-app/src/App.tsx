@@ -482,7 +482,7 @@ function App() {
       {/* Field Shift AI (experiment): its own launcher and panel, outside the frozen control strip
           (block 4 R-41), as direct children of the shell. */}
       <FieldShiftAIToggle />
-      <FieldShiftAIPanel selectedField={selectedField} />
+      <FieldShiftAIPanel selectedField={selectedField} fields={fields} />
 
       {/* Block 5.5, B1: nothing is mounted over the map any more. The four panels live in the
           host above, and the map screen is the screen. */}
