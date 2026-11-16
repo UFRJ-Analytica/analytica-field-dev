@@ -1,0 +1,47 @@
+# Crops eligible for the yield evidence, keyed by IBGE SIDRA product code (D4C in the PAM
+# response; codes read from the SIDRA tables 1612 and 839 on 2026-11-14).
+#
+# season decides which ENSO event a PAM year is compared against:
+#   summer  sown Sep-Dec, harvested Jan-Aug of PAM year Y  -> ENSO of crop year Y      (offset 0)
+#   winter  sown Apr-Jul, harvested Aug-Dec of PAM year Y  -> ENSO of crop year Y + 1  (offset 1)
+#           (the El Nino that peaks in NDJ of year Y is already developing while it grows and
+#           is harvested)
+#
+# The sowing/harvest windows are general agronomic knowledge for southern Brazil and the cerrado,
+# but no citable crop calendar has been attached yet, so every entry is `source: suposicao` and
+# the UI shows the assumption warning. Replace with the CONAB crop calendar
+# (Calendario de plantio e colheita de graos no Brasil) per UF when it can be cited.
+#
+# Maize uses table 839 (1st / 2nd harvest) instead of the 1612 total, which mixes the two.
+
+season_offset:
+  summer: 0
+  winter: 1
+  # US regions run an Oct-Sep crop year labelled by harvest year: winter wheat (sown Oct, cut
+  # Jun-Jul) and the summer crops (sown Apr-Jun, cut Sep-Nov) both fall in the crop year of the
+  # NASS year, so neither is shifted.
+  us: 0
+
+crops:
+  2713:  {name_pt: Soja,            name_en: Soybean,          season: summer, source: suposicao}
+  114253: {name_pt: Milho 1a safra, name_en: Maize (1st crop), season: summer, source: suposicao}
+  114254: {name_pt: Milho 2a safra, name_en: Maize (2nd crop), season: summer, source: suposicao}
+  2689:  {name_pt: Algodao herbaceo, name_en: Cotton,          season: summer, source: suposicao}
+  2714:  {name_pt: Sorgo,           name_en: Sorghum,          season: summer, source: suposicao}
+  2702:  {name_pt: Feijao,          name_en: Beans,            season: summer, source: suposicao}
+  2692:  {name_pt: Arroz,           name_en: Rice,             season: summer, source: suposicao}
+  109179: {name_pt: Girassol,       name_en: Sunflower,        season: summer, source: suposicao}
+  2716:  {name_pt: Trigo,           name_en: Wheat,            season: winter, source: suposicao}
+  2693:  {name_pt: Aveia,           name_en: Oats,             season: winter, source: suposicao}
+  83384: {name_pt: Canola,          name_en: Canola,           season: winter, source: suposicao}
+  2699:  {name_pt: Cevada,          name_en: Barley,           season: winter, source: suposicao}
+  109180: {name_pt: Triticale,      name_en: Triticale,        season: winter, source: suposicao}
+
+  # ---- United States (USDA NASS Quick Stats, config/nass.yaml) ----------------------------------
+  # Season windows: USDA NASS, Usual Planting and Harvesting Dates for U.S. Field Crops, Agricultural
+  # Handbook 628 (1997), state tables for Illinois and Texas.
+  840001: {name_pt: Milho (grão),      name_en: Corn (grain),    season: us, source: USDA NASS AH-628 (1997)}
+  840002: {name_pt: Soja,              name_en: Soybeans,        season: us, source: USDA NASS AH-628 (1997)}
+  840003: {name_pt: Trigo de inverno,  name_en: Winter wheat,    season: us, source: USDA NASS AH-628 (1997)}
+  840004: {name_pt: Sorgo (grão),      name_en: Sorghum (grain), season: us, source: USDA NASS AH-628 (1997)}
+  840005: {name_pt: Algodão,           name_en: Upland cotton,   season: us, source: USDA NASS AH-628 (1997)}
