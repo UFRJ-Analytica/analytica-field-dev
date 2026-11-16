@@ -158,14 +158,9 @@
 .fsai-glossary summary { color: #3f5a2b; font-size: 12px; font-weight: 600; cursor: pointer; }
 .fsai-glossary ul { margin: 6px 0 0; padding-left: 16px; color: #4a574c; font-size: 11px; }
 .fsai-glossary li { margin-bottom: 3px; }
-.fsai-devtools { display: flex; align-items: center; gap: 6px; margin-top: 10px; color: #5d6b5f; font-size: 11px; }
 
-/* Experimental farmer view (FieldShiftAI.tsx, `useDevToolsPreference`). The developer command
-   console stays in the DOM and in the frozen strip contract (block 3 R-41); it is only not drawn
-   unless the viewer asks for developer tools. While the assistant is open it takes the right-hand
-   column, so the supporting-data stack under it is not drawn half-covered. */
-html[data-fsai-dev-tools="off"] .command-toggle,
-html[data-fsai-dev-tools="off"] .agent-anchor { display: none; }
+/* While the assistant is open it takes the right-hand column, so the supporting-data stack under it
+   is not drawn half-covered (FieldShiftAI.tsx writes `data-fsai-open`). */
 html[data-fsai-open="true"] .anchor-right-column { visibility: hidden; }
 
 /* Narrow layouts: a sheet below the control strip that spans the width. Closing it returns the map. */

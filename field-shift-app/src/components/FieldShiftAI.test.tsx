@@ -494,17 +494,12 @@ describe('milestone 3: guided demo and farmer view', () => {
     expect(panel.textContent).not.toMatch(/assistant\.|answer\.|gloss\./)
   })
 
-  it('hides the developer command console by default and shows it on request', async () => {
-    localStorage.removeItem('fs.fsai.devTools')
+  it('marks the page while it is open, so it can take the right-hand column', async () => {
     setup()
-    expect(document.documentElement.dataset.fsaiDevTools).toBe('off')
     const panel = await openPanel()
     expect(document.documentElement.dataset.fsaiOpen).toBe('true')
-    fireEvent.click(within(panel).getByRole('checkbox', { name: 'Show developer tools (COMMAND)' }))
-    expect(document.documentElement.dataset.fsaiDevTools).toBe('on')
     fireEvent.click(within(panel).getByRole('button', { name: 'Close Field Shift AI' }))
     expect(document.documentElement.dataset.fsaiOpen).toBeUndefined()
-    localStorage.removeItem('fs.fsai.devTools')
   })
 
   it('explains the acronyms it uses', async () => {

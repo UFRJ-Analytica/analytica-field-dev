@@ -71,26 +71,10 @@ const GLOSSARY: AssistantKey[] = ['gloss.et0', 'gloss.etc', 'gloss.kc', 'gloss.z
   'gloss.percentile', 'gloss.gwetroot', 'gloss.evland']
 
 /**
- * Experimental, opt-in display state written on <html>, read only by FieldShiftAI.css:
- * `data-fsai-dev-tools="off"` hides the developer command console (COMMAND) from the farmer's view,
- * `data-fsai-open` lets the assistant take the right-hand column while it is open. No team component
- * is edited; removing these attributes restores the app exactly. The preference is a per-viewer
- * convenience in localStorage, read and written defensively.
+ * Experimental display state written on <html>, read only by FieldShiftAI.css: `data-fsai-open` lets the
+ * assistant take the right-hand column while it is open. No team component is edited; removing the
+ * attribute restores the app exactly.
  */
-const DEV_TOOLS_KEY = 'fs.fsai.devTools'
-
-function readDevTools(): boolean {
-  try { return window.localStorage.getItem(DEV_TOOLS_KEY) === 'on' } catch { return false }
-}
-
-function useDevToolsPreference(): [boolean, (on: boolean) => void] {
-  const [on, setOn] = useState<boolean>(() => (typeof window === 'undefined' ? false : readDevTools()))
-  useEffect(() => {
-    document.documentElement.dataset.fsaiDevTools = on ? 'on' : 'off'
-    try { window.localStorage.setItem(DEV_TOOLS_KEY, on ? 'on' : 'off') } catch { /* storage unavailable */ }
-  }, [on])
-  return [on, setOn]
-}
 
 /** The guided demo's first step: the region's first fixture field, and for Brazil the recorded window's date. */
 function openDemoField(region: RegionId): void {
@@ -129,7 +113,6 @@ export function FieldShiftAIPanel({ selectedField }: { selectedField: FieldSumma
   const logRef = useRef<HTMLOListElement | null>(null)
   const headingId = useId()
   const inputId = useId()
-  const [devTools, setDevTools] = useDevToolsPreference()
 
   useEffect(() => {
     if (open) document.documentElement.dataset.fsaiOpen = 'true'
@@ -338,10 +321,6 @@ export function FieldShiftAIPanel({ selectedField }: { selectedField: FieldSumma
             <summary>{at(locale, 'gloss.heading')}</summary>
             <ul>{GLOSSARY.map((key) => <li key={key}>{at(locale, key)}</li>)}</ul>
           </details>
-          <label className="fsai-devtools">
-            <input type="checkbox" checked={devTools} onChange={(event) => setDevTools(event.target.checked)} />
-            {at(locale, 'view.dev_tools')}
-          </label>
         </section>
       </div>
 

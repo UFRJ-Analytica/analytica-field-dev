@@ -206,7 +206,7 @@ export const assistantEn = {
   'answer.reco.intro': 'These data are not enough to choose a crop.',
   'answer.reco.have': 'What the app holds for this field describes a past window: rain, temperature, dry spells and soil wetness from a coarse reanalysis cell.',
   'answer.reco.water': 'There is also a recorded estimate of crop water demand, in which {crop} has the highest demand at peak coefficients; water demand alone does not decide a crop.',
-  'answer.reco.window': 'The Planting calendar shows the sowing windows of this region; a window says when sowing is low-risk or usual, not which crop to plant.',
+  'answer.reco.window': 'The planting windows (ZARC or NASS) show when sowing in this region is low-risk or usual; a window says when sowing is low-risk or usual, not which crop to plant.',
   'answer.reco.missing': 'Missing for a decision: a computed rotation comparison, the sowing date and crop stage, the field\'s own history, yields, prices and costs.',
   'answer.reco.closing': 'No crop is recommended until that evidence exists.',
 
@@ -273,7 +273,7 @@ export const assistantEn = {
   'answer.plant.br_meaning': 'What it means: the ZARC lists the ten-day periods in which sowing carries the lowest climatic risk it publishes for the municipality (the 20% risk level: weather losses estimated in at most about 2 of 10 years). The window shown runs from the earliest start to the latest end across every soil type and cultivar cycle, so a given soil and cycle can have a narrower window.',
   'answer.plant.us_meaning': 'What it means: the window runs from when about 5% to when about 95% of the state\'s crop is usually planted, averaged over 20 years. It describes common practice, not a climatic risk rating, and its end date is an average, not an observed limit.',
   'answer.plant.closing': 'A window is not a guarantee of a good season and not a recommended sowing date: the date within it depends on the soil, the cultivar, the soil moisture at sowing and the farm\'s plan.',
-  'answer.plant.calendar_hint': 'The Planting calendar button at the top of the map shows the same windows with their soil types, cycles and sources.',
+  'answer.plant.calendar_hint': 'These are the same ZARC and NASS files the app holds for block 7; ask where the data comes from to see every source.',
   'answer.plant.season_not_held': 'The ZARC snapshot in this app holds the seasons {seasons}; it has no window for season {season}.',
   'answer.plant.no_source': 'There is no planting window source for this selection: windows are published per municipality in Brazil and per state in the United States, and a drawn polygon names neither. Select one of the listed fields.',
   'plant.pos.before': 'before this window',
@@ -310,7 +310,6 @@ export const assistantEn = {
   'gloss.gwetroot': 'GWETROOT: root-zone soil wetness from NASA POWER, from 0 (dry) to 1 (saturated).',
   'gloss.evland': 'EVLAND: evaporation from the land surface in the NASA POWER model; not the crop demand.',
 
-  'view.dev_tools': 'Show developer tools (COMMAND)',
 
   'agent.badge_on': 'Agent with tools (experimental)',
   'agent.answered_by_model': 'Written by the language model from verified evidence',
@@ -529,7 +528,7 @@ export const assistantPtBR: Record<AssistantKey, string> = {
   'answer.reco.intro': 'Esses dados não bastam para escolher uma cultura.',
   'answer.reco.have': 'O que o aplicativo possui sobre esta propriedade descreve uma janela passada: chuva, temperatura, períodos secos e umidade do solo de uma célula de reanálise de baixa resolução.',
   'answer.reco.water': 'Há também uma estimativa gravada de demanda hídrica por cultura, na qual {crop} tem a maior demanda com coeficientes de pico; a demanda hídrica, sozinha, não decide uma cultura.',
-  'answer.reco.window': 'O calendário de plantio mostra as janelas de semeadura desta região; uma janela diz quando semear tem baixo risco ou é usual, não qual cultura plantar.',
+  'answer.reco.window': 'As janelas de plantio (ZARC ou NASS) mostram quando semear nesta região tem baixo risco ou é usual; uma janela diz quando semear tem baixo risco ou é usual, não qual cultura plantar.',
   'answer.reco.missing': 'Faltam para uma decisão: uma comparação calculada de rotações, a data de semeadura e a fase da cultura, o histórico da própria propriedade, produtividades, preços e custos.',
   'answer.reco.closing': 'Nenhuma cultura é recomendada até que essas evidências existam.',
 
@@ -596,7 +595,7 @@ export const assistantPtBR: Record<AssistantKey, string> = {
   'answer.plant.br_meaning': 'O que significa: o ZARC lista os decêndios em que semear tem o menor risco climático que ele publica para o município (nível de risco de 20%: perdas por clima estimadas em no máximo cerca de 2 de cada 10 anos). A janela mostrada vai do início mais cedo ao fim mais tarde entre todos os tipos de solo e ciclos de cultivar; um solo e um ciclo específicos podem ter uma janela mais estreita.',
   'answer.plant.us_meaning': 'O que significa: a janela vai de quando cerca de 5% até quando cerca de 95% da área do estado costuma estar plantada, em média de 20 anos. Ela descreve a prática usual, não uma classificação de risco climático, e a data final é uma média, não um limite observado.',
   'answer.plant.closing': 'Uma janela não garante uma boa safra e não é uma data de semeadura recomendada: a data dentro dela depende do solo, da cultivar, da umidade do solo na semeadura e do planejamento da propriedade.',
-  'answer.plant.calendar_hint': 'O botão Planting calendar, no topo do mapa, mostra as mesmas janelas com tipos de solo, ciclos e fontes.',
+  'answer.plant.calendar_hint': 'São os mesmos arquivos ZARC e NASS que o app guarda para o bloco 7; pergunte de onde vêm os dados para ver todas as fontes.',
   'answer.plant.season_not_held': 'O snapshot do ZARC neste aplicativo tem as safras {seasons}; não há janela para a safra {season}.',
   'answer.plant.no_source': 'Não há fonte de janela de plantio para esta seleção: as janelas são publicadas por município no Brasil e por estado nos Estados Unidos, e um polígono desenhado não indica nenhum dos dois. Selecione uma das propriedades da lista.',
   'plant.pos.before': 'antes desta janela',
@@ -633,7 +632,6 @@ export const assistantPtBR: Record<AssistantKey, string> = {
   'gloss.gwetroot': 'GWETROOT: umidade do solo na zona das raízes, do NASA POWER, de 0 (seco) a 1 (saturado).',
   'gloss.evland': 'EVLAND: evaporação da superfície do solo no modelo do NASA POWER; não é a demanda da cultura.',
 
-  'view.dev_tools': 'Mostrar ferramentas de desenvolvimento (COMMAND)',
 
   'agent.badge_on': 'Agente com ferramentas (experimental)',
   'agent.answered_by_model': 'Escrita pelo modelo de linguagem a partir de evidências verificadas',
