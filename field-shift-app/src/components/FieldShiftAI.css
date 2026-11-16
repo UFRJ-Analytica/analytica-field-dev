@@ -138,6 +138,20 @@
 .fsai-glossary ul { margin: 6px 0 0; padding-left: 16px; color: #4a574c; font-size: 11px; }
 .fsai-glossary li { margin-bottom: 3px; }
 
+/* Twice the height the panel takes from its content at 1440x900 (333 px), so the conversation has
+   room without the box reaching the layer rail (top 769) or the timeline dock (top 782). Only above
+   the narrow layout: on a phone the panel keeps its `max-height: 46vh` sheet, because there is no
+   column to grow into. `.fsai-scroll` keeps its own scroller either way. */
+@media (min-width: 761px) {
+  /* The panel is 800 px tall: the height the user asked for. The conversation is what scrolls inside
+     it, so the box keeps its size whatever the length of the answers. */
+  .fsai-panel { height: 800px; min-height: 0; max-height: none; }
+  .fsai-panel .fsai-scroll { flex: 1 1 auto; min-height: 0; max-height: none; overflow-y: auto; }
+  /* The right column is shared with `Data Info`, which keeps its own capped height and scroller. */
+  .anchor-right-column:has(.fsai-panel) { max-height: none; }
+  .anchor-right-column:has(.fsai-panel) .right-column-stack { max-height: none; overflow: visible; }
+}
+
 /* Narrow layouts: a sheet below the control strip that spans the width. Closing it returns the map. */
 @media (max-width: 760px) {
   /* The stack under the strip already spans the width here; the panel only caps its own height. */
