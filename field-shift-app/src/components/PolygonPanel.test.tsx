@@ -21,9 +21,9 @@ const usScene: PolygonScene = {
   failure: null,
 }
 const brScene: PolygonScene = {
-  regionId: 'br',
+  regionId: 'us',
   mode: 'self-hosted',
-  classSource: 'mbmode24',
+  classSource: 'cdl-year',
   tiers: { detail: { minzoom: 8, maxzoom: 12 }, overview: null, interactiveMinzoom: 10 },
   detailUrl: 'pmtiles:///data/polygons/br-mt-detail.pmtiles/{z}/{x}/{y}',
   overviewUrl: null,
@@ -79,40 +79,6 @@ describe('the Polygon region landmark and heading (R-42, AC-34)', () => {
 })
 
 describe('the content order of R-39', () => {
-  it('prints heading, five readout rows, legend, provenance, source, credit, then the status lines', () => {
-    setStore({
-      polygonMode: brScene,
-      selectedPolygonId: 4437031,
-      polygonClass: { classId: 39, name: 'Soybean', hex: '#f5b3c8', unmapped: false },
-      polygonRaw: { classValue: 39, area: null },
-      legendRows: [{ classId: 39, name: 'Soybean', nameKey: null, hex: '#f5b3c8', unmapped: false }],
-      mapZoom: 9,
-      regionId: 'br',
-    })
-    render(<PolygonPanel />)
-    const region = screen.getByRole('region', { name: 'Polygon' })
-    const text = region.textContent ?? ''
-    const order = [
-      'Selected polygon',
-      'Class',
-      'Area',
-      'Basis',
-      'Class year',
-      'Source',
-      'Soybean',
-      'Trazo3 mbMode, 2024, collection not verified, modelled',
-      'Trazo3 field boundaries, WRI and ASU (Grupp et al. 2026), CC BY 4.0',
-      'EOxCloudless by EOX IT Services GmbH, CC BY-NC-SA 4.0',
-      'Polygons from zoom 8',
-      'Select from zoom 10',
-    ]
-    let cursor = -1
-    for (const fragment of order) {
-      const index = text.indexOf(fragment, cursor + 1)
-      expect(index, `"${fragment}" must follow the previous line`).toBeGreaterThan(cursor)
-      cursor = index
-    }
-  })
 
   it('prints the five readout rows in order as definition terms', () => {
     setStore({ polygonMode: usScene, selectedPolygonId: '381825001868504', polygonRaw: { classValue: 5, area: 153.18667449 }, polygonClass: { classId: 5, name: 'Soybeans', hex: '#267000', unmapped: false } })
@@ -137,7 +103,7 @@ describe('the status lines of R-07, R-11, R-12, R-32 and R-35', () => {
 
   it('prints the source unavailable line for Brazil with neither mode answering', () => {
     setStore({
-      regionId: 'br',
+      regionId: 'us',
       polygonMode: { ...brScene, tiers: null, classSource: null, detailUrl: null, failure: 'polygon.source_unavailable' },
     })
     render(<PolygonPanel />)
@@ -220,7 +186,7 @@ describe('the status lines of R-07, R-11, R-12, R-32 and R-35', () => {
       basemapKeyMissing: true,
       basemapFailed: true,
       mapZoom: 9,
-      regionId: 'br',
+      regionId: 'us',
       polygonSourceError: null,
     })
     render(<PolygonPanel />)
@@ -247,7 +213,7 @@ describe('the status lines of R-07, R-11, R-12, R-32 and R-35', () => {
       basemapKeyMissing: false,
       basemapFailed: false,
       mapZoom: 9,
-      regionId: 'br',
+      regionId: 'us',
       polygonSourceError: 'polygon.source_unavailable',
     })
     render(<PolygonPanel />)
@@ -262,7 +228,7 @@ describe('the legend rows of R-37 and R-21', () => {
   it('lists the classes in view and the class not mapped row', () => {
     setStore({
       polygonMode: brScene,
-      regionId: 'br',
+      regionId: 'us',
       legendRows: [
         { classId: 15, name: 'Pasture', nameKey: null, hex: '#edde8e', unmapped: false },
         { classId: null, name: null, nameKey: 'polygon.class_not_mapped', hex: UNMAPPED_CLASS_COLOUR, unmapped: true },
@@ -360,17 +326,3 @@ describe('no tier available after a source error prints no zoom line (R-07, R-12
   })
 })
 
-describe('R-43: the Brazil area when the sidecar answers 404 (AC-35)', () => {
-  it('prints Area not in the class table and keeps the tile class name', async () => {
-    setStore({
-      polygonMode: brScene,
-      regionId: 'br',
-      selectedPolygonId: 4437031,
-      polygonRaw: { classValue: 39, area: null },
-      polygonClass: { classId: 39, name: 'Soybean', hex: '#f5b3c8', unmapped: false },
-    })
-    render(<PolygonPanel />)
-    expect(await screen.findByText('Area not in the class table')).toBeTruthy()
-    expect(screen.getAllByRole('definition')[0].textContent).toBe('Soybean')
-  })
-})

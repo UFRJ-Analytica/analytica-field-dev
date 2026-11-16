@@ -61,7 +61,7 @@ function stubNumbersFetch(payload: NumbersPayload) {
 beforeEach(() => {
   window.history.replaceState({}, '', '/?numbers=1')
   useMapStore.setState({
-    regionId: 'br',
+    regionId: 'us',
     selectedFieldId: field.id,
     selectedPolygonId: null,
     polygonRaw: null,

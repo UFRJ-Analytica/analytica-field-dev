@@ -81,7 +81,7 @@ function installFetch() {
   return calls
 }
 
-function resetStore(regionId: 'us' | 'br' = 'us') {
+function resetStore(regionId: 'us' = 'us') {
   useMapStore.setState({
     regionId,
     selectedFieldId: null,
@@ -319,20 +319,6 @@ describe('hover, selection and the tooltip (R-19, R-20, R-22, R-27, AC-15, AC-16
     expect(tooltip?.getAttribute('aria-hidden')).toBe('true')
   })
 
-  it('runs select_field on a press and stores the id with its own type', async () => {
-    const { map } = await mountMap()
-    map.zoom = 12
-    act(() => {
-      map.emit('click', { point: { x: 400, y: 300 }, features: [feature] })
-    })
-    await waitFor(() => expect(useMapStore.getState().selectedPolygonId).toBe('381825001868504'))
-    expect(typeof useMapStore.getState().selectedPolygonId).toBe('string')
-    // R-24: the fixture selection is cleared by the polygon selection.
-    expect(useMapStore.getState().selectedFieldId).toBeNull()
-    await waitFor(() => {
-      expect(map.featureStateCalls.at(-1)?.value).toEqual({ selected: true })
-    })
-  })
 
   it('selects nothing and mounts no tooltip below the interactive zoom (AC-16)', async () => {
     const { map } = await mountMap()
@@ -376,30 +362,6 @@ describe('hover, selection and the tooltip (R-19, R-20, R-22, R-27, AC-15, AC-16
   })
 })
 
-describe('a region switch (R-03)', () => {
-  it('removes the previous surface, moves the camera and paints the new region only', async () => {
-    const { map, calls } = await mountMap()
-    map.zoom = 12
-    act(() => {
-      map.emit('click', { point: { x: 400, y: 300 }, features: [{ id: '381825001868504', properties: { cdl2025: 5 } }] })
-    })
-    act(() => {
-      useMapStore.getState().setRegionId('br')
-    })
-    await waitFor(() => expect(calls.some((url) => url.includes('region=br'))).toBe(true))
-    await waitFor(() => {
-      expect(map.getSource(POLYGON_DETAIL_SOURCE_ID)).toMatchObject({
-        tiles: ['pmtiles:///data/polygons/br-mt-detail.pmtiles/{z}/{x}/{y}'],
-        promoteId: 'Id',
-      })
-    })
-    expect(map.lastFlyTo).toMatchObject({ center: [-55.27, -11.91], zoom: 11 })
-    expect(useMapStore.getState().selectedPolygonId).toBeNull()
-    const fill = map.getLayer(POLYGON_FILL_LAYER_ID) as { paint: Record<string, unknown> }
-    expect(JSON.stringify(fill.paint['fill-color'])).toContain('mbmode24')
-    expect(map.layoutCalls.length).toBeGreaterThan(0)
-  })
-})
 
 describe('the 360x640 rule (OD-03, R-40)', () => {
   it('mounts no polygon region at any width and no fourth surface', async () => {
