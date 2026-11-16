@@ -143,7 +143,13 @@
    the narrow layout: on a phone the panel keeps its `max-height: 46vh` sheet, because there is no
    column to grow into. `.fsai-scroll` keeps its own scroller either way. */
 @media (min-width: 761px) {
-  .fsai-panel { min-height: min(666px, calc(100vh - 140px)); }
+  /* The panel is 800 px tall: the height the user asked for. The conversation is what scrolls inside
+     it, so the box keeps its size whatever the length of the answers. */
+  .fsai-panel { height: 800px; min-height: 0; max-height: none; }
+  .fsai-panel .fsai-scroll { flex: 1 1 auto; min-height: 0; max-height: none; overflow-y: auto; }
+  /* The right column is shared with `Data Info`, which keeps its own capped height and scroller. */
+  .anchor-right-column:has(.fsai-panel) { max-height: none; }
+  .anchor-right-column:has(.fsai-panel) .right-column-stack { max-height: none; overflow: visible; }
 }
 
 /* Narrow layouts: a sheet below the control strip that spans the width. Closing it returns the map. */
