@@ -1,0 +1,612 @@
+{
+  "abstention_criteria": [
+    "Sem dia válido de precipitação no lookback de 120 dias: não há janela.",
+    "Tmax ou Tmin ausente/inválida: ET0 indisponível no dia.",
+    "Cobertura de ET0/ETc abaixo de 80%: a demanda se abstém.",
+    "Qualquer dia de chuva ou ET0 ausente/inválido: P - ETc se abstém.",
+    "Curva sem semeadura e quatro durações positivas: entrada rejeitada.",
+    "Unidade, tempo, fill value ou ponto incompatível no payload: demonstração se abstém."
+  ],
+  "assumptions": [
+    "O fluxo de calor no solo G é zero, como admite a FAO-56 para o passo diário.",
+    "Os Kc simples da Tabela 12 descrevem culturas sem estresse, bem manejadas e em clima padrão.",
+    "Os valores de Kc não foram ajustados pelas equações 62 ou 65 da FAO-56.",
+    "Hargreaves é usado somente quando uma entrada auxiliar de Penman–Monteith está ausente ou inválida.",
+    "A mesma célula POWER representa os campos fixture; o experimento diferencia culturas, não talhões."
+  ],
+  "block6_comparison": {
+    "evland_total_mm": 124.8,
+    "indicator": "sum(PRECTOTCORR) - sum(EVLAND)",
+    "meaning": "EVLAND is modelled land-surface evaporation, not crop water demand.",
+    "rain_minus_evland_mm": 47.1,
+    "rain_total_mm": 171.9
+  },
+  "coverage": {
+    "ALLSKY_SFC_SW_DWN": {
+      "percent": 95.2,
+      "valid_days": 40,
+      "window_days": 42
+    },
+    "EVPTRNS": {
+      "percent": 100.0,
+      "valid_days": 42,
+      "window_days": 42
+    },
+    "PRECTOTCORR": {
+      "percent": 100.0,
+      "valid_days": 42,
+      "window_days": 42
+    },
+    "PS": {
+      "percent": 100.0,
+      "valid_days": 42,
+      "window_days": 42
+    },
+    "RH2M": {
+      "percent": 100.0,
+      "valid_days": 42,
+      "window_days": 42
+    },
+    "T2MDEW": {
+      "percent": 100.0,
+      "valid_days": 42,
+      "window_days": 42
+    },
+    "T2M_MAX": {
+      "percent": 100.0,
+      "valid_days": 42,
+      "window_days": 42
+    },
+    "T2M_MIN": {
+      "percent": 100.0,
+      "valid_days": 42,
+      "window_days": 42
+    },
+    "WS2M": {
+      "percent": 100.0,
+      "valid_days": 42,
+      "window_days": 42
+    }
+  },
+  "crops_peak_kc": {
+    "cotton": {
+      "crop": "Cotton",
+      "crop_id": "cotton",
+      "et0_total_mm": 197.6,
+      "etc_total_mm": 227.3,
+      "kc_mode": "mid-season",
+      "kc_source": "FAO-56 Table 12, standard climate (RHmin 45 percent, u2 2 m/s), not adjusted with eq. 62; Kc mid printed as 1.15 to 1.20 and Kc end as 0.70 to 0.50, the lower bounds are used",
+      "kc_values": {
+        "end": 0.5,
+        "initial": 0.35,
+        "mid": 1.15
+      },
+      "rain_minus_etc_mm": -55.4,
+      "rain_total_mm": 171.9,
+      "reason": null,
+      "state": "ok",
+      "statement": "A modelled demand from a 0.5 degree reanalysis cell and FAO standard Kc values; not a measurement, not calibrated for this field. The climatic difference is not an irrigation deficit and not a soil-water balance.",
+      "valid_days": 42
+    },
+    "maize": {
+      "crop": "Maize, field (grain)",
+      "crop_id": "maize",
+      "et0_total_mm": 197.6,
+      "etc_total_mm": 237.2,
+      "kc_mode": "mid-season",
+      "kc_source": "FAO-56 Table 12, standard climate (RHmin 45 percent, u2 2 m/s), not adjusted with eq. 62; Kc end 0.60 is the high moisture harvest value, 0.35 if field dried",
+      "kc_values": {
+        "end": 0.6,
+        "initial": 0.3,
+        "mid": 1.2
+      },
+      "rain_minus_etc_mm": -65.2,
+      "rain_total_mm": 171.9,
+      "reason": null,
+      "state": "ok",
+      "statement": "A modelled demand from a 0.5 degree reanalysis cell and FAO standard Kc values; not a measurement, not calibrated for this field. The climatic difference is not an irrigation deficit and not a soil-water balance.",
+      "valid_days": 42
+    },
+    "soybean": {
+      "crop": "Soybeans",
+      "crop_id": "soybean",
+      "et0_total_mm": 197.6,
+      "etc_total_mm": 227.3,
+      "kc_mode": "mid-season",
+      "kc_source": "FAO-56 Table 12, standard climate (RHmin 45 percent, u2 2 m/s), not adjusted with eq. 62",
+      "kc_values": {
+        "end": 0.5,
+        "initial": 0.4,
+        "mid": 1.15
+      },
+      "rain_minus_etc_mm": -55.4,
+      "rain_total_mm": 171.9,
+      "reason": null,
+      "state": "ok",
+      "statement": "A modelled demand from a 0.5 degree reanalysis cell and FAO standard Kc values; not a measurement, not calibrated for this field. The climatic difference is not an irrigation deficit and not a soil-water balance.",
+      "valid_days": 42
+    }
+  },
+  "crops_stage_curve": {
+    "cotton": {
+      "crop": "Cotton",
+      "crop_id": "cotton",
+      "et0_total_mm": 197.6,
+      "etc_total_mm": 146.3,
+      "kc_mode": "curve from sowing",
+      "kc_source": "FAO-56 Table 12, standard climate (RHmin 45 percent, u2 2 m/s), not adjusted with eq. 62; Kc mid printed as 1.15 to 1.20 and Kc end as 0.70 to 0.50, the lower bounds are used",
+      "kc_values": {
+        "end": 0.5,
+        "initial": 0.35,
+        "mid": 1.15
+      },
+      "rain_minus_etc_mm": 25.6,
+      "rain_total_mm": 171.9,
+      "reason": null,
+      "state": "ok",
+      "statement": "A modelled demand from a 0.5 degree reanalysis cell and FAO standard Kc values; not a measurement, not calibrated for this field. The climatic difference is not an irrigation deficit and not a soil-water balance.",
+      "valid_days": 42
+    },
+    "maize": {
+      "crop": "Maize, field (grain)",
+      "crop_id": "maize",
+      "et0_total_mm": 197.6,
+      "etc_total_mm": 146.0,
+      "kc_mode": "curve from sowing",
+      "kc_source": "FAO-56 Table 12, standard climate (RHmin 45 percent, u2 2 m/s), not adjusted with eq. 62; Kc end 0.60 is the high moisture harvest value, 0.35 if field dried",
+      "kc_values": {
+        "end": 0.6,
+        "initial": 0.3,
+        "mid": 1.2
+      },
+      "rain_minus_etc_mm": 25.9,
+      "rain_total_mm": 171.9,
+      "reason": null,
+      "state": "ok",
+      "statement": "A modelled demand from a 0.5 degree reanalysis cell and FAO standard Kc values; not a measurement, not calibrated for this field. The climatic difference is not an irrigation deficit and not a soil-water balance.",
+      "valid_days": 42
+    },
+    "soybean": {
+      "crop": "Soybeans",
+      "crop_id": "soybean",
+      "et0_total_mm": 197.6,
+      "etc_total_mm": 151.3,
+      "kc_mode": "curve from sowing",
+      "kc_source": "FAO-56 Table 12, standard climate (RHmin 45 percent, u2 2 m/s), not adjusted with eq. 62",
+      "kc_values": {
+        "end": 0.5,
+        "initial": 0.4,
+        "mid": 1.15
+      },
+      "rain_minus_etc_mm": 20.6,
+      "rain_total_mm": 171.9,
+      "reason": null,
+      "state": "ok",
+      "statement": "A modelled demand from a 0.5 degree reanalysis cell and FAO standard Kc values; not a measurement, not calibrated for this field. The climatic difference is not an irrigation deficit and not a soil-water balance.",
+      "valid_days": 42
+    }
+  },
+  "et0": {
+    "daily": [
+      {
+        "date": "2026-10-01",
+        "et0_mm": 5.0054,
+        "method": "penman-monteith",
+        "reason": null
+      },
+      {
+        "date": "2026-10-02",
+        "et0_mm": 3.7683,
+        "method": "penman-monteith",
+        "reason": null
+      },
+      {
+        "date": "2026-10-03",
+        "et0_mm": 4.3887,
+        "method": "penman-monteith",
+        "reason": null
+      },
+      {
+        "date": "2026-10-04",
+        "et0_mm": 4.475,
+        "method": "penman-monteith",
+        "reason": null
+      },
+      {
+        "date": "2026-10-05",
+        "et0_mm": 4.2923,
+        "method": "penman-monteith",
+        "reason": null
+      },
+      {
+        "date": "2026-10-06",
+        "et0_mm": 4.0947,
+        "method": "penman-monteith",
+        "reason": null
+      },
+      {
+        "date": "2026-10-07",
+        "et0_mm": 5.2022,
+        "method": "penman-monteith",
+        "reason": null
+      },
+      {
+        "date": "2026-10-08",
+        "et0_mm": 5.7686,
+        "method": "penman-monteith",
+        "reason": null
+      },
+      {
+        "date": "2026-10-09",
+        "et0_mm": 5.5141,
+        "method": "penman-monteith",
+        "reason": null
+      },
+      {
+        "date": "2026-10-10",
+        "et0_mm": 5.2047,
+        "method": "penman-monteith",
+        "reason": null
+      },
+      {
+        "date": "2026-10-11",
+        "et0_mm": 2.9071,
+        "method": "penman-monteith",
+        "reason": null
+      },
+      {
+        "date": "2026-10-12",
+        "et0_mm": 5.3788,
+        "method": "penman-monteith",
+        "reason": null
+      },
+      {
+        "date": "2026-10-13",
+        "et0_mm": 5.5081,
+        "method": "penman-monteith",
+        "reason": null
+      },
+      {
+        "date": "2026-10-14",
+        "et0_mm": 4.7184,
+        "method": "penman-monteith",
+        "reason": null
+      },
+      {
+        "date": "2026-10-15",
+        "et0_mm": 1.5052,
+        "method": "penman-monteith",
+        "reason": null
+      },
+      {
+        "date": "2026-10-16",
+        "et0_mm": 4.8282,
+        "method": "penman-monteith",
+        "reason": null
+      },
+      {
+        "date": "2026-10-17",
+        "et0_mm": 5.3313,
+        "method": "penman-monteith",
+        "reason": null
+      },
+      {
+        "date": "2026-10-18",
+        "et0_mm": 5.0727,
+        "method": "penman-monteith",
+        "reason": null
+      },
+      {
+        "date": "2026-10-19",
+        "et0_mm": 4.0437,
+        "method": "penman-monteith",
+        "reason": null
+      },
+      {
+        "date": "2026-10-20",
+        "et0_mm": 3.7744,
+        "method": "penman-monteith",
+        "reason": null
+      },
+      {
+        "date": "2026-10-21",
+        "et0_mm": 5.4382,
+        "method": "penman-monteith",
+        "reason": null
+      },
+      {
+        "date": "2026-10-22",
+        "et0_mm": 5.5771,
+        "method": "penman-monteith",
+        "reason": null
+      },
+      {
+        "date": "2026-10-23",
+        "et0_mm": 5.5912,
+        "method": "penman-monteith",
+        "reason": null
+      },
+      {
+        "date": "2026-10-24",
+        "et0_mm": 5.8299,
+        "method": "penman-monteith",
+        "reason": null
+      },
+      {
+        "date": "2026-10-25",
+        "et0_mm": 3.3714,
+        "method": "penman-monteith",
+        "reason": null
+      },
+      {
+        "date": "2026-10-26",
+        "et0_mm": 4.7713,
+        "method": "penman-monteith",
+        "reason": null
+      },
+      {
+        "date": "2026-10-27",
+        "et0_mm": 1.8305,
+        "method": "penman-monteith",
+        "reason": null
+      },
+      {
+        "date": "2026-10-28",
+        "et0_mm": 5.0464,
+        "method": "penman-monteith",
+        "reason": null
+      },
+      {
+        "date": "2026-10-29",
+        "et0_mm": 3.7343,
+        "method": "penman-monteith",
+        "reason": null
+      },
+      {
+        "date": "2026-10-30",
+        "et0_mm": 3.7505,
+        "method": "penman-monteith",
+        "reason": null
+      },
+      {
+        "date": "2026-10-31",
+        "et0_mm": 5.0792,
+        "method": "penman-monteith",
+        "reason": null
+      },
+      {
+        "date": "2026-11-01",
+        "et0_mm": 5.4128,
+        "method": "penman-monteith",
+        "reason": null
+      },
+      {
+        "date": "2026-11-02",
+        "et0_mm": 5.1085,
+        "method": "penman-monteith",
+        "reason": null
+      },
+      {
+        "date": "2026-11-03",
+        "et0_mm": 3.9591,
+        "method": "penman-monteith",
+        "reason": null
+      },
+      {
+        "date": "2026-11-04",
+        "et0_mm": 5.8503,
+        "method": "penman-monteith",
+        "reason": null
+      },
+      {
+        "date": "2026-11-05",
+        "et0_mm": 6.5199,
+        "method": "hargreaves",
+        "reason": "missing or invalid ALLSKY_SFC_SW_DWN"
+      },
+      {
+        "date": "2026-11-06",
+        "et0_mm": 5.7351,
+        "method": "penman-monteith",
+        "reason": null
+      },
+      {
+        "date": "2026-11-07",
+        "et0_mm": 5.4299,
+        "method": "penman-monteith",
+        "reason": null
+      },
+      {
+        "date": "2026-11-08",
+        "et0_mm": 4.0953,
+        "method": "penman-monteith",
+        "reason": null
+      },
+      {
+        "date": "2026-11-09",
+        "et0_mm": 3.5948,
+        "method": "penman-monteith",
+        "reason": null
+      },
+      {
+        "date": "2026-11-10",
+        "et0_mm": 5.5705,
+        "method": "penman-monteith",
+        "reason": null
+      },
+      {
+        "date": "2026-11-11",
+        "et0_mm": 5.567,
+        "method": "hargreaves",
+        "reason": "missing or invalid ALLSKY_SFC_SW_DWN"
+      }
+    ],
+    "fallback_days": [
+      {
+        "date": "2026-11-05",
+        "reason": "missing or invalid ALLSKY_SFC_SW_DWN"
+      },
+      {
+        "date": "2026-11-11",
+        "reason": "missing or invalid ALLSKY_SFC_SW_DWN"
+      }
+    ],
+    "maximum_mm_day": 6.52,
+    "mean_mm_day": 4.71,
+    "method_counts": {
+      "hargreaves": 2,
+      "penman-monteith": 40,
+      "unavailable": 0
+    },
+    "minimum_mm_day": 1.51,
+    "penman_monteith_days": [
+      "2026-10-01",
+      "2026-10-02",
+      "2026-10-03",
+      "2026-10-04",
+      "2026-10-05",
+      "2026-10-06",
+      "2026-10-07",
+      "2026-10-08",
+      "2026-10-09",
+      "2026-10-10",
+      "2026-10-11",
+      "2026-10-12",
+      "2026-10-13",
+      "2026-10-14",
+      "2026-10-15",
+      "2026-10-16",
+      "2026-10-17",
+      "2026-10-18",
+      "2026-10-19",
+      "2026-10-20",
+      "2026-10-21",
+      "2026-10-22",
+      "2026-10-23",
+      "2026-10-24",
+      "2026-10-25",
+      "2026-10-26",
+      "2026-10-27",
+      "2026-10-28",
+      "2026-10-29",
+      "2026-10-30",
+      "2026-10-31",
+      "2026-11-01",
+      "2026-11-02",
+      "2026-11-03",
+      "2026-11-04",
+      "2026-11-06",
+      "2026-11-07",
+      "2026-11-08",
+      "2026-11-09",
+      "2026-11-10"
+    ],
+    "total_mm": 197.6,
+    "unavailable_days": []
+  },
+  "experiment": "Field Shift experimental crop water demand, FAO-56",
+  "illustrative_phenology": {
+    "sowing_date": "2026-10-01",
+    "stage_lengths_days": {
+      "development": 15,
+      "initial": 15,
+      "late": 15,
+      "mid": 40
+    },
+    "status": "explicit illustrative hypothesis, not a field observation or local calibration"
+  },
+  "limitations": [
+    "Não há armazenamento no solo, escoamento, drenagem, ascensão capilar, irrigação, profundidade radicular, TAW, RAW ou Ks.",
+    "Não há calibração local de Kc, validação de campo, coeficiente de estresse ou resposta de produtividade.",
+    "As durações de estágio e a semeadura são ilustrativas e não podem ser apresentadas como dados do produtor.",
+    "P - ETc é diferença climática simplificada, não déficit de irrigação nem prova de estresse.",
+    "Hargreaves é empírico e menos informativo que Penman–Monteith nos dias de fallback.",
+    "A grade POWER é mais grosseira que um talhão e os valores diários usam Local Solar Time."
+  ],
+  "period": {
+    "chosen_date": "2026-11-14",
+    "days": 42,
+    "end": "2026-11-11",
+    "start": "2026-10-01"
+  },
+  "point": {
+    "elevation_m": 354.49,
+    "latitude": -11.91,
+    "longitude": -55.27,
+    "place": "Santa Carmem, Mato Grosso, fixture centroid"
+  },
+  "precipitation": {
+    "total_mm": 171.9
+  },
+  "reproducibility": {
+    "block6_snapshot": "artifacts/block6/power-climate-2026-07-01-2026-11-14.json",
+    "block6_snapshot_sha256": "133e5bca15988a9f54d1a9c67828f919427635e407258355ba6b77fe55b50cb5",
+    "et0_snapshot": "artifacts/experiment/power-et0-inputs-2026-07-01-2026-11-14.json",
+    "et0_snapshot_sha256": "c753da79c08ae1267a3022685b4cd8e317fd73d30f0e64b20ec1619fd3e0f1c1",
+    "network_used": false,
+    "power_api_version": "v2.10.3",
+    "python": "3.13 compatible, standard library plus project modules",
+    "time_standard": "LST"
+  },
+  "sensitivity": {
+    "culture_test": {
+      "cotton": {
+        "etc_total_mm": 227.3,
+        "rain_minus_etc_mm": -55.4
+      },
+      "maize": {
+        "etc_total_mm": 237.2,
+        "rain_minus_etc_mm": -65.2
+      },
+      "soybean": {
+        "etc_total_mm": 227.3,
+        "rain_minus_etc_mm": -55.4
+      }
+    },
+    "development_stage_test": {
+      "cotton": {
+        "curve_minus_peak_mm": -81.0,
+        "peak_kc_etc_mm": 227.3,
+        "stage_curve_etc_mm": 146.3
+      },
+      "maize": {
+        "curve_minus_peak_mm": -91.2,
+        "peak_kc_etc_mm": 237.2,
+        "stage_curve_etc_mm": 146.0
+      },
+      "soybean": {
+        "curve_minus_peak_mm": -76.0,
+        "peak_kc_etc_mm": 227.3,
+        "stage_curve_etc_mm": 151.3
+      }
+    }
+  },
+  "source": {
+    "basis": "modelled",
+    "name": "NASA POWER Daily Point API, community AG",
+    "parameters": [
+      "T2M_MAX",
+      "T2M_MIN",
+      "RH2M",
+      "T2MDEW",
+      "WS2M",
+      "ALLSKY_SFC_SW_DWN",
+      "PS",
+      "PRECTOTCORR",
+      "EVPTRNS"
+    ],
+    "payload_validation_issues": [],
+    "resolution": "0.5 degree cell (meteorology), 1 degree cell (solar)",
+    "units": {
+      "ALLSKY_SFC_SW_DWN": "MJ/m^2/day",
+      "EVPTRNS": "MJ/m^2/day",
+      "PRECTOTCORR": "mm/day",
+      "PS": "kPa",
+      "RH2M": "%",
+      "T2MDEW": "C",
+      "T2M_MAX": "C",
+      "T2M_MIN": "C",
+      "WS2M": "m/s"
+    }
+  }
+}

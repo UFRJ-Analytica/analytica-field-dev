@@ -1,0 +1,178 @@
+/* Field Shift AI, milestone 1. Scoped to `.fsai-*`; no global selector of the app is changed. */
+
+/* The launcher has its own anchor: bottom right, above the layer rail and below the map's zoom
+   column. It stays out of the block 4 control strip, whose children are a frozen contract (R-41). */
+.fsai-launcher-anchor { position: fixed; z-index: 64; right: 20px; bottom: 144px; pointer-events: none; }
+.fsai-toggle {
+  display: inline-flex; align-items: center; gap: 7px; padding: 8px 13px;
+  border: 1px solid rgb(232 235 229 / 85%); border-radius: 999px;
+  background: rgb(255 255 255 / 92%); box-shadow: 0 6px 20px rgb(29 48 16 / 16%);
+  color: #25372a; font-size: 12px; font-weight: 650; letter-spacing: 0.02em;
+  pointer-events: auto; cursor: pointer;
+}
+.fsai-toggle:hover { background: #fff; }
+.fsai-toggle:focus-visible { outline: 2px solid #59793d; outline-offset: 2px; }
+.fsai-toggle[aria-expanded="true"] { color: #fff; background: #25372a; border-color: #25372a; }
+.fsai-toggle-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: #59793d; box-shadow: 0 0 0 2px rgb(89 121 61 / 22%);
+}
+
+/* Desktop: a column on the right that leaves the map's zoom controls (right edge) and the layer
+   rail (bottom right) uncovered, and starts below the control strip. */
+.fsai-panel {
+  position: fixed;
+  z-index: 65;
+  top: 64px;
+  right: 60px;
+  /* Above the launcher (bottom 144 + its 36 px height), which stays clickable to close. */
+  bottom: 192px;
+  width: min(380px, calc(100vw - 120px));
+  display: flex;
+  flex-direction: column;
+  padding: 14px 14px 12px;
+  color: #25372a;
+  background: rgb(255 255 255 / 92%);
+  font-size: 13px;
+  line-height: 1.45;
+  pointer-events: auto;
+}
+
+.fsai-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.fsai-title h2 { margin: 0; font-size: 16px; font-weight: 650; letter-spacing: 0.01em; }
+.fsai-subtitle { margin: 0; color: #5d6b5f; font-size: 12px; }
+.fsai-close {
+  width: 28px; height: 28px; border: 1px solid rgb(37 55 42 / 18%); border-radius: 8px;
+  background: transparent; color: #25372a; font-size: 18px; line-height: 1; cursor: pointer;
+}
+.fsai-close:hover { background: rgb(37 55 42 / 6%); }
+
+.fsai-meta { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 8px; }
+.fsai-badge {
+  padding: 2px 8px; border-radius: 999px; background: rgb(89 121 61 / 12%); color: #3f5a2b;
+  font-size: 11px; font-weight: 600;
+}
+.fsai-lang { display: inline-flex; border: 1px solid rgb(37 55 42 / 18%); border-radius: 8px; overflow: hidden; }
+.fsai-lang button {
+  padding: 3px 8px; border: 0; background: transparent; color: #25372a; font-size: 11px; font-weight: 600; cursor: pointer;
+}
+.fsai-lang button[aria-pressed="true"] { background: #25372a; color: #fff; }
+.fsai-note { margin: 6px 0 0; color: #5d6b5f; font-size: 11px; }
+
+.fsai-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; margin-top: 10px; padding-right: 2px; overscroll-behavior: contain; }
+.fsai-section { padding: 10px 0; border-top: 1px solid rgb(37 55 42 / 10%); }
+.fsai-section h3 {
+  margin: 0 0 6px; color: #5d6b5f; font-size: 11px; font-weight: 650; letter-spacing: 0.08em; text-transform: uppercase;
+}
+
+.fsai-context { display: grid; grid-template-columns: max-content 1fr; gap: 3px 12px; margin: 0; }
+.fsai-context dt { color: #5d6b5f; }
+.fsai-context dd { margin: 0; font-weight: 550; }
+.fsai-context dd[data-status="error"], .fsai-context dd[data-status="offline"] { color: #8a3b1f; }
+.fsai-context dd[data-status="held"], .fsai-context dd[data-status="ring_missing"] { color: #7a5a12; }
+
+.fsai-overview { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.fsai-overview li {
+  display: flex; flex-direction: column; gap: 2px; padding: 7px 8px; border-radius: 8px; background: rgb(37 55 42 / 5%);
+}
+.fsai-overview-label { color: #5d6b5f; font-size: 11px; }
+.fsai-overview-value { font-size: 15px; font-weight: 650; font-variant-numeric: tabular-nums; }
+.fsai-hint { margin: 6px 0 0; color: #5d6b5f; font-size: 11px; }
+
+.fsai-quick { display: flex; flex-wrap: wrap; gap: 6px; }
+.fsai-quick button {
+  padding: 5px 9px; border: 1px solid rgb(89 121 61 / 35%); border-radius: 999px; background: #fff;
+  color: #2f4a22; font-size: 12px; text-align: left; cursor: pointer;
+}
+.fsai-quick button:hover { background: rgb(89 121 61 / 10%); }
+
+.fsai-notice { margin: 0 0 8px; padding: 6px 8px; border-radius: 6px; background: rgb(122 90 18 / 10%); color: #5f4610; font-size: 12px; }
+.fsai-log { display: flex; flex-direction: column; gap: 12px; margin: 0; padding: 0; list-style: none; }
+.fsai-question { margin: 0; padding: 7px 9px; border-radius: 8px; background: rgb(37 55 42 / 7%); }
+.fsai-who { display: block; color: #5d6b5f; font-size: 10px; font-weight: 650; letter-spacing: 0.06em; text-transform: uppercase; }
+.fsai-answer { margin-top: 6px; padding: 8px 9px; border-left: 2px solid #59793d; }
+.fsai-answer p { margin: 0 0 5px; }
+.fsai-answer-head { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.fsai-pill { padding: 1px 7px; border-radius: 999px; font-size: 10px; font-weight: 650; }
+.fsai-pill.is-answered { background: rgb(89 121 61 / 14%); color: #3f5a2b; }
+.fsai-pill.is-partial { background: rgb(122 90 18 / 12%); color: #6b4f0f; }
+.fsai-pill.is-unavailable { background: rgb(37 55 42 / 9%); color: #4a574c; }
+
+.fsai-evidence { margin-top: 4px; }
+.fsai-evidence summary { color: #3f5a2b; font-size: 12px; font-weight: 600; cursor: pointer; }
+.fsai-evidence ul, .fsai-limits ul { margin: 6px 0 0; padding: 0; list-style: none; }
+.fsai-ev { padding: 6px 0; border-top: 1px dashed rgb(37 55 42 / 14%); }
+.fsai-ev-title { display: flex; justify-content: space-between; gap: 8px; margin: 0 0 3px; }
+.fsai-ev-title strong { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.fsai-ev dl { display: grid; grid-template-columns: max-content 1fr; gap: 1px 8px; margin: 0; font-size: 11px; }
+.fsai-ev dt { color: #5d6b5f; }
+.fsai-ev dd { margin: 0; overflow-wrap: anywhere; }
+.fsai-limits { margin-top: 6px; }
+.fsai-limits-head { margin: 0; color: #6b4f0f; font-size: 11px; font-weight: 650; }
+.fsai-limits li { position: relative; padding-left: 10px; color: #4a574c; font-size: 11px; }
+.fsai-limits li::before { content: "–"; position: absolute; left: 0; }
+.fsai-clear { margin-top: 10px; padding: 0; border: 0; background: none; color: #5d6b5f; font-size: 11px; text-decoration: underline; cursor: pointer; }
+
+.fsai-form { display: flex; gap: 6px; margin-top: 8px; padding-top: 8px; border-top: 1px solid rgb(37 55 42 / 10%); }
+.fsai-form input {
+  flex: 1 1 auto; min-width: 0; padding: 7px 9px; border: 1px solid rgb(37 55 42 / 22%); border-radius: 8px;
+  background: #fff; color: #25372a; font: inherit;
+}
+.fsai-form button {
+  padding: 7px 12px; border: 0; border-radius: 8px; background: #25372a; color: #fff; font-weight: 600; cursor: pointer;
+}
+.fsai-form button:disabled { opacity: 0.45; cursor: default; }
+
+.fsai-panel button:focus-visible, .fsai-panel input:focus-visible, .fsai-panel summary:focus-visible {
+  outline: 2px solid #59793d; outline-offset: 2px;
+}
+.fsai-visually-hidden {
+  position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap;
+}
+
+/* Guided demo: one primary action (the field), then the questions as numbered steps. */
+.fsai-demo h3 { color: #3f5a2b; }
+.fsai-steps { display: flex; flex-direction: column; gap: 6px; margin: 8px 0 0; padding-left: 20px; }
+.fsai-steps li::marker { color: #59793d; font-weight: 650; font-size: 11px; }
+.fsai-step-field { display: flex; flex-wrap: wrap; gap: 6px; }
+.fsai-step-field button, .fsai-step {
+  padding: 6px 10px; border: 1px solid rgb(89 121 61 / 35%); border-radius: 8px; background: #fff;
+  color: #25372a; font: inherit; font-size: 12px; text-align: left; cursor: pointer;
+}
+.fsai-step { width: 100%; }
+.fsai-step:hover, .fsai-step-field button:hover { background: rgb(89 121 61 / 10%); }
+.fsai-step:disabled { opacity: 0.5; cursor: default; }
+.fsai-step-field .fsai-primary { background: #25372a; border-color: #25372a; color: #fff; font-weight: 600; }
+.fsai-step-field .fsai-primary:hover { background: #3a5240; }
+.fsai-active { color: #3f5a2b; font-weight: 600; }
+
+/* The recorded FAO-56 comparison: a small table, the highest demand marked by weight only. */
+.fsai-water { width: 100%; margin: 6px 0 4px; border-collapse: collapse; font-size: 12px; font-variant-numeric: tabular-nums; }
+.fsai-water caption { margin-bottom: 4px; color: #5d6b5f; font-size: 11px; text-align: left; }
+.fsai-water th, .fsai-water td { padding: 4px 6px; border-bottom: 1px solid rgb(37 55 42 / 10%); text-align: right; }
+.fsai-water th[scope="row"], .fsai-water thead th:first-child { text-align: left; }
+.fsai-water thead th { color: #5d6b5f; font-size: 11px; font-weight: 600; }
+.fsai-water tr[data-highest="true"] td, .fsai-water tr[data-highest="true"] th { font-weight: 700; }
+.fsai-water tfoot td { border-bottom: 0; color: #5d6b5f; font-size: 10px; text-align: left; }
+
+.fsai-glossary summary { color: #3f5a2b; font-size: 12px; font-weight: 600; cursor: pointer; }
+.fsai-glossary ul { margin: 6px 0 0; padding-left: 16px; color: #4a574c; font-size: 11px; }
+.fsai-glossary li { margin-bottom: 3px; }
+
+/* While the assistant is open it takes the right-hand column, so the supporting-data stack under it
+   is not drawn half-covered (FieldShiftAI.tsx writes `data-fsai-open`). */
+html[data-fsai-open="true"] .anchor-right-column { visibility: hidden; }
+
+/* Narrow layouts: a sheet below the control strip that spans the width. Closing it returns the map. */
+@media (max-width: 760px) {
+  /* Below the fields row and above the timeline controls: the bottom of a narrow screen belongs to
+     the rotation cards, which grow when expanded. */
+  .fsai-launcher-anchor { top: 100px; right: 12px; bottom: auto; }
+  .fsai-panel { top: 56px; right: 8px; left: 8px; bottom: 8px; width: auto; }
+  .fsai-overview { grid-template-columns: 1fr; }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .fsai-panel { animation: fsai-in 140ms ease-out; }
+  @keyframes fsai-in { from { opacity: 0; transform: translateX(8px); } to { opacity: 1; transform: none; } }
+}

@@ -1,4 +1,7 @@
+import { assistantCatalogEn } from './assistant-catalog'
+
 export const en = {
+  ...assistantCatalogEn,
   'map.field_map': 'Field map',
   'map.field_map_home': 'Field Shift home',
   'map.satellite_map_label': 'Satellite map showing Santa Carmem fields',

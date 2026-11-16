@@ -41,3 +41,50 @@ cd backend
 Os testes usam transportes gravados (`artifacts/fixtures/tiles-recorded-2026-11-14.json`) e não chamam a rede.
 
 A reserva incluída em `reserve/smap-soil-moisture.png` é PNG 256×256.
+
+## Field Shift AI: provedor OpenAI
+
+O agente experimental mantém os provedores Anthropic e OpenAI selecionáveis por configuração. O adaptador
+OpenAI usa `POST /v1/responses`, function calling estrito, raciocínio `medium`, estado local (`store=false`) e
+as cinco ferramentas científicas existentes. Toda resposta continua passando pelo Evidence Guard.
+
+Configure a chave apenas no processo do backend. Em PowerShell, na janela que iniciará o servidor:
+
+```powershell
+cd field-shift-app
+$env:FIELD_SHIFT_AI_PROVIDER = 'openai'
+$env:FIELD_SHIFT_AI_OPENAI_MODEL = 'gpt-6-luna'
+$env:FIELD_SHIFT_AI_OPENAI_API_KEY = '<segredo local>'
+$env:FIELD_SHIFT_AI_EFFORT = 'medium'
+python -m uvicorn main:app --app-dir backend --port 8000
+```
+
+Não use prefixo `VITE_`, não grave a chave em arquivo do frontend e não a coloque em `.env` compartilhado. O
+adaptador ignora `OPENAI_API_KEY`: somente a variável específica do backend acima ativa credenciais OpenAI.
+`GET /experimental/field-shift-ai/status` mostra provedor, modelo e esforço, mas nunca a chave.
+
+Em outra janela, inicie o frontend:
+
+```powershell
+cd field-shift-app
+npm run dev
+```
+
+Abra a URL indicada pelo Vite, selecione `Field 01` em Santa Carmem, abra o botão `Field Shift AI` no canto
+inferior direito, escolha português ou inglês e envie a pergunta. O selo `Agente com ferramentas
+(experimental)` confirma que o frontend encontrou o provedor; respostas reprovadas ou falhas usam o fallback
+determinístico.
+
+### Validação real preparada (não executar sem autorização)
+
+`backend/validate_openai_agent.py` contém as três perguntas aprovadas em português e inglês, registra seleção de
+ferramentas, resultado do Evidence Guard, latência, tokens e custo estimado, e impõe teto acumulado de US$ 0,10.
+Ele exige a configuração acima e uma confirmação explícita na linha de comando:
+
+```powershell
+cd field-shift-app/backend
+python validate_openai_agent.py --confirm-real-api
+```
+
+O texto da terceira pergunta é validado como acompanhamento, porém cada requisição permanece isolada: o backend
+não envia o histórico da conversa ao modelo. O modelo precisa consultar novamente as ferramentas necessárias.

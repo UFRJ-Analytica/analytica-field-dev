@@ -223,6 +223,10 @@ app.add_middleware(
     allow_headers=["*"],
     expose_headers=["X-Tile-Source", "X-Tile-Fallback", "X-Tile-Date", "X-Tile-Status"],
 )
+# Field Shift AI (experiment): routes under /experimental/field-shift-ai only; no existing route changes.
+from field_shift_agent.routes import router as field_shift_ai_router  # noqa: E402
+
+app.include_router(field_shift_ai_router)
 
 # --- abuse control on the one slow route ----------------------------------------------------
 # `POST /fields/{id}/numbers` fans out to NASA POWER and friends, so it is the route worth

@@ -1,0 +1,492 @@
+{
+  "simulated_model": true,
+  "field_id": "mt-santa-carmem-01",
+  "date": "2026-11-12",
+  "note": "Model turns are scripted; tools, block 6 (recorded), FAO-56 snapshot and Evidence Guard ran for real.",
+  "demos": {
+    "1_environment": {
+      "pt-BR": {
+        "question": "Quais são as condições ambientais desta propriedade?",
+        "mode": "agent",
+        "status": "answered",
+        "fallback_reason": null,
+        "tools_used": [
+          "get_environmental_indicators"
+        ],
+        "evidence": {
+          "rain_total": [
+            171.9,
+            "mm",
+            "modelled"
+          ],
+          "rain_median": [
+            224.9,
+            "mm",
+            "modelled"
+          ],
+          "rain_percentile": [
+            20,
+            "percent",
+            "derived"
+          ],
+          "rain_wet_days": [
+            32,
+            "days",
+            "derived"
+          ],
+          "dry_spell_days": [
+            7,
+            "days",
+            "modelled"
+          ],
+          "hot_days": [
+            28,
+            "days",
+            "modelled"
+          ],
+          "gwetroot_mean": [
+            0.49,
+            "unit 1",
+            "modelled"
+          ]
+        },
+        "limitations": [
+          "historical_not_forecast",
+          "coarse_cell",
+          "modelled_not_measured"
+        ],
+        "answer_segments": 19
+      },
+      "en": {
+        "question": "What are the environmental conditions of this field?",
+        "mode": "agent",
+        "status": "answered",
+        "fallback_reason": null,
+        "tools_used": [
+          "get_environmental_indicators"
+        ],
+        "evidence": {
+          "rain_total": [
+            171.9,
+            "mm",
+            "modelled"
+          ],
+          "rain_median": [
+            224.9,
+            "mm",
+            "modelled"
+          ],
+          "rain_percentile": [
+            20,
+            "percent",
+            "derived"
+          ],
+          "rain_wet_days": [
+            32,
+            "days",
+            "derived"
+          ],
+          "dry_spell_days": [
+            7,
+            "days",
+            "modelled"
+          ],
+          "hot_days": [
+            28,
+            "days",
+            "modelled"
+          ],
+          "gwetroot_mean": [
+            0.49,
+            "unit 1",
+            "modelled"
+          ]
+        },
+        "limitations": [
+          "historical_not_forecast",
+          "coarse_cell",
+          "modelled_not_measured"
+        ],
+        "answer_segments": 19
+      }
+    },
+    "2_crop_water": {
+      "pt-BR": {
+        "question": "Compare a demanda hídrica estimada do milho e da soja.",
+        "mode": "agent",
+        "status": "answered",
+        "fallback_reason": null,
+        "tools_used": [
+          "get_crop_water_demand"
+        ],
+        "evidence": {
+          "crop_water.et0_total": [
+            197.6,
+            "mm",
+            "fixture"
+          ],
+          "crop_water.maize.etc_total": [
+            237.2,
+            "mm",
+            "fixture"
+          ],
+          "crop_water.soybean.etc_total": [
+            227.3,
+            "mm",
+            "fixture"
+          ],
+          "crop_water.highest_peak_demand": [
+            "maize",
+            null,
+            "fixture"
+          ],
+          "crop_water.maize.rain_minus_etc": [
+            -65.2,
+            "mm",
+            "fixture"
+          ],
+          "crop_water.soybean.rain_minus_etc": [
+            -55.4,
+            "mm",
+            "fixture"
+          ]
+        },
+        "limitations": [
+          "needs_sowing_date",
+          "experimental_snapshot",
+          "coarse_cell",
+          "modelled_not_measured",
+          "standard_kc",
+          "climatic_difference_not_irrigation"
+        ],
+        "answer_segments": 17
+      },
+      "en": {
+        "question": "Compare the estimated water demand of corn and soybean.",
+        "mode": "agent",
+        "status": "answered",
+        "fallback_reason": null,
+        "tools_used": [
+          "get_crop_water_demand"
+        ],
+        "evidence": {
+          "crop_water.et0_total": [
+            197.6,
+            "mm",
+            "fixture"
+          ],
+          "crop_water.maize.etc_total": [
+            237.2,
+            "mm",
+            "fixture"
+          ],
+          "crop_water.soybean.etc_total": [
+            227.3,
+            "mm",
+            "fixture"
+          ],
+          "crop_water.highest_peak_demand": [
+            "maize",
+            null,
+            "fixture"
+          ],
+          "crop_water.maize.rain_minus_etc": [
+            -65.2,
+            "mm",
+            "fixture"
+          ],
+          "crop_water.soybean.rain_minus_etc": [
+            -55.4,
+            "mm",
+            "fixture"
+          ]
+        },
+        "limitations": [
+          "needs_sowing_date",
+          "experimental_snapshot",
+          "coarse_cell",
+          "modelled_not_measured",
+          "standard_kc",
+          "climatic_difference_not_irrigation"
+        ],
+        "answer_segments": 17
+      }
+    },
+    "4_water_difference_and_kc": {
+      "pt-BR": {
+        "question": "Compare a demanda hídrica do milho e da soja.",
+        "mode": "agent",
+        "status": "answered",
+        "fallback_reason": null,
+        "tools_used": [
+          "get_crop_water_demand"
+        ],
+        "evidence": {
+          "crop_water.diff.maize_minus_soybean": [
+            9.9,
+            "mm",
+            "fixture"
+          ],
+          "crop_water.et0_total": [
+            197.6,
+            "mm",
+            "fixture"
+          ],
+          "crop_water.maize.kc_mid": [
+            1.2,
+            null,
+            "fixture"
+          ],
+          "crop_water.soybean.kc_mid": [
+            1.15,
+            null,
+            "fixture"
+          ]
+        },
+        "limitations": [
+          "needs_sowing_date",
+          "experimental_snapshot",
+          "standard_kc",
+          "coarse_cell",
+          "modelled_not_measured"
+        ],
+        "answer_segments": 12
+      },
+      "en": {
+        "question": "Compare the water demand of maize and soybean.",
+        "mode": "agent",
+        "status": "answered",
+        "fallback_reason": null,
+        "tools_used": [
+          "get_crop_water_demand"
+        ],
+        "evidence": {
+          "crop_water.diff.maize_minus_soybean": [
+            9.9,
+            "mm",
+            "fixture"
+          ],
+          "crop_water.et0_total": [
+            197.6,
+            "mm",
+            "fixture"
+          ],
+          "crop_water.maize.kc_mid": [
+            1.2,
+            null,
+            "fixture"
+          ],
+          "crop_water.soybean.kc_mid": [
+            1.15,
+            null,
+            "fixture"
+          ]
+        },
+        "limitations": [
+          "needs_sowing_date",
+          "experimental_snapshot",
+          "standard_kc",
+          "coarse_cell",
+          "modelled_not_measured"
+        ],
+        "answer_segments": 12
+      }
+    },
+    "5_rain_and_planting_window": {
+      "pt-BR": {
+        "question": "Choveu menos que o normal? Quando posso plantar soja?",
+        "mode": "agent",
+        "status": "answered",
+        "fallback_reason": null,
+        "tools_used": [
+          "get_environmental_indicators",
+          "get_planting_constraints"
+        ],
+        "evidence": {
+          "rain_vs_median": [
+            "below",
+            null,
+            "derived"
+          ],
+          "rain_total": [
+            171.9,
+            "mm",
+            "modelled"
+          ],
+          "rain_median": [
+            224.9,
+            "mm",
+            "modelled"
+          ],
+          "rain_minus_median": [
+            -53.0,
+            "mm",
+            "derived"
+          ],
+          "planting.soja.window": [
+            "Soja",
+            null,
+            "retrieved"
+          ]
+        },
+        "limitations": [
+          "historical_not_forecast",
+          "planting_window_not_decision",
+          "coarse_cell",
+          "modelled_not_measured",
+          "zarc_municipal_envelope"
+        ],
+        "answer_segments": 14
+      },
+      "en": {
+        "question": "Was rainfall below normal? When can I plant soybean?",
+        "mode": "agent",
+        "status": "answered",
+        "fallback_reason": null,
+        "tools_used": [
+          "get_environmental_indicators",
+          "get_planting_constraints"
+        ],
+        "evidence": {
+          "rain_vs_median": [
+            "below",
+            null,
+            "derived"
+          ],
+          "rain_total": [
+            171.9,
+            "mm",
+            "modelled"
+          ],
+          "rain_median": [
+            224.9,
+            "mm",
+            "modelled"
+          ],
+          "rain_minus_median": [
+            -53.0,
+            "mm",
+            "derived"
+          ],
+          "planting.soja.window": [
+            "Soja",
+            null,
+            "retrieved"
+          ]
+        },
+        "limitations": [
+          "historical_not_forecast",
+          "planting_window_not_decision",
+          "coarse_cell",
+          "modelled_not_measured",
+          "zarc_municipal_envelope"
+        ],
+        "answer_segments": 14
+      }
+    },
+    "3_which_crop_rejected": {
+      "pt-BR": {
+        "question": "Com esses dados, qual cultura devo plantar?",
+        "mode": "fallback",
+        "status": "fallback",
+        "fallback_reason": "guard_unsupported_claim",
+        "tools_used": [
+          "get_crop_water_demand"
+        ],
+        "evidence": {},
+        "limitations": [],
+        "answer_segments": 0
+      },
+      "en": {
+        "question": "With this data, which crop should I plant?",
+        "mode": "fallback",
+        "status": "fallback",
+        "fallback_reason": "guard_unsupported_claim",
+        "tools_used": [
+          "get_crop_water_demand"
+        ],
+        "evidence": {},
+        "limitations": [],
+        "answer_segments": 0
+      }
+    },
+    "3_which_crop_limits": {
+      "pt-BR": {
+        "question": "Com esses dados, qual cultura devo plantar?",
+        "mode": "agent",
+        "status": "partial",
+        "fallback_reason": null,
+        "tools_used": [
+          "get_evidence_gaps",
+          "get_planting_constraints",
+          "get_crop_water_demand"
+        ],
+        "evidence": {
+          "crop_water.highest_peak_demand": [
+            "maize",
+            null,
+            "fixture"
+          ],
+          "planting.soja.window": [
+            "Soja",
+            null,
+            "retrieved"
+          ],
+          "planting.milho_2a_safra.window": [
+            "Milho 2ª Safra",
+            null,
+            "retrieved"
+          ]
+        },
+        "limitations": [
+          "comparator_not_built",
+          "planting_window_not_decision",
+          "needs_farm_records",
+          "needs_sowing_date",
+          "experimental_snapshot",
+          "standard_kc",
+          "zarc_municipal_envelope"
+        ],
+        "answer_segments": 13
+      },
+      "en": {
+        "question": "With this data, which crop should I plant?",
+        "mode": "agent",
+        "status": "partial",
+        "fallback_reason": null,
+        "tools_used": [
+          "get_evidence_gaps",
+          "get_planting_constraints",
+          "get_crop_water_demand"
+        ],
+        "evidence": {
+          "crop_water.highest_peak_demand": [
+            "maize",
+            null,
+            "fixture"
+          ],
+          "planting.soja.window": [
+            "Soja",
+            null,
+            "retrieved"
+          ],
+          "planting.milho_2a_safra.window": [
+            "Milho 2ª Safra",
+            null,
+            "retrieved"
+          ]
+        },
+        "limitations": [
+          "comparator_not_built",
+          "planting_window_not_decision",
+          "needs_farm_records",
+          "needs_sowing_date",
+          "experimental_snapshot",
+          "standard_kc",
+          "zarc_municipal_envelope"
+        ],
+        "answer_segments": 13
+      }
+    }
+  }
+}

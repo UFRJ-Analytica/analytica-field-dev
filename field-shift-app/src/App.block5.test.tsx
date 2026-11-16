@@ -80,6 +80,7 @@ function installFetch(options: { axisDefault?: string } = {}) {
 }
 
 beforeEach(() => {
+  // The rotation panel was removed in the strip cleanup (PR #42); no panel is open by default.
   usePanelStore.setState({ open: null })
   MapStub.reset()
   useMapStore.setState({

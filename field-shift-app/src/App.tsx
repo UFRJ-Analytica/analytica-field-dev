@@ -17,6 +17,7 @@ import { ReportButton } from '@/components/ReportButton'
 import { ClimateSignal } from '@/components/ClimateSignal'
 import { ensoSchema, fieldClimateSchema, loadParsed, type EnsoState, type FieldClimate, type Loadable } from '@/lib/climate'
 import { NumbersView } from '@/components/NumbersView'
+import { FieldShiftAIPanel, FieldShiftAIToggle } from '@/components/FieldShiftAI'
 import { chosenDateOf, useMapStore, type FieldSummary } from '@/lib/map-store'
 import { loadFields, loadProducer } from '@/lib/producer-store'
 import { useLayers } from '@/lib/use-layers'
@@ -532,6 +533,11 @@ function App() {
           </div>
         </div>
       )}
+
+      {/* Field Shift AI (experiment): its own launcher and panel, outside the frozen control strip
+          (block 4 R-41), as direct children of the shell. */}
+      <FieldShiftAIToggle />
+      <FieldShiftAIPanel selectedField={selectedField} />
 
       {/* Block 5.5, B1: nothing is mounted over the map any more. The four panels live in the
           host above, and the map screen is the screen. */}
