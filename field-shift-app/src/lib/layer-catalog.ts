@@ -22,6 +22,8 @@ export type LayersResponseLayer = {
   time_format: LayerTimeFormat
   optical: boolean
   window_days: number | null
+  /** "land" for products with no values over water; the map hides the sea above them. */
+  surface?: 'land' | 'any'
   status: LayerStatus
   effective_date: string | null
   age_days: number | null

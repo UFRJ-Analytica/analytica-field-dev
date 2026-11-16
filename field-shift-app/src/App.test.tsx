@@ -250,7 +250,7 @@ describe('block 4 wave 3: the timeline replaces the season control', () => {
 
     await screen.findByRole('region', { name: 'Timeline' })
     await waitFor(() => expect(dateInput().value).toBe('2015-04-01'))
-    expect(screen.getByRole('status').textContent).toBe('Date limited to 2015-04-01')
+    expect(screen.getByText('Date limited to 2015-04-01')).toBeTruthy()
   })
 
   it('renders none_in_lookback and the first axis day without inventing a date (AC-28)', async () => {

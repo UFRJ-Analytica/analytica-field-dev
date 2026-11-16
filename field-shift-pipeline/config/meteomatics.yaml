@@ -1,0 +1,59 @@
+# Meteomatics Weather API products used by pipeline/fetch_meteomatics.py.
+#
+# Request shape (docs: https://www.meteomatics.com/en/api/getting-started/):
+#   https://api.meteomatics.com/<start>P<n>D:P1D/<param,param,...>/<lat>,<lon>/json?source=<model>
+#
+# Every product is optional: if the account lacks a parameter or model, that product is recorded as
+# unavailable and the UI says so. Nothing is filled in.
+#
+# Accounts: the NASA Space Apps hackathon account (2026) has every product below; the free Basic
+# account offers a 10-day forecast and a limited parameter list (1 location / 10 parameters per
+# query, 500 queries per day, non-commercial use). Credentials are never stored in the repo: see
+# docs/integrations.md.
+
+base_url: https://api.meteomatics.com
+# Days before today to request as well, to cover NASA POWER's publication lag (~3 days) so the
+# season-to-date curve and the forecast join without a gap. Those days come from Meteomatics'
+# own analysis ("mix" source), not from POWER, and are labelled that way.
+lookback_days: 5
+
+products:
+  short_range:
+    source: mix            # Meteomatics' blend of models and observations
+    days: 15
+    parameters:
+      precip_24h:mm: rain
+      prob_precip_24h:p: rain_probability
+      t_max_2m_24h:C: tmax
+      t_min_2m_24h:C: tmin
+      evapotranspiration_24h:mm: et0
+      soil_moisture_index_-15cm:idx: smi_15cm
+      soil_moisture_index_-50cm:idx: smi_50cm
+    docs:
+      - https://www.meteomatics.com/en/api/available-parameters/weather-parameter/precipitation/
+      - https://www.meteomatics.com/en/api/available-parameters/agricultural-parameters/
+      - https://www.meteomatics.com/en/api/available-parameters/soil-parameters/
+  extended:
+    source: ecmwf-vareps   # ECMWF extended-range ensemble, downscaled; lead time 46 days
+    days: 45
+    # All 51 members (control + 50). Without ens_select an ensemble model returns only member 0,
+    # the control run -- one possible future, not a forecast distribution. Monthly/period totals
+    # are summed per member first, then summarised (median, 10th-90th percentile): summing daily
+    # quantiles instead would overstate the spread.
+    ens_select: "member:0-50"
+    parameters:
+      precip_24h:mm: rain
+    docs:
+      - https://www.meteomatics.com/en/api/request/optional-parameters/data-source/
+      - https://www.meteomatics.com/en/api/request/optional-parameters/   # ens_select
+  seasonal:
+    source: ecmwf-mmsf     # ECMWF long-range seasonal forecast, downscaled; ~6 months usable
+    months: 6
+    ens_select: "member:0-50"
+    parameters:
+      precip_24h:mm: rain
+    docs:
+      - https://www.meteomatics.com/en/api/request/optional-parameters/data-source/
+
+# Soil moisture index (SMI): 0 = permanent wilting point, 1 = field capacity, can exceed 1 after
+# rain (Meteomatics soil-parameters page above). Used as-is; no thresholds of our own.

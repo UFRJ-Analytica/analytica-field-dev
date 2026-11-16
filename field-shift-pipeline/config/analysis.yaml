@@ -1,0 +1,71 @@
+# Method choices for pipeline/build_evidence.py.
+#
+# Two kinds of entry, and the `source:` says which:
+#   * a published standard (ETCCDI, CPC) -- cited;
+#   * a project choice -- marked `source: project choice` with the reason. These are methods, not
+#     measured values; they are listed so they can be argued with and changed in one place.
+
+# Daily rainfall indices, computed on NASA POWER PRECTOTCORR.
+rain_indices:
+  wet_day_mm: 1.0        # a day with >= 1 mm counts as wet; CDD counts runs of days below it
+  heavy_day_mm: 20.0     # R20mm: days with >= 20 mm (waterlogging / erosion proxy)
+  rx_window_days: 5      # Rx5day: wettest 5-day total
+  source: >-
+    ETCCDI core climate-extremes indices (CDD, R20mm, Rx5day; wet day = 1 mm).
+    https://etccdi.pacificclimate.org/list_27_indices.shtml
+
+# The Sep-Apr season (regions.yaml season_months) is also split in two halves, because the
+# Brazilian ENSO signal is not uniform in time: the southern excess is strongest Sep-Dec, the
+# northern deficit and veranicos bite in the Jan-Apr rainy core.
+sub_seasons:
+  early: [9, 10, 11, 12]
+  late: [1, 2, 3, 4]
+  source: >-
+    project choice, following the timing in CLAUDE.md / README (RS excess Sep-Dec; MATOPIBA
+    mid-season dry spells).
+
+# How a crop year gets its ENSO label.
+crop_year_enso:
+  index: RONI
+  reference_season: NDJ  # Nov-Jan of the planting year: centred on December, inside the season
+  strong_classes: [strong, very_strong]
+  source: >-
+    project choice. NDJ sits in the middle of both pilots' summer-crop season; the phase and
+    strength of that season come from CPC's own rules (config/enso.yaml).
+
+# Yield anomalies from IBGE PAM.
+yield_anomaly:
+  method: linear_trend   # anomaly = (yield - linear trend) / trend; removes technology gains
+  min_years: 10          # fewer valid years than this -> no anomaly (too short to trust a trend)
+  # Crops shown for a municipality: mean planted area over the last 5 PAM years at or above this
+  # share of the municipality's total temporary-crop area.
+  min_area_share: 0.01
+  source: >-
+    project choice. Linear detrending is the simplest widely used way to separate weather shocks
+    from the yield trend in crop-climate studies; it is a first pass, to be revisited in Phase 4.
+
+# Climatology for every anomaly. Same as regions.yaml meta.climatology_baseline; harvest-year labels.
+baseline_crop_years: [1991, 2020]
+
+# Vegetation (MODIS NDVI over stable cropland, from pipeline/fetch_planetary.py).
+ndvi:
+  # Summer-crop canopy peak in both pilots (soy sown Oct-Dec, full canopy Dec-Mar).
+  peak_months: [12, 1, 2, 3]
+  # A 16-day composite counts only if at least this share of the cropland pixels was cloud-free.
+  min_valid_fraction: 0.5
+  # A crop year needs at least this many usable peak-season composites (of ~8).
+  min_composites: 4
+  # MODIS starts in 2000, so the 1991-2020 climate baseline is impossible; NDVI anomalies use
+  # 2001-2020 and are labelled with that baseline everywhere (CLAUDE.md, same rule as SMAP).
+  baseline_crop_years: [2001, 2020]
+  source: >-
+    project choice. Peak months follow the summer-crop calendar in config/crops.yaml (itself
+    `suposicao`); the validity thresholds keep cloudy composites out rather than trusting a few
+    clear pixels.
+
+# Forecasts (Meteomatics, from pipeline/fetch_meteomatics.py) are compared with NASA POWER's
+# 1991-2020 climatology for the same calendar dates. Different sources: the UI says so.
+forecast:
+  heavy_day_mm: 20.0      # same R20mm threshold as rain_indices (ETCCDI)
+  wet_day_mm: 1.0         # same CDD threshold as rain_indices (ETCCDI)
+  source: ETCCDI thresholds reused; comparison window = the forecast's own dates

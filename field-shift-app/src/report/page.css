@@ -1,0 +1,39 @@
+/* Block 5: page-level styles for the analysis route only. The HUD keeps html and body at
+   overflow hidden for its full screen map, so this page scrolls inside its own container. The
+   Field Phase kit styles itself under .fp-root. */
+.fp-page {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  overflow: auto;
+  background: #f9f9f7;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .fp-page {
+    background: #0d0d0d;
+  }
+}
+:root[data-theme="dark"] .fp-page {
+  background: #0d0d0d;
+}
+:root[data-theme="light"] .fp-page {
+  background: #f9f9f7;
+}
+.fp-root {
+  min-height: 100%;
+}
+.fp-back {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  margin-bottom: 6px;
+  padding: 0 12px;
+  border: 1px solid currentColor;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  opacity: 0.85;
+}

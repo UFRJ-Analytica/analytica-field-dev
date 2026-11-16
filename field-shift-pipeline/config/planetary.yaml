@@ -1,0 +1,52 @@
+# Microsoft Planetary Computer products used by pipeline/fetch_planetary.py.
+#
+# Access: public STAC API (https://planetarycomputer.microsoft.com/api/stac/v1) + short-lived SAS
+# tokens that planetary_computer.sign() fetches anonymously. No account or key is needed.
+# Class codes and scale factors below were read from each collection's STAC metadata on
+# 2026-11-14 (item_assets: file:values, classification:classes, raster:bands).
+
+stac_url: https://planetarycomputer.microsoft.com/api/stac/v1
+
+landcover:
+  collection: io-lulc-annual-v02     # Impact Observatory / Esri, 10 m, 9 classes, Sentinel-2
+  years: [2017, 2018, 2019, 2020, 2021, 2022, 2023]
+  crops_value: 5                     # file:values -> "Crops"
+  nodata_value: 0                    # file:values -> "No Data"
+  # Read at 1/4 of native resolution (~40 m) before averaging onto the 250 m MODIS grid; plenty
+  # for a share-of-pixel estimate and 16x less data.
+  read_decimation: 4
+  license: CC-BY-4.0 (Impact Observatory, Microsoft, Esri)
+  source: STAC collection io-lulc-annual-v02, item_assets.data.file:values
+
+ndvi:
+  collection: modis-13Q1-061          # MODIS Vegetation Indices 16-day, 250 m, v6.1
+  platform_prefix: MOD13Q1            # Terra only (2000-); Aqua MYD13Q1 starts 2002 -> one series
+  ndvi_asset: 250m_16_days_NDVI
+  reliability_asset: 250m_16_days_pixel_reliability
+  scale: 0.0001                       # raster:bands scale
+  usable_reliability: [0, 1]          # 0 good, 1 marginal; 2 snow/ice, 3 cloudy -> dropped
+  start: "2000-02-18"
+  source: STAC collection modis-13Q1-061, item_assets (raster:bands, classification:classes)
+
+# A 250 m pixel counts as cropland when at least this share of it is "Crops" in EVERY year of the
+# land-cover record (2017-2023): stable cropland, so NDVI is not diluted by forest or by land that
+# was only recently cleared.
+cropland_fraction_threshold: 0.5
+cropland_source: project choice (majority rule on the 250 m pixel; stability across all years)
+
+terrain:
+  collection: cop-dem-glo-30          # Copernicus DEM GLO-30
+  attribution: >-
+    Copernicus DEM GLO-30 (c) DLR e.V. 2010-2014 and (c) Airbus Defence and Space GmbH 2014-2018,
+    provided under COPERNICUS by the European Union and ESA
+  # Slope classes (percent) of the Brazilian soil survey relief classification.
+  relief_classes_pct:
+    plano: [0, 3]
+    suave_ondulado: [3, 8]
+    ondulado: [8, 20]
+    forte_ondulado: [20, 45]
+    montanhoso: [45, 75]
+    escarpado: [75, null]
+  relief_source: >-
+    Embrapa (1979), Sumula da 10a Reuniao Tecnica de Levantamento de Solos; relief classes as
+    reproduced in Santos et al., Manual de Descricao e Coleta de Solo no Campo (SBCS/Embrapa).

@@ -12,6 +12,13 @@ function getLocale(): Locale {
   return localStorage.getItem(LOCALE_STORAGE_KEY) === 'pt-BR' ? 'pt-BR' : 'en'
 }
 
+/** The short month name in the app's language, from a 1 based month number. */
+export function monthName(month: number): string {
+  return new Intl.DateTimeFormat(getLocale(), { month: 'short', timeZone: 'UTC' })
+    .format(new Date(Date.UTC(2001, month - 1, 1)))
+    .replace('.', '')
+}
+
 export function translationKeyFor(value: string): TranslationKey | null {
   const entry = Object.entries(en).find(([, english]) => english === value)
   return entry ? entry[0] as TranslationKey : null

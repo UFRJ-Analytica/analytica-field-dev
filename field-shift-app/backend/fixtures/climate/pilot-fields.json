@@ -1,0 +1,89 @@
+{
+  "contract_version": "fieldshift-climate-1",
+  "recorded_at": "2026-11-15T15:31:13+00:00",
+  "note": "Synthetic fields: a rectangle the size of Field 01 centred on the county centroid.",
+  "fields": [
+    {
+      "id": "il-mclean-01",
+      "name": "Field 06",
+      "location": "McLean County (IL)",
+      "municipality_code": 17113,
+      "synthetic": true,
+      "region": "us",
+      "coverage": null,
+      "center": [
+        -88.8473,
+        40.4909
+      ],
+      "boundary": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              -88.8598,
+              40.5009
+            ],
+            [
+              -88.8348,
+              40.5009
+            ],
+            [
+              -88.8348,
+              40.4809
+            ],
+            [
+              -88.8598,
+              40.4809
+            ],
+            [
+              -88.8598,
+              40.5009
+            ]
+          ]
+        ]
+      },
+      "scenarios": []
+    },
+    {
+      "id": "tx-lubbock-01",
+      "name": "Field 07",
+      "location": "Lubbock County (TX)",
+      "municipality_code": 48303,
+      "synthetic": true,
+      "region": "us",
+      "coverage": null,
+      "center": [
+        -101.8205,
+        33.6102
+      ],
+      "boundary": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              -101.833,
+              33.6202
+            ],
+            [
+              -101.808,
+              33.6202
+            ],
+            [
+              -101.808,
+              33.6002
+            ],
+            [
+              -101.833,
+              33.6002
+            ],
+            [
+              -101.833,
+              33.6202
+            ]
+          ]
+        ]
+      },
+      "scenarios": []
+    }
+  ]
+}
