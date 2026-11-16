@@ -142,7 +142,8 @@ function mockApi() {
 }
 
 beforeEach(() => {
-  usePanelStore.setState({ open: 'rotation' })
+  // The rotation panel was removed in the strip cleanup (PR #42); no panel is open by default.
+  usePanelStore.setState({ open: null })
   // Block 5 makes the United States the default region (R-01) and lists only the active
   // region's fixtures (R-24, AM-10). These block 1 to 4 cases exercise the Brazil fixtures,
   // so they run with Brazil active, which `?region=` is the only way to choose.

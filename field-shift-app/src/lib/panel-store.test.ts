@@ -3,51 +3,30 @@ import { PANEL_ORDER, PANEL_TOGGLE_ATTR, usePanelStore } from './panel-store'
 import { useMapStore } from './map-store'
 
 beforeEach(() => {
-  usePanelStore.setState({ open: null, draft: null })
+  usePanelStore.setState({ open: null })
 })
 
-describe('block 5.5 B3: exactly one panel is open', () => {
-  it('starts closed and opens one at a time', () => {
+// The strip cleanup (PR #42) left `Field Data` (`numbers`) as the only panel and removed the drawing
+// draft with the `Field record` panel, so these cases cover the store as it is now.
+describe('block 5.5 B3: at most one panel is open', () => {
+  it('starts closed, opens and closes the panel', () => {
     expect(usePanelStore.getState().open).toBeNull()
     usePanelStore.getState().openPanel('numbers')
     expect(usePanelStore.getState().open).toBe('numbers')
-    usePanelStore.getState().openPanel('decision')
-    expect(usePanelStore.getState().open).toBe('decision')
+    usePanelStore.getState().closePanel()
+    expect(usePanelStore.getState().open).toBeNull()
   })
 
-  it('toggles the same panel closed and another one open', () => {
-    usePanelStore.getState().togglePanel('record')
-    expect(usePanelStore.getState().open).toBe('record')
-    usePanelStore.getState().togglePanel('record')
-    expect(usePanelStore.getState().open).toBeNull()
-    usePanelStore.getState().togglePanel('rotation')
+  it('toggles the same panel open and closed', () => {
     usePanelStore.getState().togglePanel('numbers')
     expect(usePanelStore.getState().open).toBe('numbers')
+    usePanelStore.getState().togglePanel('numbers')
+    expect(usePanelStore.getState().open).toBeNull()
   })
 
-  it('keeps the order of R-08 and one toggle attribute per panel', () => {
-    expect(PANEL_ORDER).toEqual(['rotation', 'numbers', 'decision', 'record'])
+  it('keeps the strip order and one toggle attribute per panel', () => {
+    expect(PANEL_ORDER).toEqual(['numbers'])
     expect(Object.keys(PANEL_TOGGLE_ATTR)).toEqual([...PANEL_ORDER])
-  })
-})
-
-describe('block 7 R-63: the drawing draft', () => {
-  it('starts null and collects one vertex per press', () => {
-    expect(usePanelStore.getState().draft).toBeNull()
-    usePanelStore.getState().startDrawing()
-    expect(usePanelStore.getState().draft).toEqual([])
-    usePanelStore.getState().addVertex([-55.28, -11.9])
-    usePanelStore.getState().addVertex([-55.27, -11.9])
-    expect(usePanelStore.getState().draft).toEqual([[-55.28, -11.9], [-55.27, -11.9]])
-    usePanelStore.getState().undoVertex()
-    expect(usePanelStore.getState().draft).toEqual([[-55.28, -11.9]])
-    usePanelStore.getState().stopDrawing()
-    expect(usePanelStore.getState().draft).toBeNull()
-  })
-
-  it('ignores a vertex while the mode is closed', () => {
-    usePanelStore.getState().addVertex([0, 0])
-    expect(usePanelStore.getState().draft).toBeNull()
   })
 })
 

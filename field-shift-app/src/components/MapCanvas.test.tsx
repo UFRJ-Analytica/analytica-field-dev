@@ -155,7 +155,8 @@ describe('initial field selection does not depend on event ordering', () => {
   // Block 5.5 B4: the coverage pill and the cards live in the rotation panel, which the product
   // opens by a press; these cases open the same store value to reach the pill.
   beforeEach(() => {
-    usePanelStore.setState({ open: 'rotation' })
+    // The rotation panel was removed in the strip cleanup (PR #42); no panel is open by default.
+    usePanelStore.setState({ open: null })
   })
 
   it('selects the first field when the field list lands before the map style and load never fires', async () => {
