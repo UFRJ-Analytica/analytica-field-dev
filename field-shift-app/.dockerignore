@@ -1,0 +1,48 @@
+# The build context is `field-shift-app/`, the folder this file sits in.
+#
+# The image needs the backend, the polygon manifest and two cited artifact files, and nothing else.
+
+# dependencies and build output of the frontend
+node_modules
+**/node_modules
+dist
+dist-ssr
+
+# version control and the test suites
+.git
+.gitignore
+backend/test_*.py
+src/**/*.test.ts
+src/**/*.test.tsx
+src/test
+
+# python bytecode and virtualenvs, which the image builds its own of
+**/__pycache__
+**/*.py[cod]
+.venv
+.venv-*
+backend/.venv
+
+# local runtime caches
+.tile-cache
+**/.tile-cache
+*.log
+
+# the experiment notes and the polygon build records: the backend reads two files of `artifacts/`
+# (the NASS planting window and the ZARC snapshot) and nothing else in it.
+artifacts/*
+!artifacts/us-windows-cass-nd.json
+!artifacts/zarc-mt-snapshot.json
+
+# specifications and design notes
+specs
+*.md
+
+# local secrets: the example is versioned, the real file never is
+.env
+.env.*
+!.env.example
+
+# data the backend does not serve
+data/work
+data/polygons/*.sqlite
