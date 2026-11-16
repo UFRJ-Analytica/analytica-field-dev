@@ -18,6 +18,7 @@ import { ClimateSignal } from '@/components/ClimateSignal'
 import { ensoSchema, fieldClimateSchema, loadParsed, type EnsoState, type FieldClimate, type Loadable } from '@/lib/climate'
 import { NumbersView } from '@/components/NumbersView'
 import { FieldShiftAIPanel, FieldShiftAIToggle } from '@/components/FieldShiftAI'
+import { useAssistantUi } from '@/lib/assistant/ui-store'
 import { chosenDateOf, useMapStore, type FieldSummary } from '@/lib/map-store'
 import { loadFields, loadProducer } from '@/lib/producer-store'
 import { useLayers } from '@/lib/use-layers'
@@ -91,6 +92,10 @@ function App() {
   const polygonDate = useMapStore(chosenDateOf)
   const panelOpen = usePanelStore((state) => state.open)
   const supportingData = useSupportingDataToggle()
+  // Item 3 of the Field Shift AI integration: the two panels of the right column are exclusive, so
+  // opening one closes the other and neither can be drawn over the other.
+  const assistantOpen = useAssistantUi((state) => state.open)
+  const setAssistantOpen = useAssistantUi((state) => state.setOpen)
   const [fields, setFields] = useState<FieldSummary[]>([])
   const [mapTile, setMapTile] = useState<{ z: number; x: number; y: number } | null>(null)
   const [scenarios, setScenarios] = useState<RotationScenario[]>([])
@@ -377,6 +382,7 @@ function App() {
   }, [])
 
   const handleToggleSupportingData = useCallback(() => {
+    setAssistantOpen(false)
     supportingData.toggle()
   }, [supportingData])
 
@@ -446,6 +452,8 @@ function App() {
               right of `Supporting data`, which block 4 R-41 freezes as the anchor. */}
           <NumbersToggle hasSelection={hasSelection} />
           <ReportButton code={reportCode} />
+          {/* Field Shift AI (PR 44): a button of the strip like `Data Info`, not a floating launcher. */}
+          <FieldShiftAIToggle onOpen={() => { setAssistantOpen(true); if (supportingData.isOpen) supportingData.close() }} />
         </div>
       </div>
 
@@ -505,10 +513,11 @@ function App() {
         </div>
       </div>
 
-      {supportingData.isOpen && (
+      {(supportingData.isOpen || assistantOpen) && (
         <div className="overlay anchor-right-column">
           <div className="right-column-stack">
-            {supportingData.isOpen && (
+            {assistantOpen && <FieldShiftAIPanel selectedField={selectedField} />}
+            {!assistantOpen && supportingData.isOpen && (
               <div
                 id={SUPPORTING_DATA_PANEL_ID}
                 className="overlay-interactive panel-surface evidence-anchor layer-evidence"
@@ -534,10 +543,6 @@ function App() {
         </div>
       )}
 
-      {/* Field Shift AI (experiment): its own launcher and panel, outside the frozen control strip
-          (block 4 R-41), as direct children of the shell. */}
-      <FieldShiftAIToggle />
-      <FieldShiftAIPanel selectedField={selectedField} />
 
       {/* Block 5.5, B1: nothing is mounted over the map any more. The four panels live in the
           host above, and the map screen is the screen. */}

@@ -6,6 +6,7 @@ import { useAssistantUi } from '@/lib/assistant/ui-store'
 import { numbersLastReadKey } from '@/lib/numbers-api'
 import type { NumbersPayload } from '@/lib/numbers'
 import { recordedNumbersPayload, RECORDED_DATE, RECORDED_FIELD_ID } from '@/test/numbers-recorded'
+import { setCropWaterFeed } from '@/lib/assistant/crop-water'
 
 const FIELD_01: FieldSummary = {
   id: RECORDED_FIELD_ID,
@@ -15,12 +16,43 @@ const FIELD_01: FieldSummary = {
   center: [-55.27, -11.91],
   boundary: { type: 'Polygon', coordinates: [[[-55.285, -11.9], [-55.26, -11.9], [-55.26, -11.92], [-55.285, -11.92], [-55.285, -11.9]]] },
 }
+const CASS: FieldSummary = {
+  id: '381825001868504',
+  name: 'Cass Field 01',
+  location: 'Cass County, North Dakota',
+  coverage: 92,
+  center: [-97.142061, 46.959944],
+  boundary: { type: 'Polygon', coordinates: [[[-97.15, 46.95], [-97.13, 46.95], [-97.13, 46.97], [-97.15, 46.97], [-97.15, 46.95]]] },
+}
 const FIELD_02: FieldSummary = {
   ...FIELD_01,
   id: 'mt-santa-carmem-02',
   name: 'Field 02',
   center: [-55.24, -11.94],
   boundary: { type: 'Polygon', coordinates: [[[-55.255, -11.93], [-55.23, -11.93], [-55.23, -11.95], [-55.255, -11.95], [-55.255, -11.93]]] },
+}
+
+/**
+ * The FAO-56 comparison is computed by the backend now, so a test that wants it feeds the set the
+ * route would return for that field and window. Nothing is read from a recorded experiment file.
+ */
+export function feedCropWater(fieldId: string, date = RECORDED_DATE): void {
+  const window = payloadFor(fieldId, date).query.window
+  const start = window?.start ?? '2026-10-01'
+  const end = window?.end ?? '2026-11-11'
+  const crop = (cropId: string, etc: number, rain: number, kc: number) => ({
+    cropId, cropName: cropId, et0TotalMm: 171.9, etcTotalMm: etc, rainTotalMm: rain, rainMinusEtcMm: rain - etc,
+    kc: { initial: 0, mid: kc, end: 0 }, kcMode: 'mid-season',
+    method: { penmanMonteithDays: 0, hargreavesDays: 42, unavailableDays: 0 },
+    coverage: { validDays: 42, windowDays: 42 }, state: 'ok', source: 'NASA POWER', kcSource: 'FAO-56 Table 12',
+  })
+  setCropWaterFeed({
+    origin: 'api', fieldId, point: { latitude: -11.91, longitude: -55.27 },
+    period: { start, end, chosenDate: end },
+    resolution: '0.5 degree cell (meteorology)',
+    limitations: ['computed_crop_water', 'coarse_cell', 'modelled_not_measured', 'standard_kc'],
+    crops: [crop('cotton', 150, 171.9, 1.15), crop('maize', 197.6, 171.9, 1.2), crop('soybean', 160, 171.9, 1.15)],
+  })
 }
 
 function payloadFor(fieldId: string, date = RECORDED_DATE): NumbersPayload {
@@ -81,7 +113,7 @@ beforeEach(() => {
   answerWith((fieldId, date) => payloadFor(fieldId, date))
   useAssistantUi.setState({ open: false })
   useMapStore.setState({
-    regionId: 'br',
+    regionId: 'us',
     selectedFieldId: FIELD_01.id,
     selectedPolygonId: null,
     polygonRing: null,
@@ -91,6 +123,7 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  setCropWaterFeed(null)
   cleanup()
   vi.unstubAllGlobals()
   localStorage.removeItem('fs.locale')
@@ -174,6 +207,7 @@ describe('Field Shift AI panel', () => {
     setup()
     const panel = await openPanel()
     await within(panel).findByText('Indicators loaded from the numbers service.')
+    feedCropWater(FIELD_01.id)
     fireEvent.click(within(panel).getByRole('button', { name: 'Compare the water demand of maize and soybean.' }))
     expect(panel.querySelector('.fsai-answer')?.textContent).toContain('197.6 mm')
     fireEvent.click(within(panel).getByRole('button', { name: 'PT-BR' }))
@@ -193,12 +227,14 @@ describe('Field Shift AI panel', () => {
     const view = setup(FIELD_01)
     const panel = await openPanel()
     await within(panel).findByText('Indicators loaded from the numbers service.')
+    feedCropWater(FIELD_01.id)
     fireEvent.click(within(panel).getByRole('button', { name: 'Compare the water demand of maize and soybean.' }))
     expect(panel.querySelector('.fsai-answer')?.getAttribute('data-status')).toBe('answered')
     view.rerender(<><FieldShiftAIToggle /><FieldShiftAIPanel selectedField={FIELD_02} /></>)
     expect(screen.getByRole('complementary').querySelector('.fsai-answer')).toBeNull()
     expect(screen.getByText(/The field or the date changed/)).toBeTruthy()
     await screen.findByText('Indicators loaded from the numbers service.')
+    act(() => setCropWaterFeed(null))
     expect(screen.getByTestId('fsai-field').textContent).toBe('Field 02')
     fireEvent.click(screen.getByRole('button', { name: 'Compare the water demand of maize and soybean.' }))
     const answer = screen.getByRole('complementary').querySelector('.fsai-answer') as HTMLElement
@@ -434,41 +470,8 @@ describe('Field Shift AI agent (milestone 2)', () => {
 })
 
 describe('milestone 3: guided demo and farmer view', () => {
-  it('opens Santa Carmem from a United States start: region, field and the recorded window date', async () => {
-    useMapStore.setState({ regionId: 'us', selectedFieldId: null, chosenDate: '2026-11-14' })
-    setup(null)
-    const panel = await openPanel()
-    fireEvent.click(within(panel).getByRole('button', { name: 'Open Santa Carmem, Brazil' }))
-    const state = useMapStore.getState()
-    expect(state.regionId).toBe('br')
-    expect(state.selectedFieldId).toBe('mt-santa-carmem-01')
-    expect(state.chosenDate).toBe('2026-11-11')
-  })
 
-  it('switches back to the United States without carrying the Brazilian date or field', async () => {
-    setup()
-    const panel = await openPanel()
-    fireEvent.click(within(panel).getByRole('button', { name: 'Open Cass County, United States' }))
-    const state = useMapStore.getState()
-    expect(state.regionId).toBe('us')
-    expect(state.selectedFieldId).toBe('381825001868504')
-  })
 
-  it('runs the demo steps in order and renders the crop water comparison as a table', async () => {
-    setup()
-    const panel = await openPanel()
-    await within(panel).findByText('Indicators loaded from the numbers service.')
-    const steps = within(panel.querySelector('.fsai-steps') as HTMLElement).getAllByRole('button').map((b) => b.textContent)
-    expect(steps).toEqual(['Open Santa Carmem, Brazil', 'Open Cass County, United States', 'What do the environmental indicators show?',
-      'Was rainfall below normal?', 'Compare the water demand of maize and soybean.', 'What are the planting windows?',
-      'Where does this data come from?'])
-    fireEvent.click(within(panel).getByRole('button', { name: 'Compare the water demand of maize and soybean.' }))
-    const table = within(panel).getByTestId('fsai-water-table')
-    const rows = [...table.querySelectorAll('tbody tr')].map((tr) => [...tr.children].map((cell) => cell.textContent))
-    expect(rows).toContainEqual(['Maize', '1.20', '237.2 mm', '-65.2 mm'])
-    expect(table.querySelector('tr[data-highest="true"]')?.getAttribute('data-crop')).toBe('maize')
-    expect(table.textContent).toContain('recorded experiment, not a live value')
-  })
 
   it('does not show a crop water table for a field outside the recorded experiment', async () => {
     useMapStore.setState({ selectedFieldId: FIELD_02.id })
@@ -481,7 +484,7 @@ describe('milestone 3: guided demo and farmer view', () => {
 
   it('answers the rain and planting steps in Portuguese with conclusions first', async () => {
     localStorage.setItem('fs.locale', 'pt-BR')
-    setup()
+    setup(CASS)
     const panel = await openPanel()
     await within(panel).findByText('Indicadores carregados do serviço de números.')
     fireEvent.click(within(panel).getByRole('button', { name: 'Choveu menos que o normal?' }))
@@ -490,7 +493,8 @@ describe('milestone 3: guided demo and farmer view', () => {
     expect(answers[0].getAttribute('data-intent')).toBe('rainfall')
     expect(answers[0].querySelector('p:nth-of-type(2)')?.textContent).toMatch(/^Choveu abaixo do usual/)
     expect(answers[1].getAttribute('data-intent')).toBe('planting')
-    expect(answers[1].textContent).toContain('ZARC')
+    // The app mounts the United States, so the window source of a Cass County field is NASS.
+    expect(answers[1].textContent).toContain('NASS')
     expect(panel.textContent).not.toMatch(/assistant\.|answer\.|gloss\./)
   })
 

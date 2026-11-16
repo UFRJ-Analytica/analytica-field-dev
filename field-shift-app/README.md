@@ -59,7 +59,38 @@ prints) and `GET /fields/{id}/climate` (the municipal rows of `Data Info`).
 | `FIELDPHASE_FIXTURE_DIR` | backend | the Field Phase export root served under `/fieldphase` |
 | `CORS_ALLOW_ORIGINS`, `CORS_ALLOW_ORIGIN_REGEX` | backend | which origins may call the API |
 | `OUTBOUND_TIMEOUT_SECONDS`, `NUMBERS_RATE_LIMIT_REQUESTS`, `NUMBERS_RATE_LIMIT_WINDOW_SECONDS` | backend | the numbers route |
+| `FIELD_SHIFT_AI_PROVIDER`, `FIELD_SHIFT_AI_OPENAI_API_KEY`, `FIELD_SHIFT_AI_OPENAI_MODEL`, `FIELD_SHIFT_AI_OPENAI_BUDGET_USD` | backend | the Field Shift AI assistant; no key means the deterministic adapter |
+| `FIELD_SHIFT_AI_RATE_LIMIT_REQUESTS`, `FIELD_SHIFT_AI_RATE_LIMIT_WINDOW_SECONDS` | backend | the chat route's own allowance (default 20 in 60, 0 turns it off) |
 | `NASS_API_KEY`, `METEOMATICS_USERNAME`, `METEOMATICS_PASSWORD` | pipeline only | optional downloads; the app never needs them |
+
+### Field Shift AI (the assistant panel)
+
+`Field Shift AI` is a button of the control strip like `Data Info`: its panel opens below the strip, in
+the right column, and the two are mutually exclusive, so opening one closes the other. It answers in
+English and Portuguese from the block 6 numbers, and, when a model is configured, through
+`POST /experimental/field-shift-ai/chat`.
+
+Nothing needs a key to run: with no key the deterministic adapter answers and the panel says so. To
+use the model, set these in the environment of the backend process (never in the repository, never in a
+fixture, never in a log):
+
+    FIELD_SHIFT_AI_PROVIDER=openai
+    FIELD_SHIFT_AI_OPENAI_API_KEY=<the key, set by the operator>
+    FIELD_SHIFT_AI_OPENAI_MODEL=gpt-5.1
+    FIELD_SHIFT_AI_OPENAI_BUDGET_USD=0.50
+
+`FIELD_SHIFT_AI_OPENAI_BUDGET_USD` caps one run's spend on the provider's own usage reporting, and it
+should be set whenever a key is: the route is public and costs money once a key exists. For the same
+reason it carries its own per client rate limit, `FIELD_SHIFT_AI_RATE_LIMIT_REQUESTS` in
+`FIELD_SHIFT_AI_RATE_LIMIT_WINDOW_SECONDS` (default 20 in 60, `0` turns it off), the same in process
+sliding window as the numbers route and therefore also PER WORKER. Neither `/status` nor any error path
+returns the key: the provider reports its name and model only.
+
+The FAO-56 crop water comparison is computed by the backend, not in the browser
+(`GET /fields/<id>/crop-water`): ET0 by FAO-56 eq. 52 from the recorded block 6 series, multiplied by
+the FAO-56 Table 12 Kc of each crop over that crop's own usual planting window from the NASS state
+bulletin (`artifacts/us-windows-cass-nd.json`, North Dakota). A crop with no recorded window for the
+field's state, or with no Kc in the tree, abstains and names the missing input: nothing is invented.
 
 ### The pipeline
 

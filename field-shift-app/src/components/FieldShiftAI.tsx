@@ -12,40 +12,37 @@
  */
 import { useEffect, useId, useMemo, useRef, useState, type FormEvent } from 'react'
 import { useMapStore, type FieldSummary } from '@/lib/map-store'
-import { regionAdapter, type RegionId } from '@/lib/regions'
+import { regionAdapter } from '@/lib/regions'
 import { answerIntent, classifyIntent, evidenceLabel, evidenceValue } from '@/lib/assistant/answers'
 import type { AgentChatRequest, AgentChatResponse } from '@/lib/assistant/agent-api'
 import { useFieldContext } from '@/lib/assistant/context'
-import { snapshotChosenDate } from '@/lib/assistant/crop-water'
 import { OVERVIEW_METRICS, summaryEvidence } from '@/lib/assistant/evidence'
 import { formatDate, formatNumber, formatResolution, formatValue } from '@/lib/assistant/format'
 import { useLocale } from '@/lib/assistant/locale'
 import type { AssistantResponse, CropWaterSet, Evidence, Intent, LimitationCode } from '@/lib/assistant/types'
 import { fallbackReasonKey, useAgentAvailability, useAgentTurns, type AgentState } from '@/lib/assistant/use-agent'
 import { ASSISTANT_PANEL_ID, ASSISTANT_TOGGLE_ATTR, useAssistantUi } from '@/lib/assistant/ui-store'
+import { useCropWater } from '@/lib/assistant/use-crop-water'
 import { at, type AssistantKey } from '@/strings/assistant'
 import type { Locale } from '@/strings'
 import './FieldShiftAI.css'
 
-export function FieldShiftAIToggle() {
+export function FieldShiftAIToggle({ onOpen }: { onOpen?: () => void }) {
   const open = useAssistantUi((state) => state.open)
   const setOpen = useAssistantUi((state) => state.setOpen)
   const [locale] = useLocale()
   return (
-    <div className="fsai-launcher-anchor">
-      <button
-        type="button"
-        className="fsai-toggle"
-        aria-expanded={open}
-        aria-controls={ASSISTANT_PANEL_ID}
-        aria-label={at(locale, 'ai.launcher_label')}
-        {...{ [ASSISTANT_TOGGLE_ATTR]: '' }}
-        onClick={() => setOpen(!open)}
-      >
-        <span className="fsai-toggle-dot" aria-hidden="true" />
-        {at(locale, 'ai.name')}
-      </button>
-    </div>
+    <button
+      type="button"
+      className={`top-chip toggle-control panel-toggle fsai-strip-toggle${open ? ' is-open' : ''}`}
+      aria-expanded={open}
+      aria-controls={ASSISTANT_PANEL_ID}
+      aria-label={at(locale, 'ai.launcher_label')}
+      {...{ [ASSISTANT_TOGGLE_ATTR]: '' }}
+      onClick={() => { if (!open) onOpen?.(); setOpen(!open) }}
+    >
+      {at(locale, 'ai.name')}
+    </button>
   )
 }
 
@@ -76,13 +73,22 @@ const GLOSSARY: AssistantKey[] = ['gloss.et0', 'gloss.etc', 'gloss.kc', 'gloss.z
  * attribute restores the app exactly.
  */
 
-/** The guided demo's first step: the region's first fixture field, and for Brazil the recorded window's date. */
-function openDemoField(region: RegionId): void {
+/**
+ * The guided demo opens a United States field: Cass Field 01, then the two pilots when the region
+ * carries them. The application mounts one region, so no region switch is involved.
+ */
+const DEMO_CANDIDATES: { demo: string; fieldId: string; key: AssistantKey }[] = [
+  { demo: 'us', fieldId: regionAdapter('us').fixtureIds[0] ?? '', key: 'demo.open_us' },
+  { demo: 'il-mclean-01', fieldId: 'il-mclean-01', key: 'demo.open_mclean' },
+  { demo: 'tx-lubbock-01', fieldId: 'tx-lubbock-01', key: 'demo.open_lubbock' },
+]
+const DEMO_FIELDS = DEMO_CANDIDATES.filter(
+  (entry) => entry.fieldId !== '' && regionAdapter('us').fixtureIds.includes(entry.fieldId))
+
+function openDemoField(fieldId: string): void {
   const store = useMapStore.getState()
-  if (store.regionId !== region) store.setRegionId(region)
-  const fieldId = regionAdapter(region).fixtureIds[0]
-  if (fieldId && store.selectedFieldId !== fieldId) store.selectField(fieldId)
-  if (region === 'br') store.setChosenDate(snapshotChosenDate())
+  if (store.regionId !== 'us') store.setRegionId('us')
+  if (store.selectedFieldId !== fieldId) store.selectField(fieldId)
 }
 
 function statusText(kind: string, locale: Locale, status?: number): string {
@@ -175,6 +181,9 @@ export function FieldShiftAIPanel({ selectedField }: { selectedField: FieldSumma
     [turns, context, locale],
   )
 
+  // The FAO-56 comparison is computed by the backend; this keeps the set of the selected field.
+  useCropWater(context.fieldId, context.kind, context.date, open)
+
   const payload = context.numbers.kind === 'ready' || context.numbers.kind === 'held' ? context.numbers.payload : null
   const overview = payload && context.fieldId
     ? summaryEvidence(payload, context.fieldId).filter((e) => OVERVIEW_METRICS.includes(e.metric as never))
@@ -226,15 +235,13 @@ export function FieldShiftAIPanel({ selectedField }: { selectedField: FieldSumma
           <ol className="fsai-steps">
             <li>
               <div className="fsai-step-field">
-                <button type="button" className="fsai-primary" data-demo="br" onClick={() => openDemoField('br')}>
-                  {at(locale, 'demo.open_br')}
-                </button>
-                <button type="button" data-demo="us" onClick={() => openDemoField('us')}>{at(locale, 'demo.open_us')}</button>
+                {DEMO_FIELDS.map((entry) => (
+                  <button key={entry.demo} type="button" data-demo={entry.demo}
+                    className={entry.demo === 'us' ? 'fsai-primary' : undefined}
+                    onClick={() => openDemoField(entry.fieldId)}>{at(locale, entry.key)}</button>
+                ))}
               </div>
-              <p className="fsai-hint">
-                {at(locale, 'demo.open_br_note', { date: formatDate(snapshotChosenDate(), locale) })}{' '}
-                {at(locale, 'demo.region_note')}
-              </p>
+              <p className="fsai-hint">{at(locale, 'demo.region_note')}</p>
               {fieldName && <p className="fsai-hint fsai-active" data-testid="fsai-demo-active">{at(locale, 'demo.active', { name: fieldName })}</p>}
             </li>
             {DEMO_STEPS.map(({ intent, key }) => (
@@ -252,7 +259,7 @@ export function FieldShiftAIPanel({ selectedField }: { selectedField: FieldSumma
             <dt>{at(locale, 'ctx.field')}</dt>
             <dd data-testid="fsai-field">{fieldName ?? at(locale, 'ctx.none')}</dd>
             <dt>{at(locale, 'ctx.region')}</dt>
-            <dd>{at(locale, context.regionId === 'br' ? 'region.br' : 'region.us')}</dd>
+            <dd>{at(locale, 'region.us')}</dd>
             <dt>{at(locale, 'ctx.date')}</dt>
             <dd data-testid="fsai-date">{formatDate(context.date, locale)}</dd>
             {window?.start && window?.end && (

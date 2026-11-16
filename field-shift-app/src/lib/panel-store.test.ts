@@ -33,16 +33,16 @@ describe('block 5.5 B3: at most one panel is open', () => {
 describe('block 5.5 U4 and U5: one write for the whole polygon selection', () => {
   it('clears the class, the raw values and the ring when another polygon is selected', () => {
     useMapStore.setState({
-      regionId: 'br',
+      regionId: 'us',
       selectedPolygonId: '39',
       polygonClass: { classId: 39, name: 'Soybean', hex: '#f5b3c8', unmapped: false },
       polygonClassYear: 2025,
       polygonRaw: { classValue: 39, area: 12.5 },
       polygonRing: [[-55.28, -11.9], [-55.27, -11.9], [-55.27, -11.88], [-55.28, -11.9]],
     })
-    useMapStore.getState().selectField('trazo:41')
+    useMapStore.getState().selectField('csb:381825001868622')
     const state = useMapStore.getState()
-    expect(String(state.selectedPolygonId)).toBe('41')
+    expect(String(state.selectedPolygonId)).toBe('381825001868622')
     expect(state.polygonClass).toBeNull()
     expect(state.polygonClassYear).toBeNull()
     expect(state.polygonRaw).toBeNull()
@@ -51,7 +51,7 @@ describe('block 5.5 U4 and U5: one write for the whole polygon selection', () =>
 
   it('clears everything on the empty map click action', () => {
     useMapStore.setState({
-      regionId: 'br',
+      regionId: 'us',
       selectedPolygonId: '39',
       polygonClass: { classId: 39, name: 'Soybean', hex: '#f5b3c8', unmapped: false },
       polygonRaw: { classValue: 39, area: 12.5 },
@@ -66,7 +66,7 @@ describe('block 5.5 U4 and U5: one write for the whole polygon selection', () =>
   })
 
   it('switches from a polygon to a fixture field in one write', () => {
-    useMapStore.setState({ regionId: 'br', selectedPolygonId: '39', polygonClass: { classId: 39, name: 'Soybean', hex: '#f5b3c8', unmapped: false } })
+    useMapStore.setState({ regionId: 'us', selectedPolygonId: '39', polygonClass: { classId: 39, name: 'Soybean', hex: '#f5b3c8', unmapped: false } })
     useMapStore.getState().selectField('mt-santa-carmem-01')
     const state = useMapStore.getState()
     expect(state.selectedFieldId).toBe('mt-santa-carmem-01')

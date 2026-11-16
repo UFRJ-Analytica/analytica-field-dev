@@ -53,7 +53,9 @@ export function useFieldContext(selectedField: FieldSummary | null, enabled: boo
         location: null,
         center: centre,
         body: polygonRing && centre ? { ring: polygonRing, centroid: centre, area_ha: null, date } : 'ring_missing',
-        sharesCache: !region.areaFromSidecar,
+        // The region adapter carries one source with no sidecar area since the Brazilian polygon
+        // path was removed, so a polygon and its field share the block 6 cache key.
+        sharesCache: true,
       }
     }
     if (selectedField === null) {

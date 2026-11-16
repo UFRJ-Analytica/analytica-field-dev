@@ -238,10 +238,10 @@ export const assistantEn = {
 
   'demo.heading': 'Guided demo',
   'demo.intro': 'Six steps from a field to its evidence. Nothing is ranked or recommended.',
-  'demo.open_br': 'Open Santa Carmem, Brazil',
-  'demo.open_br_note': 'Selects Santa Carmem Field 01 (Mato Grosso) and sets the date to {date}, so the analysis window is the one of the recorded FAO-56 experiment.',
-  'demo.open_us': 'Open Cass County, United States',
-  'demo.region_note': 'Experimental shortcut: the app chooses its region only from the address (?region=br); these buttons change it for you.',
+  'demo.open_us': 'Open Cass Field 01, North Dakota',
+  'demo.open_mclean': 'Open the McLean County pilot',
+  'demo.open_lubbock': 'Open the Lubbock County pilot',
+  'demo.region_note': 'The crop water comparison uses the crop usual planting window of the field state from the NASS bulletin and the FAO-56 Kc values; a crop with no recorded window or no Kc abstains and names what is missing.',
   'demo.active': 'Selected: {name}.',
 
   'answer.water.demo_hint': 'To see the comparison, use the guided demo at the top of this panel: it opens Santa Carmem Field 01 at the recorded window.',
@@ -560,10 +560,10 @@ export const assistantPtBR: Record<AssistantKey, string> = {
 
   'demo.heading': 'Demonstração guiada',
   'demo.intro': 'Seis passos, da propriedade às evidências. Nada é ranqueado nem recomendado.',
-  'demo.open_br': 'Abrir Santa Carmem, Brasil',
-  'demo.open_br_note': 'Seleciona o Talhão 01 de Santa Carmem (Mato Grosso) e ajusta a data para {date}, para que a janela de análise seja a do experimento FAO-56 gravado.',
-  'demo.open_us': 'Abrir Cass County, Estados Unidos',
-  'demo.region_note': 'Atalho experimental: o aplicativo só escolhe a região pelo endereço (?region=br); estes botões fazem a troca por você.',
+  'demo.open_us': 'Abrir o Talhão 01 de Cass, Dakota do Norte',
+  'demo.open_mclean': 'Abrir o piloto de McLean County',
+  'demo.open_lubbock': 'Abrir o piloto de Lubbock County',
+  'demo.region_note': 'A comparação de demanda hídrica usa a janela usual de plantio da cultura no estado do talhão, do boletim do NASS, e os valores de Kc da FAO-56; uma cultura sem janela registrada ou sem Kc abstém e diz o que falta.',
   'demo.active': 'Selecionado: {name}.',
 
   'answer.water.demo_hint': 'Para ver a comparação, use a demonstração guiada no topo deste painel: ela abre o Talhão 01 de Santa Carmem na janela gravada.',

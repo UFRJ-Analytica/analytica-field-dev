@@ -9,7 +9,7 @@
 import type { NumbersPayload } from '@/lib/numbers'
 import type { Locale } from '@/strings'
 import { at, type AssistantKey } from '@/strings/assistant'
-import { cropWaterEvidence, cropWaterFor, etcDifferences, snapshotPeriod } from './crop-water'
+import { cropWaterEvidence, cropWaterFor, etcDifferences, cropWaterPeriod } from './crop-water'
 import { gapStatusKey, gapsOf, metricLabelKey, sectionKey, summaryEvidence, SUMMARY_METRICS } from './evidence'
 import { formatDate, formatList, formatNumber, formatResolution, formatValue } from './format'
 import { cropsAskedFor, plantingWindowsFor, type PlantingWindow } from './planting'
@@ -120,7 +120,9 @@ export function evidenceValue(evidence: Evidence, locale: Locale): string {
 }
 
 function regionName(regionId: string, locale: Locale): string {
-  return at(locale, regionId === 'br' ? 'region.br' : 'region.us')
+  // The application mounts one region (`us`) since the strip cleanup; the argument stays for the
+  // call sites, and any other value still labels the one region the app has.
+  return at(locale, regionId === 'us' ? 'region.us' : 'region.us')
 }
 
 function unavailableReason(context: FieldContext, locale: Locale): string {
@@ -283,7 +285,14 @@ function waterAnswer(input: AnswerInput, payload: NumbersPayload): AssistantResp
   const { context, locale } = input
   const set = cropWaterFor({ fieldId: context.fieldId ?? '', kind: context.kind, center: context.center }, payload)
   if (set === null) {
-    const period = snapshotPeriod()
+    const period = cropWaterPeriod()
+    if (period === null) {
+      // The route has not answered for this field yet, so no window and no crop water is claimed.
+      return respond(input, 'water_demand', [
+        at(locale, 'answer.water.unavailable'),
+        at(locale, 'answer.water.demo_hint'),
+      ], [], 'unavailable')
+    }
     return respond(input, 'water_demand', [
       at(locale, 'answer.water.unavailable'),
       at(locale, 'answer.water.why', { start: formatDate(period.start, locale), end: formatDate(period.end, locale) }),

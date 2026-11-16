@@ -1,33 +1,12 @@
 /* Field Shift AI, milestone 1. Scoped to `.fsai-*`; no global selector of the app is changed. */
 
-/* The launcher has its own anchor: bottom right, above the layer rail and below the map's zoom
-   column. It stays out of the block 4 control strip, whose children are a frozen contract (R-41). */
-.fsai-launcher-anchor { position: fixed; z-index: 64; right: 20px; bottom: 144px; pointer-events: none; }
-.fsai-toggle {
-  display: inline-flex; align-items: center; gap: 7px; padding: 8px 13px;
-  border: 1px solid rgb(232 235 229 / 85%); border-radius: 999px;
-  background: rgb(255 255 255 / 92%); box-shadow: 0 6px 20px rgb(29 48 16 / 16%);
-  color: #25372a; font-size: 12px; font-weight: 650; letter-spacing: 0.02em;
-  pointer-events: auto; cursor: pointer;
-}
-.fsai-toggle:hover { background: #fff; }
-.fsai-toggle:focus-visible { outline: 2px solid #59793d; outline-offset: 2px; }
-.fsai-toggle[aria-expanded="true"] { color: #fff; background: #25372a; border-color: #25372a; }
-.fsai-toggle-dot {
-  width: 6px; height: 6px; border-radius: 50%;
-  background: #59793d; box-shadow: 0 0 0 2px rgb(89 121 61 / 22%);
-}
-
-/* Desktop: a column on the right that leaves the map's zoom controls (right edge) and the layer
-   rail (bottom right) uncovered, and starts below the control strip. */
+/* The panel is a box of the right column stack, directly below the strip, exactly like `Data Info`.
+   No fixed coordinate: the stack's own height bounds it and `.fsai-scroll` keeps its scroller. */
 .fsai-panel {
-  position: fixed;
-  z-index: 65;
-  top: 64px;
-  right: 60px;
-  /* Above the launcher (bottom 144 + its 36 px height), which stays clickable to close. */
-  bottom: 192px;
-  width: min(380px, calc(100vw - 120px));
+  position: static;
+  width: 100%;
+  max-height: 100%;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   padding: 14px 14px 12px;
@@ -159,16 +138,10 @@
 .fsai-glossary ul { margin: 6px 0 0; padding-left: 16px; color: #4a574c; font-size: 11px; }
 .fsai-glossary li { margin-bottom: 3px; }
 
-/* While the assistant is open it takes the right-hand column, so the supporting-data stack under it
-   is not drawn half-covered (FieldShiftAI.tsx writes `data-fsai-open`). */
-html[data-fsai-open="true"] .anchor-right-column { visibility: hidden; }
-
 /* Narrow layouts: a sheet below the control strip that spans the width. Closing it returns the map. */
 @media (max-width: 760px) {
-  /* Below the fields row and above the timeline controls: the bottom of a narrow screen belongs to
-     the rotation cards, which grow when expanded. */
-  .fsai-launcher-anchor { top: 100px; right: 12px; bottom: auto; }
-  .fsai-panel { top: 56px; right: 8px; left: 8px; bottom: 8px; width: auto; }
+  /* The stack under the strip already spans the width here; the panel only caps its own height. */
+  .fsai-panel { max-height: 46vh; }
   .fsai-overview { grid-template-columns: 1fr; }
 }
 
