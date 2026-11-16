@@ -84,7 +84,11 @@ class RouteInventoryTests(RouteCase):
             for r in main.app.routes
             if getattr(r, "methods", None) and r.path not in ("/openapi.json", "/docs", "/docs/oauth2-redirect", "/redoc")
         )
-        self.assertEqual(len(api), 11, api)
+        # Eleven routes of the team's main, plus the three of the merged Field Phase blocks 9 and 10
+        # (ENSO, the field climate line and the static report export).
+        self.assertEqual(len(api), 14, api)
+        for route in [("GET", "/climate/enso"), ("GET", "/fields/{field_id}/climate"), ("GET", "/fieldphase/data/v1/{path:path}")]:
+            self.assertIn(route, api)
         self.assertIn(("POST", "/fields/{field_id}/numbers"), api)
 
 
