@@ -45,7 +45,7 @@ const WITHOUT_FALSIFIER: FalsifiableScenario = { id: 'soy-cotton', name: 'Soybea
 beforeEach(() => {
   window.history.replaceState({}, '', '/?numbers=1')
   useMapStore.setState({
-    regionId: 'br',
+    regionId: 'us',
     selectedFieldId: field.id,
     selectedPolygonId: null,
     polygonRaw: null,

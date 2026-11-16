@@ -1,11 +1,8 @@
-import { useEffect, useState } from 'react'
 import { basemapAdapterFor, chosenDateOf, useMapStore } from '@/lib/map-store'
 import { polygonStatusLines } from '@/lib/polygon-source'
 import {
-  fetchPolygonArea,
   provenanceLine,
   readoutRows,
-  type SidecarArea,
 } from '@/lib/polygon-readout'
 import { regionAdapter } from '@/lib/regions'
 import { t, type TranslationKey } from '@/strings'
@@ -35,23 +32,6 @@ export function PolygonPanel() {
   const chosenDate = useMapStore(chosenDateOf)
 
   const region = regionAdapter(regionId)
-  const [sidecar, setSidecar] = useState<SidecarArea>({ status: 'idle' })
-
-  // R-25: the Brazil area is read from the sidecar for the selected polygon only. The United
-  // States never calls it (Table D), and a superseded request is aborted before it can answer.
-  useEffect(() => {
-    if (!region.areaFromSidecar || selectedPolygonId === null) {
-      setSidecar({ status: 'idle' })
-      return
-    }
-    const controller = new AbortController()
-    setSidecar({ status: 'loading' })
-    fetchPolygonArea(region, selectedPolygonId, { signal: controller.signal }).then((next) => {
-      if (!controller.signal.aborted) setSidecar(next)
-    })
-    return () => controller.abort()
-  }, [region, selectedPolygonId])
-
   const scene = polygonMode
   const classSource = scene?.classSource ?? null
   const { rows } = readoutRows({
@@ -60,9 +40,8 @@ export function PolygonPanel() {
     raw: polygonRaw,
     date: chosenDate,
     classSource,
-    sidecar,
   })
-  const provenance = provenanceLine(region, chosenDate, classSource)
+  const provenance = provenanceLine(region, chosenDate)
   const adapter = basemapAdapterFor(basemapId)
   const hasTiers = Boolean(scene?.tiers)
 

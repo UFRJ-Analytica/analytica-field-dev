@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 # Fetch the block 5 polygon products and verify them against the build manifest.
 #
-# The four PMTiles files are gitignored, because the Brazil detail tier alone is
+# The PMTiles files are gitignored, because they are hundreds of megabytes. The Brazilian
+# products were removed from the repository with the rest of the Brazilian polygon path, so
+# only the United States tiers are fetched; the build manifest still records the Brazilian
+# files it was written with, and they are skipped below.
 # 280 MB. They are published as the assets of the GitHub release `polygons-v1`
 # instead, and this script is the supported way to obtain them: it downloads
 # each file, checks its sha256 against artifacts/polygon-build-manifest.json and
@@ -46,6 +49,10 @@ for product in manifest.get("products", []):
     if not path.endswith(".pmtiles"):
         continue
     name = path.rsplit("/", 1)[-1]
+    # The United States tiers only: the Brazilian products are no longer part of the app, and the
+    # manifest that records them is a build record, not a fetch list.
+    if not name.startswith("us-"):
+        continue
     print(f"{name}\t{product['sha256']}\t{product['bytes']}")
 PY
 )"

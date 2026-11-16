@@ -19,6 +19,7 @@ edit `test_field_numbers_route.py` and the recorded fixture at the same time.
 
 from __future__ import annotations
 
+import os
 import json
 import unittest
 from datetime import datetime, timezone
@@ -51,6 +52,9 @@ class TableEKeysCase(unittest.TestCase):
             patch.object(field_numbers, "clock", lambda: FROZEN_NOW),
             patch.object(field_numbers, "MAPBIOMAS_DB", Path(self.mapbiomas.name) / "polygon-mapbiomas.sqlite"),
             patch.object(field_numbers, "transport", self.transport),
+            # The limiter is per client address and every case here posts from the same one, so the
+            # suite turns it off rather than tripping it; the limiter has its own tests.
+            patch.dict(os.environ, {"NUMBERS_RATE_LIMIT_REQUESTS": "0"}),
         ]
         for item in self.patches:
             item.start()

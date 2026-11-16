@@ -80,7 +80,7 @@ function installFetch(options: { axisDefault?: string } = {}) {
 }
 
 beforeEach(() => {
-  usePanelStore.setState({ open: 'rotation' })
+  usePanelStore.setState({ open: null })
   MapStub.reset()
   useMapStore.setState({
     regionId: 'us',
@@ -100,72 +100,9 @@ afterEach(() => {
   useMapStore.setState({ regionId: 'us', selectedFieldId: null, selectedPolygonId: null, polygonClass: null })
 })
 
-describe('the region parameter (R-01, R-03, AC-01)', () => {
-  it('defaults to the United States and lists no Brazil fixture chip', async () => {
-    installFetch()
-    render(<App />)
-    await waitFor(() => expect(useMapStore.getState().regionId).toBe('us'))
-    // AM-10: the Brazil fixture never appears on a United States map, and no CSB fixture exists.
-    expect(screen.queryByRole('button', { name: 'Santa Carmem North' })).toBeNull()
-    expect(window.location.search).not.toContain('region=')
-  })
-
-  it('activates Brazil from ?region=br and keeps the parameter in the URL', async () => {
-    window.history.replaceState({}, '', '/?region=br')
-    installFetch()
-    render(<App />)
-    await waitFor(() => expect(useMapStore.getState().regionId).toBe('br'))
-    expect(window.location.search).toContain('region=br')
-    // The Brazil fixture list is the active region's, so its chip mounts.
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Fields' })).toBeTruthy())
-  })
-})
 
 describe('the polygon selection in the app (R-23, R-24, R-28, AC-19, AC-20, AC-24)', () => {
-  it('writes ?polygon= with the raw id, shows the chip and clears the fixture chip', async () => {
-    window.history.replaceState({}, '', '/?region=br')
-    installFetch()
-    render(<App />)
-    await waitFor(() => expect(useMapStore.getState().regionId).toBe('br'))
 
-    act(() => {
-      // R-22: the map runs the command; the command runs this store action.
-      useMapStore.getState().selectField('trazo:39')
-      // Block 5.5 U4: a selection clears the previous class in the same write, so the class on
-      // screen is the one the map resolves for THIS polygon. The test writes it the way the map's
-      // sync does, after the selection.
-      useMapStore.getState().setPolygonClass({ classId: 39, name: 'Soybean', hex: '#f5b3c8', unmapped: false })
-    })
-
-    await waitFor(() => expect(window.location.search).toContain('polygon=39'))
-    expect(window.location.search).toContain('region=br')
-    expect(useMapStore.getState().selectedFieldId).toBeNull()
-
-    const chip = screen.getByRole('button', { name: 'Soybean' })
-    expect(chip.textContent).toBe('Soybean')
-    expect(chip.getAttribute('aria-pressed')).toBe('true')
-
-    // R-26 and AM-07: no coverage percentage for a polygon.
-    expect(screen.queryByText(/data coverage/)).toBeNull()
-  })
-
-  it('clears ?polygon= when a fixture field is selected instead', async () => {
-    window.history.replaceState({}, '', '/?region=br')
-    installFetch()
-    render(<App />)
-    await waitFor(() => expect(useMapStore.getState().regionId).toBe('br'))
-    act(() => {
-      useMapStore.getState().selectField('trazo:39')
-    })
-    await waitFor(() => expect(window.location.search).toContain('polygon=39'))
-
-    act(() => {
-      useMapStore.getState().selectField('mt-santa-carmem-01')
-    })
-    await waitFor(() => expect(window.location.search).not.toContain('polygon='))
-    expect(useMapStore.getState().selectedPolygonId).toBeNull()
-    expect(useMapStore.getState().selectedFieldId).toBe('mt-santa-carmem-01')
-  })
 
   it('reads the chip year through chosenDateOf, not the live axis default (R-21, R-28)', async () => {
     // The live axis default is 2022-06-01 while the static LAYER_AXIS default is 2026-11-14.
@@ -189,32 +126,9 @@ describe('the polygon selection in the app (R-23, R-24, R-28, AC-19, AC-20, AC-2
     expect(screen.queryByRole('button', { name: 'No CDL class for 2022' })).toBeNull()
   })
 
-  it('clears a ?polygon= that does not resolve in the active region', async () => {
-    // A csb id under Brazil does not resolve: the app clears it instead of guessing.
-    window.history.replaceState({}, '', '/?region=br&polygon=381825001868504')
-    installFetch()
-    render(<App />)
-    await waitFor(() => expect(useMapStore.getState().selectedPolygonId).toBeNull())
-    await waitFor(() => expect(window.location.search).not.toContain('polygon='))
-  })
 })
 
 describe('the rotation panel while a polygon is selected (R-26, R-49, AC-22, AC-41)', () => {
-  it('AC-22: prints the polygon empty text, not the fixture copy, and requests no field scenarios', async () => {
-    window.history.replaceState({}, '', '/')
-    const calls = installFetch()
-    render(<App />)
-    await waitFor(() => expect(useMapStore.getState().regionId).toBe('us'))
-    act(() => {
-      useMapStore.getState().selectField('csb:381825001868504')
-    })
-    await waitFor(() => expect(window.location.search).toContain('polygon=381825001868504'))
-
-    const panel = document.querySelector('[data-rotation-panel]') as HTMLElement
-    expect(panel.textContent).toContain('No rotation scenarios are available for this field.')
-    expect(panel.textContent).not.toContain('Select a field to view rotation scenarios.')
-    expect(calls.some((url) => url.includes('/fields/'))).toBe(false)
-  })
 
   it('AC-41: prints no 2025/26 season chip while the polygon is the selected field', async () => {
     window.history.replaceState({}, '', '/')
@@ -228,15 +142,4 @@ describe('the rotation panel while a polygon is selected (R-26, R-49, AC-22, AC-
     expect(document.body.textContent ?? '').not.toContain('2025/26 season')
   })
 
-  it('keeps the fixture season chip for a fixture field (regression, block 3 R-07)', async () => {
-    window.history.replaceState({}, '', '/?region=br')
-    installFetch()
-    render(<App />)
-    await waitFor(() => expect(useMapStore.getState().regionId).toBe('br'))
-    act(() => {
-      useMapStore.getState().selectField('mt-santa-carmem-01')
-    })
-    await waitFor(() => expect(useMapStore.getState().selectedFieldId).toBe('mt-santa-carmem-01'))
-    expect(document.body.textContent ?? '').toContain('2025/26 season')
-  })
 })

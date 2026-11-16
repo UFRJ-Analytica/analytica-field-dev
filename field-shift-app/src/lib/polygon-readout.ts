@@ -1,6 +1,6 @@
 /**
  * R-25, R-33, R-38, R-43 and Table D: the readout rows, the provenance line, the attribution
- * name of the compact control and the Brazil area from the sidecar.
+ * name of the compact control.
  *
  * Every value is read from the active region's adapter and the one class source the load
  * reports (R-18). A missing value prints its documented absence text and never a guess: the
@@ -20,14 +20,6 @@ export type PolygonFeatureRaw = {
   area: number | null
 }
 
-/** The Brazil sidecar area of R-25: the row, its absence, or the failure to read it. */
-export type SidecarArea =
-  | { status: 'idle' }
-  | { status: 'loading' }
-  | { status: 'found'; areaHa: number }
-  | { status: 'absent' }
-  | { status: 'error' }
-
 export type ReadoutKey = 'class' | 'area' | 'basis' | 'class_year' | 'source'
 
 export type ReadoutRow = { key: ReadoutKey; label: string; value: string }
@@ -38,7 +30,6 @@ export type ReadoutInput = {
   raw: PolygonFeatureRaw | null
   date: string
   classSource: ClassSource | null
-  sidecar: SidecarArea
 }
 
 function numberOrNull(value: unknown): number | null {
@@ -46,8 +37,8 @@ function numberOrNull(value: unknown): number | null {
 }
 
 /**
- * Reads the two values from a rendered feature. Brazil's area is never read from the tile,
- * because the detail tiles carry no area column (R-25, M-01), so `area` stays null there.
+ * Reads the two values from a rendered feature: the class of the load's one class property and the
+ * area column the tile carries (R-25).
  */
 export function rawFeatureFrom(
   region: RegionAdapter,
@@ -56,7 +47,7 @@ export function rawFeatureFrom(
 ): PolygonFeatureRaw {
   return {
     classValue: classIdFrom(region, properties, classProperty),
-    area: region.areaFromSidecar ? null : numberOrNull(properties?.[region.areaProperty]),
+    area: numberOrNull(properties?.[region.areaProperty]),
   }
 }
 
@@ -73,34 +64,17 @@ function classText(region: RegionAdapter, raw: PolygonFeatureRaw, date: string):
   return classDisplay(region, raw.classValue).name ?? t('polygon.class_not_mapped')
 }
 
-function areaText(region: RegionAdapter, raw: PolygonFeatureRaw, sidecar: SidecarArea): string {
-  if (region.areaFromSidecar) {
-    if (sidecar.status === 'found') {
-      return t('polygon.area_value', { area: sidecar.areaHa.toFixed(1), unit: region.areaUnit })
-    }
-    if (sidecar.status === 'absent') return t('polygon.area_not_in_class_table')
-    if (sidecar.status === 'error') return t('polygon.area_not_available')
-    return ''
-  }
+function areaText(region: RegionAdapter, raw: PolygonFeatureRaw): string {
   if (raw.area === null) return t('polygon.area_not_available')
   return t('polygon.area_value', { area: raw.area.toFixed(1), unit: region.areaUnit })
 }
 
 /**
- * R-18: every load this block ships reports `mbmode24`. When no load has reported a class
- * source yet, the provenance and the class year still name that one source, because R-38
- * requires exactly one provenance line at every mounted width, and the failure line goes in
- * addition to it, never in its place.
+ * R-18 and R-38: exactly one provenance line at every mounted width, naming the one class source
+ * the load paints. The failure line goes in addition to it, never in its place.
  */
-const SHIPPED_BRAZIL_CLASS_SOURCE: ClassSource = 'mbmode24'
-
-function classYearText(region: RegionAdapter, date: string, classSource: ClassSource | null): string {
-  if (region.id === 'us') {
-    return t('polygon.class_year.cdl', { year: paintedClassYear(region, date) ?? '' })
-  }
-  const source = classSource ?? SHIPPED_BRAZIL_CLASS_SOURCE
-  if (source === 'mbmode24') return t('polygon.class_year.mbmode')
-  return t('polygon.class_year.collection11')
+function classYearText(region: RegionAdapter, date: string): string {
+  return t('polygon.class_year.cdl', { year: paintedClassYear(region, date) ?? '' })
 }
 
 
@@ -110,7 +84,7 @@ function classYearText(region: RegionAdapter, date: string, classSource: ClassSo
  * the year and the source describe the region and are always printed.
  */
 export function readoutRows(input: ReadoutInput): { rows: ReadoutRow[] } {
-  const { region, selected, raw, date, classSource, sidecar } = input
+  const { region, selected, raw, date } = input
   const measured = selected ? raw : null
   const basisKey = region.basis === 'retrieved' ? 'polygon.basis.retrieved' : 'polygon.basis.modelled'
   return {
@@ -123,13 +97,13 @@ export function readoutRows(input: ReadoutInput): { rows: ReadoutRow[] } {
       {
         key: 'area',
         label: t('polygon.rows.area'),
-        value: measured === null ? '' : areaText(region, measured, sidecar),
+        value: measured === null ? '' : areaText(region, measured),
       },
       { key: 'basis', label: t('polygon.rows.basis'), value: t(basisKey) },
       {
         key: 'class_year',
         label: t('polygon.rows.class_year'),
-        value: classYearText(region, date, classSource),
+        value: classYearText(region, date),
       },
       { key: 'source', label: t('polygon.rows.source'), value: region.sourceString },
     ],
@@ -141,17 +115,8 @@ export function readoutRows(input: ReadoutInput): { rows: ReadoutRow[] } {
  * prints the line of the one class property the load reports (R-18), and nothing when no class
  * source is loaded, because a line that names a source the map does not paint would be false.
  */
-export function provenanceLine(
-  region: RegionAdapter,
-  date: string,
-  classSource: ClassSource | null,
-): string {
-  if (region.id === 'us') {
-    return t('polygon.provenance.cdl', { year: paintedClassYear(region, date) ?? '' })
-  }
-  const source = classSource ?? SHIPPED_BRAZIL_CLASS_SOURCE
-  if (source === 'mbmode24') return t('polygon.provenance.mbmode')
-  return t('polygon.provenance.collection11')
+export function provenanceLine(region: RegionAdapter, date: string): string {
+  return t('polygon.provenance.cdl', { year: paintedClassYear(region, date) ?? '' })
 }
 
 /**
@@ -189,7 +154,6 @@ export function collapseAttributionControl(container: ParentNode | null | undefi
   return true
 }
 
-const DEFAULT_API_BASE = 'http://localhost:8000'
 
 export type PolygonAreaDeps = {
   fetch?: typeof fetch
@@ -197,29 +161,4 @@ export type PolygonAreaDeps = {
   signal?: AbortSignal
 }
 
-/**
- * R-25 and Table D: the Brazil area from the sidecar row, read by `GET /polygons/br/{id}`.
- * A 404 is an absent row. Any other failure is an error, which prints a different text, so
- * a missing route is never read as a row that does not exist. A United States polygon never
- * reaches the route.
- */
-export async function fetchPolygonArea(
-  region: RegionAdapter,
-  rawId: string | number,
-  deps: PolygonAreaDeps = {},
-): Promise<SidecarArea> {
-  if (!region.areaFromSidecar) return { status: 'idle' }
-  const fetchImpl = deps.fetch ?? globalThis.fetch
-  const apiBase = deps.apiBase ?? (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? DEFAULT_API_BASE
-  const url = `${apiBase}/polygons/br/${rawId}`
-  try {
-    const response = deps.signal ? await fetchImpl(url, { signal: deps.signal }) : await fetchImpl(url)
-    if (response.status === 404) return { status: 'absent' }
-    if (!response.ok) return { status: 'error' }
-    const body = (await response.json()) as { area_ha?: unknown }
-    const areaHa = numberOrNull(body.area_ha)
-    return areaHa === null ? { status: 'absent' } : { status: 'found', areaHa }
-  } catch {
-    return { status: 'error' }
-  }
-}
+

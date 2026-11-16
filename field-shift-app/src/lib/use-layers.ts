@@ -1,8 +1,8 @@
 import { useEffect } from 'react'
+import { API_BASE } from './api-base'
 import { buildLayerCatalog, markCatalogUnavailable, type LayersResponse } from './layer-catalog'
 import { useMapStore } from './map-store'
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'
 
 type TilePosition = { z: number; x: number; y: number }
 

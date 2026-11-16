@@ -1,5 +1,13 @@
 # Polygon build (block 5, CO-B5-01 and CO-B5-02)
 
+> **The Brazilian products are gone.** The app no longer mounts a Brazilian region, so
+> `br-mt-detail.pmtiles`, `br-mt-overview.pmtiles`, `polygon-classes-br.json`,
+> `polygon-class-mt-2025.build.json` and the four sidecar scripts that built them
+> (`build_class_sidecar.py`, `record_sidecar.py`, `verify_class_sidecar.py`,
+> `test_class_sidecar.py`) were deleted, and `build-polygons.sh` builds the United States
+> product only. The Brazilian sections below are kept as the record of how those files were
+> originally built, not as instructions that still run.
+
 Produces the offline products the block 5 map mounts, with the commands of R-10 of
 `specs/bloco-5-poligonos-de-cultura.md` revision 5 kept literal, except for the one
 deviation recorded under "Brazil detail tier" below.
