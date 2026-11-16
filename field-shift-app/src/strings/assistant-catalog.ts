@@ -206,7 +206,7 @@ export const assistantEn = {
   'answer.reco.intro': 'These data are not enough to choose a crop.',
   'answer.reco.have': 'What the app holds for this field describes a past window: rain, temperature, dry spells and soil wetness from a coarse reanalysis cell.',
   'answer.reco.water': 'There is also a recorded estimate of crop water demand, in which {crop} has the highest demand at peak coefficients; water demand alone does not decide a crop.',
-  'answer.reco.window': 'The planting windows (ZARC or NASS) show when sowing in this region is low-risk or usual; a window says when sowing is low-risk or usual, not which crop to plant.',
+  'answer.reco.window': 'The planting windows (ZARC or NASS) say when sowing in this region is low-risk or usual, not which crop to plant.',
   'answer.reco.missing': 'Missing for a decision: a computed rotation comparison, the sowing date and crop stage, the field\'s own history, yields, prices and costs.',
   'answer.reco.closing': 'No crop is recommended until that evidence exists.',
 
@@ -528,7 +528,7 @@ export const assistantPtBR: Record<AssistantKey, string> = {
   'answer.reco.intro': 'Esses dados não bastam para escolher uma cultura.',
   'answer.reco.have': 'O que o aplicativo possui sobre esta propriedade descreve uma janela passada: chuva, temperatura, períodos secos e umidade do solo de uma célula de reanálise de baixa resolução.',
   'answer.reco.water': 'Há também uma estimativa gravada de demanda hídrica por cultura, na qual {crop} tem a maior demanda com coeficientes de pico; a demanda hídrica, sozinha, não decide uma cultura.',
-  'answer.reco.window': 'As janelas de plantio (ZARC ou NASS) mostram quando semear nesta região tem baixo risco ou é usual; uma janela diz quando semear tem baixo risco ou é usual, não qual cultura plantar.',
+  'answer.reco.window': 'As janelas de plantio (ZARC ou NASS) dizem quando semear nesta região tem baixo risco ou é usual, não qual cultura plantar.',
   'answer.reco.missing': 'Faltam para uma decisão: uma comparação calculada de rotações, a data de semeadura e a fase da cultura, o histórico da própria propriedade, produtividades, preços e custos.',
   'answer.reco.closing': 'Nenhuma cultura é recomendada até que essas evidências existam.',
 
