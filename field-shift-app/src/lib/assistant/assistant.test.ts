@@ -5,7 +5,6 @@ import { translationKeyFor, type Locale } from '@/strings'
 import { en } from '@/strings/en'
 import type { NumbersPayload } from '@/lib/numbers'
 import { answerIntent, answerQuestion, classifyIntent, evidenceLabel, evidenceValue } from './answers'
-import { cropWaterFor } from './crop-water'
 import { gapStatusKey, summaryEvidence } from './evidence'
 import { formatDate, formatResolution, formatValue } from './format'
 import type { FieldContext } from './types'
@@ -138,12 +137,6 @@ describe('milestone 2 questions in the deterministic fallback', () => {
     expect(classifyIntent(question)).toBe(intent)
   })
 
-  it.each(LOCALES)('declines a crop choice with the same evidence and limits (%s)', (locale) => {
-    const response = answerIntent('recommendation', { context: context(), locale, id: 'a' })
-    expect(response.status).toBe('partial')
-    expect(response.limitations).toEqual(expect.arrayContaining(['comparator_not_built', 'planting_window_not_decision']))
-    expect(response.evidence.map((e) => e.metric).sort()).toEqual(['etc_total.cotton', 'etc_total.maize', 'etc_total.soybean'])
-  })
 
   it('labels and prints the agent-derived metrics', () => {
     const week = { ...summaryEvidence(recordedNumbersPayload(), RECORDED_FIELD_ID)[0], id: 'rain_week.3', metric: 'rain_week.3', value: 12.04, decimals: 1 }
@@ -267,54 +260,6 @@ describe('answers in both languages', () => {
   })
 })
 
-describe('crop water demand (recorded FAO-56 experiment)', () => {
-  it('is released for field 01 and the snapshot window only, marked as a recorded demonstration', () => {
-    const set = cropWaterFor({ fieldId: RECORDED_FIELD_ID, kind: 'fixture', center: FIELD_01_CENTER }, recordedNumbersPayload())
-    expect(set?.origin).toBe('experimental_snapshot')
-    const response = answerIntent('water_demand', { context: context(), locale: 'en', id: 'a' })
-    expect(response.status).toBe('answered')
-    expect(response.evidence.every((e) => e.basis === 'fixture')).toBe(true)
-    expect(response.limitations).toEqual(expect.arrayContaining(['experimental_snapshot', 'standard_kc', 'climatic_difference_not_irrigation']))
-    const text = response.answer.join(' ')
-    expect(text).toContain('Recorded experimental result')
-    expect(text).toContain('maize has the highest estimated water demand')
-    expect(text).toContain('Cotton and soybean have the same estimated demand at peak')
-    const pt = answerIntent('water_demand', { context: context(), locale: 'pt-BR', id: 'a' }).answer.join(' ')
-    expect(pt).toContain('a cultura com maior demanda hídrica estimada nesta janela é milho')
-    expect(pt).toContain('Algodão e soja têm a mesma demanda estimada no pico')
-    expect(text).toContain('not an irrigation requirement')
-  })
-
-  it('keeps ET0 and ETc apart', () => {
-    const response = answerIntent('water_demand', { context: context(), locale: 'pt-BR', id: 'a' })
-    const et0 = response.evidence.filter((e) => e.metric === 'et0_total')
-    const etc = response.evidence.filter((e) => e.metric.startsWith('etc_total.'))
-    expect(et0).toHaveLength(1)
-    expect(etc.map((e) => e.metric).sort()).toEqual(['etc_total.cotton', 'etc_total.maize', 'etc_total.soybean'])
-    expect(response.answer.join(' ')).toContain('197,6 mm')
-  })
-
-  it('is not attributed to another field, even one in the same climate cell', () => {
-    const payload = { ...recordedNumbersPayload(), field_id: 'mt-santa-carmem-02' }
-    const response = answerIntent('water_demand', {
-      context: context({ fieldId: 'mt-santa-carmem-02', center: [-55.24, -11.94] }, payload), locale: 'pt-BR', id: 'a',
-    })
-    expect(response.status).toBe('unavailable')
-    expect(response.evidence).toEqual([])
-    expect(response.answer[0]).toBe('A comparação de demanda hídrica por cultura ainda não está disponível para esta propriedade.')
-  })
-
-  it('is not released for another window of the right field', () => {
-    const payload = recordedNumbersPayload()
-    payload.query = { ...payload.query, window: { ...payload.query.window, start: '2026-10-02', end: '2026-11-12' } }
-    expect(cropWaterFor({ fieldId: RECORDED_FIELD_ID, kind: 'fixture', center: FIELD_01_CENTER }, payload)).toBeNull()
-  })
-
-  it('is not released for a polygon or without block 6 numbers', () => {
-    expect(cropWaterFor({ fieldId: RECORDED_FIELD_ID, kind: 'polygon', center: FIELD_01_CENTER }, recordedNumbersPayload())).toBeNull()
-    expect(cropWaterFor({ fieldId: RECORDED_FIELD_ID, kind: 'fixture', center: FIELD_01_CENTER }, null)).toBeNull()
-  })
-})
 
 describe('milestone 3: paraphrases reach the same intent', () => {
   it.each([
@@ -379,14 +324,6 @@ describe('milestone 3: rain answers lead with the comparison', () => {
     expect(en.evidence.map((e) => e.id)).toEqual(pt.evidence.map((e) => e.id))
   })
 
-  it('adds the sufficiency caveat, and the recorded rain minus ETc, only when sufficiency is asked', () => {
-    const plain = answerQuestion('Was rainfall low?', { context: context(), locale: 'en', id: 'r' })
-    expect(plain.answer.join(' ')).not.toMatch(/rain alone/)
-    const enough = answerQuestion('Was there enough rainfall?', { context: context(), locale: 'en', id: 'r' })
-    expect(enough.answer.join(' ')).toMatch(/not answered by rain alone/)
-    expect(enough.answer.join(' ')).toMatch(/-65\.2 mm for maize/)
-    expect(enough.evidence.some((e) => e.metric === 'rain_minus_etc.maize')).toBe(true)
-  })
 
   it('does not call the rain low or high without the historical median', () => {
     const payload = recordedNumbersPayload()
@@ -398,28 +335,8 @@ describe('milestone 3: rain answers lead with the comparison', () => {
 })
 
 describe('milestone 3: crop water comparison', () => {
-  it('leads with the maize minus soybean difference, computed from the recorded totals', () => {
-    const response = answerQuestion('Compare a demanda hídrica estimada do milho e da soja.', { context: context(), locale: 'pt-BR', id: 'w' })
-    expect(response.intent).toBe('water_demand')
-    expect(response.status).toBe('answered')
-    // 237.2 - 227.3 = 9.9 mm, 4.4% of 227.3; peak Kc 1.20 against 1.15.
-    expect(response.answer[0]).toBe('O milho precisa de 9,9 mm a mais de água que a soja nesta janela (4,4% a mais), porque seu coeficiente de cultura no pico é maior (Kc 1,20 contra 1,15).')
-    expect(response.answer.join(' ')).toMatch(/ETc = Kc × ET0/)
-    expect(response.cropWater?.crops.map((c) => c.cropId).sort()).toEqual(['cotton', 'maize', 'soybean'])
-    const diff = response.evidence.find((e) => e.id === 'crop_water.diff.maize_minus_soybean')
-    expect(diff?.value).toBe(9.9)
-    expect(response.limitations).toContain('needs_sowing_date')
-  })
 
-  it('compares the pair the question names, in its order', () => {
-    const response = answerQuestion('Compare cotton and maize water demand', { context: context(), locale: 'en', id: 'w' })
-    expect(response.answer[0]).toMatch(/^Maize needs 9\.9 mm more water than cotton/)
-  })
 
-  it('says cotton and soybean have the same demand when FAO-56 gives them the same peak Kc', () => {
-    const response = answerQuestion('Compare soybean and cotton water use', { context: context(), locale: 'en', id: 'w' })
-    expect(response.answer[0]).toMatch(/^Soybean and cotton have the same estimated demand \(227\.3 mm\)/)
-  })
 
   it('never gives the comparison to another field or window, and points to the demo instead', () => {
     const other = answerQuestion('Compare the water demand', { context: context({ fieldId: 'mt-santa-carmem-02', center: [-55.24, -11.94] }), locale: 'en', id: 'w' })

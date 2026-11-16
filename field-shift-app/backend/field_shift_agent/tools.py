@@ -5,8 +5,9 @@ field. Every number a tool returns is registered as an Evidence item with an id;
 accepts only references to ids registered here, for this field, in this run.
 
 Reuse: block 6 numbers come from `field_numbers.build_numbers` (its per-source disk cache included),
-called at most once per run. The FAO-56 numbers come from the recorded, validated output of
-`artifacts/experiment/demo_crop_water.py`; no equation is re-run here. Planting windows come from the
+called at most once per run. The FAO-56 numbers are computed here by `crop_water` from the recorded
+block 6 daily series, the FAO-56 Table 12 Kc values and the NASS usual planting window of the field's
+state; a crop with no window or no Kc abstains. Planting windows come from the
 two sources blocks 4 and 7 read (`artifacts/zarc-mt-snapshot.json`, `artifacts/us-windows-cass-nd.json`),
 with block 7's own envelope rule (`src/lib/planting-calendar.ts`, R-28), so the agent and the Planting
 calendar view print the same window.
@@ -21,13 +22,13 @@ from pathlib import Path
 from typing import Any, Callable
 
 import aggregates as agg
+import crop_water
 import field_numbers
 
 from .context import FieldContext
 from .schemas import Evidence, Period
 
 ARTIFACTS = Path(__file__).resolve().parents[2] / "artifacts"
-CROP_WATER_SNAPSHOT = ARTIFACTS / "experiment" / "demo_crop_water_results.json"
 ZARC_SNAPSHOT = ARTIFACTS / "zarc-mt-snapshot.json"
 US_WINDOWS = ARTIFACTS / "us-windows-cass-nd.json"
 # State names a fixture `location` can end with, mapped to the snapshot's UF (block 4 `parseFieldLocation`).
@@ -76,10 +77,10 @@ class ToolBox:
     """One run's tools and the evidence they registered."""
 
     def __init__(self, ctx: FieldContext, numbers_loader: NumbersLoader = default_numbers_loader,
-                 snapshot_path: Path = CROP_WATER_SNAPSHOT) -> None:
+                 windows_path: Path | None = None) -> None:
         self.ctx = ctx
         self._load_numbers = numbers_loader
-        self._snapshot_path = snapshot_path
+        self._windows_path = windows_path
         self._payload: dict[str, Any] | None = None
         self._numbers_error: str | None = None
         self.evidence: dict[str, Evidence] = {}
@@ -243,76 +244,89 @@ class ToolBox:
         }
 
     def get_crop_water_demand(self) -> dict[str, Any]:
-        unavailable = {"available": False,
-                       "reason": "only recorded for one demonstration field and one 42-day window",
-                       "limitations": ["experimental_snapshot"]}
-        ctx = self.ctx
-        if ctx.kind != "fixture" or ctx.center is None:
-            return unavailable
-        try:
-            snapshot = json.loads(self._snapshot_path.read_text(encoding="utf-8"))
-        except (OSError, ValueError):
-            return {**unavailable, "reason": "experimental snapshot unreadable"}
-        point = snapshot.get("point", {})
-        if snapshot.get("reproducibility", {}).get("network_used") is not False:
-            return unavailable
-        if abs(ctx.center[0] - point.get("longitude", 1e9)) > POINT_TOLERANCE_DEG \
-                or abs(ctx.center[1] - point.get("latitude", 1e9)) > POINT_TOLERANCE_DEG:
-            return unavailable
-        payload = self._numbers()
-        window = self._window(payload) if payload else None
-        period = snapshot.get("period", {})
-        if window is None or window["start"] != period.get("start") or window["end"] != period.get("end"):
-            return unavailable
+        """FAO-56 crop water over the crop's own usual planting window, computed here, not recorded.
 
-        whole = Period(start=period["start"], end=period["end"])
-        common = {"source": f"{snapshot['source']['name']}; FAO-56 (artifacts/experiment, recorded)",
-                  "asOf": period["end"], "period": whole, "basis": "fixture", "sourceBasis": "modelled",
-                  "resolution": snapshot["source"]["resolution"], "route": "snapshot", "fieldId": ctx.field_id}
-        crops = snapshot["crops_peak_kc"]
-        items = []
-        first = next(iter(crops.values()))
-        items.append(self._register(Evidence(id="crop_water.et0_total", metric="et0_total", value=first["et0_total_mm"],
-                                             unit="mm", decimals=1, limitations=["experimental_snapshot", "coarse_cell",
-                                                                                 "modelled_not_measured"], **common)))
-        for crop_id, crop in crops.items():
-            items.append(self._register(Evidence(id=f"crop_water.{crop_id}.etc_total", metric=f"etc_total.{crop_id}",
-                                                 value=crop["etc_total_mm"], unit="mm", decimals=1,
-                                                 limitations=["experimental_snapshot", "standard_kc"], **common)))
-            items.append(self._register(Evidence(id=f"crop_water.{crop_id}.kc_mid", metric=f"kc_mid.{crop_id}",
-                                                 value=crop["kc_values"]["mid"], unit=None, decimals=2,
-                                                 limitations=["standard_kc"], **common)))
-            items.append(self._register(Evidence(id=f"crop_water.{crop_id}.rain_minus_etc",
-                                                 metric=f"rain_minus_etc.{crop_id}", value=crop["rain_minus_etc_mm"],
-                                                 unit="mm", decimals=1,
-                                                 limitations=["experimental_snapshot",
-                                                              "climatic_difference_not_irrigation"], **common)))
-        # The comparison is made here, in code, so the model never ranks numbers itself.
-        totals = {cid: c["etc_total_mm"] for cid, c in crops.items() if c.get("etc_total_mm") is not None}
+        The Kc values are `crop_water.CROPS` (FAO-56 Table 12) and the planting windows are the NASS
+        state bulletin the repository records; a crop with no window or no Kc abstains and says which
+        input is missing. No window and no Kc is ever invented.
+        """
+        payload = self._numbers()
+        if payload is None:
+            return {"available": False, "reason": self._numbers_error, "limitations": ["no_numbers"],
+                    "crops": {}, "abstained": {}}
+        window = self._window(payload)
+        if window is None:
+            return {"available": False, "reason": "the field has no recorded climate window",
+                    "limitations": ["no_window"], "crops": {}, "abstained": {}}
+        if self.ctx.region != "us":
+            return {"available": False,
+                    "reason": ("crop water is computed for the United States fields only; this field is "
+                               f"{self.ctx.region}"),
+                    "limitations": ["region_not_supported"], "crops": {}, "abstained": {}}
+        section = (payload.get("sections") or {}).get("climate") or {}
+        if section.get("state") == "unavailable":
+            return {"available": False, "reason": "the climate section of this field is unavailable",
+                    "limitations": ["climate_unavailable"], "crops": {}, "abstained": {}}
+        latitude = self.ctx.center[1] if self.ctx.center else None
+        if latitude is None:
+            return {"available": False, "reason": "the field has no recorded centre",
+                    "limitations": ["no_point"], "crops": {}, "abstained": {}}
+        start, end = date.fromisoformat(window["start"]), date.fromisoformat(window["end"])
+        whole = agg.Window(start=start, end=end, days=window.get("days") or (end - start).days + 1,
+                           valid_days=window.get("valid_days") or window.get("days") or 0,
+                           dropped_days=window.get("dropped_days") or 0, chosen=end)
+        result = crop_water.field_crop_water(section, latitude=latitude, window=whole,
+                                             location=self.ctx.location, windows_path=self._windows_path)
+        if not result.get("available"):
+            return result
+        period = Period(start=window["start"], end=window["end"])
+        common = {"source": result["source"], "asOf": window["end"], "period": period, "basis": "fixture",
+                  "sourceBasis": "modelled", "resolution": result["resolution"], "route": "computed",
+                  "fieldId": self.ctx.field_id}
+        limitations = list(result.get("limitations") or [])
+        crops = result.get("crops") or {}
+        ids: list[str] = []
+        ok = {cid: crop for cid, crop in crops.items() if crop.get("state") == "ok"}
+        first = next(iter(ok.values()), None)
+        if first is not None:
+            ids.append(self._register(Evidence(id="crop_water.et0_total", metric="et0_total",
+                                               value=first.get("et0_total_mm"), unit="mm", decimals=1,
+                                               limitations=limitations, **common))["id"])
+        for crop_id, crop in ok.items():
+            ids.append(self._register(Evidence(id=f"crop_water.{crop_id}.etc_total",
+                                               metric=f"etc_total.{crop_id}", value=crop.get("etc_total_mm"),
+                                               unit="mm", decimals=1, limitations=limitations, **common))["id"])
+            ids.append(self._register(Evidence(id=f"crop_water.{crop_id}.kc_mid",
+                                               metric=f"kc_mid.{crop_id}", value=crop.get("kc_mid"),
+                                               unit=None, decimals=2, limitations=["standard_kc"],
+                                               **common))["id"])
+            ids.append(self._register(Evidence(id=f"crop_water.{crop_id}.rain_minus_etc",
+                                               metric=f"rain_minus_etc.{crop_id}",
+                                               value=crop.get("rain_minus_etc_mm"), unit="mm", decimals=1,
+                                               limitations=["climatic_difference_not_irrigation", *limitations],
+                                               **common))["id"])
+        totals = {cid: crop["etc_total_mm"] for cid, crop in ok.items()
+                  if crop.get("etc_total_mm") is not None}
         if totals:
             top = max(totals.values())
-            leaders = sorted(cid for cid, v in totals.items() if v == top)
-            items.append(self._register(Evidence(id="crop_water.highest_peak_demand", metric="highest_peak_demand",
-                                                 value=",".join(leaders), unit=None,
-                                                 limitations=["experimental_snapshot", "standard_kc"], **common)))
-            # Pairwise ETc differences (first minus second), subtracted here so the model never does arithmetic.
-            ids = sorted(totals)
-            for i, first_id in enumerate(ids):
-                for second_id in ids[i + 1:]:
-                    items.append(self._register(Evidence(
+            leaders = sorted(cid for cid, value in totals.items() if value == top)
+            ids.append(self._register(Evidence(id="crop_water.highest_peak_demand",
+                                               metric="highest_peak_demand", value=",".join(leaders),
+                                               unit=None, limitations=limitations, **common))["id"])
+            names = sorted(totals)
+            for index, first_id in enumerate(names):
+                for second_id in names[index + 1:]:
+                    difference = agg.round_half_up(totals[first_id] - totals[second_id], 1)
+                    ids.append(self._register(Evidence(
                         id=f"crop_water.diff.{first_id}_minus_{second_id}",
-                        metric=f"etc_difference.{first_id}.{second_id}",
-                        value=agg.round_half_up(totals[first_id] - totals[second_id], 1), unit="mm", decimals=1,
-                        limitations=["experimental_snapshot", "standard_kc"], **common)))
-        return {"available": True, "kind": "recorded experimental result, not a live operational value",
-                "kc_mode": "peak (mid-season) FAO-56 Table 12 coefficients",
-                "evidence": items,
-                "limitations": ["experimental_snapshot", "standard_kc", "climatic_difference_not_irrigation",
-                                "needs_sowing_date"],
-                "note": "ET0 is the reference evapotranspiration; ETc = Kc x ET0 is the crop demand, so a crop "
-                        "with a higher peak Kc has a higher ETc over the same window. crop_water.diff.<a>_minus_<b> "
-                        "is ETc of a minus ETc of b, computed in code. Rain minus ETc is a climatic difference, "
-                        "not an irrigation requirement. Nothing here says which crop yields more."}
+                        metric=f"etc_difference.{first_id}_minus_{second_id}", value=difference,
+                        unit="mm", decimals=1, limitations=["standard_kc", *limitations], **common))["id"])
+        return {**result, "period": {"start": window["start"], "end": window["end"]},
+                "registerable": ids,
+                "note": ("The comparison is made here, in code: crop_water.highest_peak_demand names the "
+                         "crops with the highest ETc and crop_water.diff.<a>_minus_<b> the pairwise "
+                         "difference. A crop absent from `crops` abstains, and `abstained` says which "
+                         "input is missing. Never state a window, a Kc or a difference that is not here.")}
 
     def get_planting_constraints(self) -> dict[str, Any]:
         """The planting windows of the field's region for the season of the chosen date, from the same

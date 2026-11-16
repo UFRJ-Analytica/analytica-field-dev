@@ -4,7 +4,6 @@ import { REGION_ADAPTERS } from './regions'
 
 // 2026-11-12 paints the United States year 2025 (classYearRange 2018 to 2025), as the readout tests do.
 const US_DATE = '2026-11-12'
-const BR_DATE = '2024-06-01'
 
 describe('the tooltip string per state (R-27, AC-23, AC-17)', () => {
   it('prints No CDL class for {Y} for a United States null cdl{Y}, with the year substituted', () => {
@@ -31,15 +30,5 @@ describe('the tooltip string per state (R-27, AC-23, AC-17)', () => {
     expect(polygonTooltipText(REGION_ADAPTERS.us, 1, US_DATE)).toBe('Corn')
   })
 
-  it('keeps the Brazil split: 0, null and 999 print class not mapped, and never No CDL', () => {
-    for (const code of [0, null, 999]) {
-      const text = polygonTooltipText(REGION_ADAPTERS.br, code, BR_DATE)
-      expect(text).toBe('class not mapped')
-      expect(text).not.toContain('No CDL class for')
-    }
-  })
 
-  it('prints the Brazil class name for a mapped code', () => {
-    expect(polygonTooltipText(REGION_ADAPTERS.br, 39, BR_DATE)).toBe('Soybean')
-  })
 })

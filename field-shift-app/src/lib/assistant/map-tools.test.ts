@@ -4,12 +4,13 @@ import { buildLayerCatalog } from '@/lib/layer-catalog'
 import { RECORDED_LAYERS_RESPONSE } from '@/lib/recorded-layers-response'
 import { currentMapStateVersion, executePlan, MAX_PLAN_STEPS, toolLog, type MapToolCall } from './map-tools'
 
-const field = (id: string, name: string): FieldSummary => ({
-  id, name, location: '', coverage: 0, center: [0, 0], boundary: { type: 'Polygon', coordinates: [[[0, 0], [1, 0], [1, 1], [0, 0]]] },
+const field = (id: string, name: string, location: string): FieldSummary => ({
+  id, name, location, coverage: 0, center: [0, 0], boundary: { type: 'Polygon', coordinates: [[[0, 0], [1, 0], [1, 1], [0, 0]]] },
 })
 const FIELDS = [
-  field('mt-santa-carmem-01', 'Field 01'), field('mt-santa-carmem-02', 'Field 02'), field('mt-santa-carmem-03', 'Field 03'),
-  field('381825001868504', 'Cass Field 01'), field('381825001868512', 'Cass Field 02'), field('381825001868517', 'Cass Field 03'),
+  field('381825001868504', 'Cass Field 01', 'Cass County, North Dakota'), field('381825001868512', 'Cass Field 02', 'Cass County, North Dakota'),
+  field('381825001868517', 'Cass Field 03', 'Cass County, North Dakota'), field('il-mclean-01', 'Field 06', 'McLean County (IL)'),
+  field('tx-lubbock-01', 'Field 07', 'Lubbock County (TX)'), field('mt-santa-carmem-01', 'Field 01', 'Santa Carmem, Mato Grosso'),
 ]
 const catalog = buildLayerCatalog(RECORDED_LAYERS_RESPONSE)
 
@@ -19,39 +20,43 @@ const call = (tool: string, args: Record<string, unknown> = {}): MapToolCall => 
 
 beforeEach(() => {
   useMapStore.setState({
-    regionId: 'br', selectedFieldId: 'mt-santa-carmem-01', selectedPolygonId: null, polygonRing: null,
+    regionId: 'us', selectedFieldId: '381825001868504', selectedPolygonId: null, polygonRing: null,
     chosenDate: '2026-11-11', axis: { start: '2015-04-01', end: '2026-11-14', default: '2026-11-14' },
     catalog, on: { 'smap-l3': true }, focusRequest: null, focusHandled: null,
   })
 })
 
 describe('select_region', () => {
-  it('switches the store region from a name or alias, and the store clears the old selection', () => {
-    const [result] = run([call('select_region', { region: 'Cass County' })])
-    expect(result).toMatchObject({ tool: 'select_region', status: 'success', code: 'region_selected' })
-    expect(useMapStore.getState().regionId).toBe('us')
-    expect(useMapStore.getState().selectedFieldId).toBeNull()
-    expect(run([call('select_region', { region: 'Mato Grosso' })])[0].code).toBe('region_selected')
-    expect(useMapStore.getState().regionId).toBe('br')
+  it('opens a county by selecting its first field, from a name or an alias', () => {
+    const [result] = run([call('select_region', { region: 'McLean County' })])
+    expect(result).toMatchObject({ tool: 'select_region', status: 'success', code: 'region_selected', params: { place: 'McLean County' } })
+    expect(useMapStore.getState()).toMatchObject({ regionId: 'us', selectedFieldId: 'il-mclean-01' })
+    expect(run([call('select_region', { region: 'Texas' })])[0].code).toBe('region_selected')
+    expect(useMapStore.getState().selectedFieldId).toBe('tx-lubbock-01')
+    expect(run([call('select_region', { region: 'Cass County' })])[0].code).toBe('region_selected')
+    expect(useMapStore.getState().selectedFieldId).toBe('381825001868504')
   })
 
-  it('is idempotent, refuses unknown places and asks when no place is named', () => {
-    expect(run([call('select_region', { region: 'Santa Carmem' })])[0].code).toBe('region_already')
+  it('is idempotent, says Brazil is not in this version, refuses unknown places and asks when none is named', () => {
+    useMapStore.setState({ selectedFieldId: '381825001868512' })
+    expect(run([call('select_region', { region: 'Cass County' })])[0].code).toBe('region_already')
+    expect(useMapStore.getState().selectedFieldId).toBe('381825001868512')
+    expect(run([call('select_region', { region: 'Santa Carmem' })])[0]).toMatchObject({ status: 'failed', code: 'region_not_available' })
     expect(run([call('select_region', { region: 'Iowa' })])[0]).toMatchObject({ status: 'failed', code: 'region_unknown' })
     expect(run([call('select_region', { region: '' })])[0]).toMatchObject({ status: 'needs_clarification', code: 'region_ambiguous' })
-    expect(useMapStore.getState().regionId).toBe('br')
+    expect(useMapStore.getState()).toMatchObject({ regionId: 'us', selectedFieldId: '381825001868512' })
   })
 })
 
 describe('select_field', () => {
   it('resolves a number or a name within the active region only', () => {
-    expect(run([call('select_field', { field: 2 })])[0]).toMatchObject({ status: 'success', params: { name: 'Field 02' } })
-    expect(useMapStore.getState().selectedFieldId).toBe('mt-santa-carmem-02')
-    expect(run([call('select_field', { field: 'Field 03' })])[0].code).toBe('field_selected')
-    expect(useMapStore.getState().selectedFieldId).toBe('mt-santa-carmem-03')
-    expect(run([call('select_field', { field_id: '381825001868504' })])[0].code).toBe('field_other_region')
+    expect(run([call('select_field', { field: 2 })])[0]).toMatchObject({ status: 'success', params: { name: 'Cass Field 02' } })
+    expect(useMapStore.getState().selectedFieldId).toBe('381825001868512')
+    expect(run([call('select_field', { field: 'Field 06' })])[0].code).toBe('field_selected')
+    expect(useMapStore.getState().selectedFieldId).toBe('il-mclean-01')
+    expect(run([call('select_field', { field_id: 'mt-santa-carmem-01' })])[0].code).toBe('field_other_region')
     expect(run([call('select_field', { field: 9 })])[0].code).toBe('field_unknown')
-    expect(useMapStore.getState().selectedFieldId).toBe('mt-santa-carmem-03')
+    expect(useMapStore.getState().selectedFieldId).toBe('il-mclean-01')
   })
 
   it('confirms the current field, or asks which one when none is selected', () => {
@@ -104,6 +109,12 @@ describe('show_layer and hide_layer', () => {
     expect(run([call('hide_layer', { layer: 'rain' })])[0].code).toBe('layer_already_off')
   })
 
+  it('uses the soil moisture layer the active catalog serves when SMAP L3 is gone', () => {
+    useMapStore.setState({ catalog: catalog.filter((entry) => entry.id !== 'smap-l3'), on: {} })
+    expect(run([call('show_layer', { layer: 'soil moisture' })])[0]).toMatchObject({ code: 'layer_on', params: { label: 'SMAP L4 surface soil moisture' } })
+    expect(useMapStore.getState().on['smap-l4-surface']).toBe(true)
+  })
+
   it('creates no layer the catalog does not hold and never shows a stale one as current', () => {
     expect(run([call('show_layer', { layer: 'drought index' })])[0].code).toBe('layer_not_in_catalog')
     expect(run([call('show_layer', { layer: 'grace' })])[0].code).toBe('layer_stale')
@@ -127,7 +138,7 @@ describe('analysis tools', () => {
     expect(results.map((r) => [r.tool, r.code, r.automatic ?? false])).toEqual([
       ['select_field', 'field_auto_selected', true], ['query_field_metrics', 'query_requested', false],
     ])
-    expect(useMapStore.getState().selectedFieldId).toBe('mt-santa-carmem-01')
+    expect(useMapStore.getState().selectedFieldId).toBe('381825001868504')
   })
 })
 
@@ -135,7 +146,7 @@ describe('the executor', () => {
   it('runs a compound plan in order and moves the map state version once per change', () => {
     const before = currentMapStateVersion()
     const results = run([
-      call('select_region', { region: 'Cass County' }), call('select_field', { field: 1 }),
+      call('select_region', { region: 'Lubbock County' }), call('select_field', { field: 1 }),
       call('focus_geometry', { target: 'selected_field' }), call('set_analysis_window', { days: 30 }),
       call('show_layer', { layer: 'soil moisture' }), call('compare_metrics', { metrics: ['soil_moisture', 'rain'] }),
     ])
@@ -152,7 +163,7 @@ describe('the executor', () => {
     expect(results.map((r) => `${r.tool}:${r.status}`)).toEqual([
       'select_region:failed', 'select_field:skipped', 'show_layer:success', 'query_field_metrics:skipped',
     ])
-    expect(useMapStore.getState().regionId).toBe('br')
+    expect(useMapStore.getState().selectedFieldId).toBe('381825001868504')
   })
 
   it('refuses tools outside the registry, malformed calls and over-long plans', () => {
@@ -162,7 +173,7 @@ describe('the executor', () => {
       call('select_region', { region: 'Cass County', url: 'x' }),
     ])
     expect(results.map((r) => r.code)).toEqual(['tool_not_allowed', 'tool_not_allowed', 'invalid_arguments', 'invalid_arguments'])
-    expect(useMapStore.getState().regionId).toBe('br')
+    expect(useMapStore.getState().selectedFieldId).toBe('381825001868504')
     const tooLong = run(Array.from({ length: MAX_PLAN_STEPS + 1 }, () => call('show_layer', { layer: 'rain' })))
     expect(tooLong.map((r) => r.code)).toEqual(['plan_too_long'])
     expect(useMapStore.getState().on['imerg-daily']).toBeFalsy()

@@ -15,9 +15,4 @@ describe('the No CDL year rule shared by the tooltip, the chip and the legend (R
     }
   })
 
-  it('returns null for every Brazil class, because Brazil has no year text', () => {
-    for (const code of [0, null, 39, 999]) {
-      expect(noCdlYearOf(REGION_ADAPTERS.br, code, '2024-06-01')).toBeNull()
-    }
-  })
 })

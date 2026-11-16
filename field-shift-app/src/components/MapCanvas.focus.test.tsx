@@ -33,7 +33,7 @@ beforeEach(() => {
   }) as unknown as Response))
   const catalog = buildLayerCatalog(RECORDED_LAYERS_RESPONSE)
   useMapStore.setState({
-    regionId: 'br', selectedFieldId: FIELD.id, selectedPolygonId: null, polygonRing: null, catalog, on: {},
+    regionId: 'us', selectedFieldId: FIELD.id, selectedPolygonId: null, polygonRing: null, catalog, on: {},
     order: catalog.map((e) => e.id), chosenDate: '2026-11-11', axis: RECORDED_LAYERS_RESPONSE.axis,
     focusRequest: null, focusHandled: null,
   })

@@ -65,21 +65,6 @@ describe('paint constants (AC-11, R-14)', () => {
 })
 
 describe('the class colour expression (R-15)', () => {
-  it('pairs every Brazil row in id order and falls back to the unmapped colour', () => {
-    const expression = classColourExpression('mbmode24', classTableFor('br').rows) as unknown[]
-    expect(expression[0]).toBe('match')
-    expect(expression[1]).toEqual(['coalesce', ['to-number', ['get', 'mbmode24']], -1])
-    const pairs = expression.slice(2, -1)
-    expect(pairs).toHaveLength(28)
-    expect(pairs[0]).toBe(3)
-    expect(pairs[1]).toBe('#1f8d49')
-    expect(pairs[20]).toBe(46)
-    expect(pairs[21]).toBe('#d68fe2')
-    expect(expression[expression.length - 1]).toBe(UNMAPPED_CLASS_COLOUR)
-    for (const row of classTableFor('br').rows) {
-      expect(pairs).toContain(row.hex)
-    }
-  })
 
   it('pairs the United States table with its own hexes and no literal outside it', () => {
     const expression = classColourExpression('cdl2025', classTableFor('us').rows) as unknown[]
@@ -97,11 +82,6 @@ describe('the class colour expression (R-15)', () => {
     }
   })
 
-  it('maps code 0 to the unmapped colour because no table holds it', () => {
-    for (const rows of [classTableFor('us').rows, classTableFor('br').rows]) {
-      expect(rows.some((row) => row.value === 0)).toBe(false)
-    }
-  })
 })
 
 describe('the class property and the painted year (R-13, AC-10)', () => {
@@ -122,35 +102,11 @@ describe('the class property and the painted year (R-13, AC-10)', () => {
     }
   })
 
-  it('paints the one class source the load reports in Brazil', () => {
-    expect(classPropertyFor(REGION_ADAPTERS.br, '2026-11-12', 'mbmode24')).toBe('mbmode24')
-    expect(classPropertyFor(REGION_ADAPTERS.br, '2019-06-01', 'mbmode24')).toBe('mbmode24')
-    expect(() => classPropertyFor(REGION_ADAPTERS.br, '2026-11-12')).toThrow(/class source/)
-    expect(paintedClassYear(REGION_ADAPTERS.br, '2026-11-12', 'mbmode24')).toBe(2024)
-  })
 
-  it('refuses to mix two class properties in one load', () => {
-    expect(() => classPropertyFor(REGION_ADAPTERS.br, '2026-11-12', 'class_id')).not.toThrow()
-    expect(classPropertyFor(REGION_ADAPTERS.br, '2026-11-12', 'class_id')).toBe('class_id')
-    expect(paintedClassYear(REGION_ADAPTERS.br, '2026-11-12', 'class_id')).toBe(2025)
-  })
 })
 
 describe('class display and the unmapped state (R-21, AC-17)', () => {
-  it('resolves a table row to its name and hex', () => {
-    expect(classDisplay(REGION_ADAPTERS.br, 39)).toEqual({ classId: 39, name: 'Soybean', hex: '#f5b3c8', unmapped: false })
-    expect(classDisplay(REGION_ADAPTERS.us, 5)).toEqual({ classId: 5, name: 'Soybeans', hex: '#267000', unmapped: false })
-  })
 
-  it('falls back to the unmapped colour for 0, null, an absent value and an id the table lacks', () => {
-    for (const value of [0, null, undefined, 999]) {
-      const display = classDisplay(REGION_ADAPTERS.br, value)
-      expect(display.hex).toBe(UNMAPPED_CLASS_COLOUR)
-      expect(display.unmapped).toBe(true)
-      expect(display.name).toBeNull()
-    }
-    expect(classDisplay(REGION_ADAPTERS.us, 0).name).toBeNull()
-  })
 
   it('treats a row whose name the RAT leaves null as unmapped and never guesses a name', () => {
     const table = classTableFor('us')
@@ -162,11 +118,6 @@ describe('class display and the unmapped state (R-21, AC-17)', () => {
     expect(display.hex).toBe(UNMAPPED_CLASS_COLOUR)
   })
 
-  it('never borrows a class from the other region', () => {
-    // 39 is Soybean in Brazil and a different code in the United States table.
-    expect(classDisplay(REGION_ADAPTERS.br, 39).name).toBe('Soybean')
-    expect(classDisplay(REGION_ADAPTERS.us, 39).name).not.toBe('Soybean')
-  })
 })
 
 describe('the interactive zoom (R-20, AC-16)', () => {

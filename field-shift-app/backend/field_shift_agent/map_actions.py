@@ -21,10 +21,10 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 MAX_MAP_ACTIONS = 8
 
 # The `/layers` catalog ids the map holds (backend/main.py). A layer outside this list cannot be asked for.
-LAYER_IDS = ["smap-l3", "smap-l4-surface", "smap-l4-root", "imerg-daily", "imerg-30min", "ndvi-8day", "evi-8day",
-             "ndvi-monthly", "lst-terra", "lst-aqua", "hls-l30", "hls-s30", "grace-mascon"]
+LAYER_IDS = ["smap-l4-surface", "smap-l4-root", "imerg-daily", "imerg-30min", "ndvi-8day", "evi-8day",
+             "ndvi-monthly", "lst-terra", "lst-aqua", "grace-mascon"]
 METRIC_VARS = ["rain", "soil_moisture", "temperature", "vegetation", "water_risk", "overview"]
-REGIONS = ["Cass County", "Santa Carmem"]
+REGIONS = ["Cass County", "McLean County", "Lubbock County"]
 
 
 class MapAction(BaseModel):
@@ -36,7 +36,7 @@ class MapAction(BaseModel):
 
 class _Region(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    region: Literal["Cass County", "Santa Carmem"]
+    region: Literal["Cass County", "McLean County", "Lubbock County"]
 
 
 class _Field(BaseModel):
@@ -92,7 +92,8 @@ _TARGET = {"type": "string", "enum": ["selected_field"]}
 
 MAP_TOOL_DEFINITIONS: list[dict[str, Any]] = [
     {"name": "select_region", "strict": True, "input_schema": _schema({"region": {"type": "string", "enum": REGIONS}}),
-     "description": "Map action: open one of the two regions the app holds. Runs in the browser after your answer."},
+     "description": "Map action: open one of the United States counties the app holds by selecting its first field. "
+                    "Runs in the browser after your answer."},
     {"name": "select_field", "strict": True,
      "input_schema": _schema({"field": {"type": "string", "description": "A field name such as 'Field 02' or "
                                          "'Cass Field 01', a number 1 to 3, 'first' or 'current'."}}),
@@ -109,7 +110,7 @@ MAP_TOOL_DEFINITIONS: list[dict[str, Any]] = [
      "description": "Map action: ask for an analysis window length. The field numbers service only has 42 days; "
                     "other lengths are reported as unsupported."},
     {"name": "show_layer", "strict": True, "input_schema": _schema({"layer": {"type": "string", "enum": LAYER_IDS}}),
-     "description": "Map action: turn on a NASA layer of the map catalog (smap-l3 soil moisture, imerg-daily "
+     "description": "Map action: turn on a NASA layer of the map catalog (smap-l4-surface soil moisture, imerg-daily "
                     "precipitation, lst-terra temperature, ndvi-8day vegetation, ...)."},
     {"name": "hide_layer", "strict": True, "input_schema": _schema({"layer": {"type": "string", "enum": LAYER_IDS}}),
      "description": "Map action: turn off a layer of the map catalog."},

@@ -73,8 +73,18 @@ class SourceFailure(Exception):
         self.status = status
 
 
+def outbound_timeout_seconds() -> float:
+    """How long an outbound source call may take before it is abandoned.
+
+    Twenty seconds is the value this path has always used; `OUTBOUND_TIMEOUT_SECONDS` makes it a
+    deployment knob, because the call is synchronous and a slow source holds the worker for the
+    whole of it.
+    """
+    return float(os.environ.get("OUTBOUND_TIMEOUT_SECONDS", "20"))
+
+
 def _default_transport(method: str, url: str, json_body: Any = None) -> httpx.Response:
-    with httpx.Client(timeout=20.0, follow_redirects=True) as client:
+    with httpx.Client(timeout=outbound_timeout_seconds(), follow_redirects=True) as client:
         if method == "POST":
             return client.post(url, json=json_body)
         return client.get(url)

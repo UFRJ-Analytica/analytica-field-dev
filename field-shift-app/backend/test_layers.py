@@ -28,13 +28,16 @@ TABLE_A = {
     "imerg-30min": ("IMERG_Precipitation_Rate_30min", "GoogleMapsCompatible_Level6", 6, "retrieved", "about 11 km", False),
     "ndvi-8day": ("MODIS_Terra_NDVI_8Day", "GoogleMapsCompatible_Level9", 9, "retrieved", "250 m", False),
     "evi-8day": ("MODIS_Terra_EVI_8Day", "GoogleMapsCompatible_Level9", 9, "retrieved", "250 m", False),
-    "ndvi-monthly": ("MODIS_Terra_L3_NDVI_Monthly", "GoogleMapsCompatible_Level7", 7, "retrieved", "250 m", False),
+    "ndvi-monthly": ("MODIS_Terra_L3_NDVI_Monthly", "GoogleMapsCompatible_Level7", 7, "retrieved", "1 km", False),
     "lst-terra": ("MODIS_Terra_L3_Land_Surface_Temp_Daily_Day", "GoogleMapsCompatible_Level7", 7, "retrieved", "1 km", False),
     "lst-aqua": ("MODIS_Aqua_Land_Surface_Temp_Day", "GoogleMapsCompatible_Level7", 7, "retrieved", "1 km", False),
     "hls-l30": ("HLS_L30_Nadir_BRDF_Adjusted_Reflectance", "GoogleMapsCompatible_Level12", 12, "retrieved", "30 m", True),
     "hls-s30": ("HLS_S30_Nadir_BRDF_Adjusted_Reflectance", "GoogleMapsCompatible_Level12", 12, "retrieved", "30 m", True),
     "grace-mascon": ("GRACE_Tellus_Liquid_Water_Equivalent_Thickness_Mascon_CRI", "GoogleMapsCompatible_Level6", 6, "retrieved", "about 300 km, mascon", False),
 }
+
+# Listed in the registry, left out of /layers (block 12): patchy coverage on any one date.
+HIDDEN = {"smap-l3", "hls-l30", "hls-s30"}
 
 TABLE_B = {
     "smap-l3": ("tile", "P1D", "2015-03-31", "2026-11-11", 1),
@@ -132,7 +135,7 @@ class RegistryTests(RegistryTestCase):
         required = {
             "id", "gibs_id", "matrix", "max_zoom", "label", "basis", "resolution", "cadence",
             "lookback_days", "time_format", "time_start", "declared_end", "kind", "optical",
-            "blank_threshold_bytes", "reserve", "window_days",
+            "blank_threshold_bytes", "reserve", "window_days", "surface", "shown",
         }
         for layer_id, entry in main.LAYER_REGISTRY.items():
             self.assertEqual(set(entry), required, layer_id)
@@ -281,7 +284,10 @@ class TileContractTests(RegistryTestCase):
 
         resolution = main.resolve_effective_date(main.LAYER_REGISTRY["smap-l3"], "2026-11-11", service_unavailable, z=6, x=22, y=34)
         self.assertEqual(resolution.status, "unavailable")
-        self.assertEqual(len(calls), 1)
+        # Block 12: a 5xx is asked once more before the walk stops, at the same URL.
+        self.assertEqual(len(calls), 2)
+        self.assertEqual(calls[0], calls[1])
+        calls.clear()
 
         seq = [httpx.Response(404), httpx.Response(400), httpx.Response(200, content=b"ok")]
 
@@ -349,11 +355,13 @@ class TileContractTests(RegistryTestCase):
         self.assertEqual(set(payload), {"chosen_date", "axis", "layers"})
         self.assertEqual(payload["chosen_date"], "2026-11-12")
         self.assertEqual(payload["axis"], {"start": "2015-04-01", "end": "2026-11-14", "default": "2026-11-14"})
-        self.assertEqual(len(payload["layers"]), 13)
-        self.assertEqual([row["id"] for row in payload["layers"]], list(TABLE_A))
+        # Block 12: SMAP L3 and the two HLS layers stay in the registry but are not listed.
+        shown = [layer_id for layer_id in TABLE_A if layer_id not in HIDDEN]
+        self.assertEqual(len(payload["layers"]), 10)
+        self.assertEqual([row["id"] for row in payload["layers"]], shown)
         expected_keys = {
             "id", "label", "kind", "basis", "resolution", "matrix", "max_zoom", "cadence",
-            "lookback_days", "time_format", "optical", "window_days", "status",
+            "lookback_days", "time_format", "optical", "window_days", "surface", "status",
             "effective_date", "age_days", "last_observation",
         }
         for row in payload["layers"]:
@@ -367,7 +375,7 @@ class TileContractTests(RegistryTestCase):
 
         with patch.object(main, "upstream_fetch", not_found):
             payload = self.client.get("/layers?date=2026-11-12").json()
-        smap = next(row for row in payload["layers"] if row["id"] == "smap-l3")
+        smap = next(row for row in payload["layers"] if row["id"] == "smap-l4-surface")
         self.assertEqual(smap["status"], "none_in_lookback")
         self.assertIsNone(smap["effective_date"])
         self.assertIsNone(smap["age_days"])
@@ -393,12 +401,15 @@ class TileContractTests(RegistryTestCase):
         with patch.object(main, "upstream_fetch", ok_transport):
             payload = self.client.get("/layers?date=2026-11-12").json()
         by_id = {row["id"]: row for row in payload["layers"]}
-        smap = by_id["smap-l3"]
-        self.assertEqual(smap["label"], "SMAP soil moisture")
-        self.assertEqual(smap["basis"], "retrieved")
+        smap = by_id["smap-l4-surface"]
+        self.assertEqual(smap["label"], "SMAP L4 surface soil moisture")
+        self.assertEqual(smap["basis"], "modelled")
         self.assertEqual(smap["resolution"], "9 km")
-        self.assertEqual(smap["effective_date"], "2026-11-11")
-        self.assertEqual(smap["age_days"], 1)
+        self.assertEqual(smap["effective_date"], "2026-11-10")
+        self.assertEqual(smap["age_days"], 2)
+        for layer_id in HIDDEN:
+            self.assertNotIn(layer_id, by_id)
+            self.assertFalse(main.LAYER_REGISTRY[layer_id]["shown"])
         grace = by_id["grace-mascon"]
         self.assertEqual(grace["status"], "stale")
         self.assertEqual(grace["last_observation"], "2022-07-01")
@@ -477,3 +488,40 @@ class TileContractTests(RegistryTestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class UpstreamFailureTests(unittest.TestCase):
+    def tearDown(self):
+        main.upstream_fetch = main._http_fetch
+        main._clear_resolution_cache()
+
+    def test_a_failed_walk_is_not_remembered(self):
+        main._clear_resolution_cache()
+        answers = [httpx.ConnectError("down"), httpx.Response(200, content=b"tile")]
+
+        def flaky(url: str) -> httpx.Response:
+            answer = answers.pop(0)
+            if isinstance(answer, Exception):
+                raise answer
+            return answer
+
+        main.upstream_fetch = flaky
+        entry = main.LAYER_REGISTRY["lst-terra"]
+        first = main._resolve_cached(entry, date(2026, 11, 13), 7, 29, 45)
+        second = main._resolve_cached(entry, date(2026, 11, 13), 7, 29, 45)
+        self.assertEqual(first.status, "unavailable")
+        self.assertEqual(second.status, "on_date")
+
+    def test_a_missing_date_is_asked_once_per_layer(self):
+        main._clear_resolution_cache()
+        calls: list[str] = []
+
+        def transport(url: str) -> httpx.Response:
+            calls.append(url)
+            return httpx.Response(404) if "/2026-11-13/" in url else httpx.Response(200, content=b"tile")
+
+        entry = main.LAYER_REGISTRY["lst-terra"]
+        main.resolve_effective_date(entry, "2026-11-13", transport, z=7, x=29, y=45)
+        main.resolve_effective_date(entry, "2026-11-13", transport, z=7, x=30, y=45)
+        self.assertEqual(sum("/2026-11-13/" in url for url in calls), 1)
+

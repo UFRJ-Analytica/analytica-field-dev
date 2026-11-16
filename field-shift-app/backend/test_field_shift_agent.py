@@ -7,6 +7,7 @@ the model is a scripted provider whose turns are written here.
 from __future__ import annotations
 
 import json
+import os
 import unittest
 from datetime import date, datetime, timezone
 from pathlib import Path
@@ -27,13 +28,14 @@ from field_shift_agent.orchestrator import Limits, run
 from field_shift_agent.provider import (AnthropicProvider, OpenAIProvider, ProviderError, ProviderTurn, ToolCall,
                                         provider_config, provider_from_env)
 from field_shift_agent.routes import get_provider
+
+import rate_limit
 from field_shift_agent.schemas import ChatRequest, Evidence
-from field_shift_agent.tools import CROP_WATER_SNAPSHOT, ToolBox
+from field_shift_agent.tools import ToolBox
 
 FROZEN_NOW = datetime(2026, 11, 15, 3, 0, tzinfo=timezone.utc)
 FIELD = "mt-santa-carmem-01"
 DATE = "2026-11-12"  # block 6 window 2026-10-01 to 2026-11-11, the window of the FAO-56 snapshot
-SNAPSHOT = json.loads(CROP_WATER_SNAPSHOT.read_text(encoding="utf-8"))
 
 
 def request(question: str = "Quais são as condições ambientais desta propriedade?", locale: str = "pt-BR",
@@ -167,19 +169,20 @@ class ToolTests(Block6Recorded):
         box.get_crop_water_demand()
         self.assertEqual(calls, [FIELD])
 
-    def test_crop_water_is_released_for_field_01_and_its_window_only(self) -> None:
-        box = self.toolbox()
-        result = box.get_crop_water_demand()
-        self.assertTrue(result["available"])
-        self.assertEqual(box.evidence["crop_water.maize.etc_total"].value, SNAPSHOT["crops_peak_kc"]["maize"]["etc_total_mm"])
-        self.assertEqual(box.evidence["crop_water.et0_total"].value, SNAPSHOT["et0"]["total_mm"])
-        self.assertEqual(box.evidence["crop_water.highest_peak_demand"].value, "maize")
-        self.assertTrue(all(e.basis == "fixture" for k, e in box.evidence.items() if k.startswith("crop_water")))
-        self.assertIn("experimental_snapshot", box.evidence["crop_water.et0_total"].limitations)
 
-    def test_crop_water_is_not_attributed_to_a_neighbour_in_the_same_cell_or_another_window(self) -> None:
-        self.assertFalse(self.toolbox(field_id="mt-santa-carmem-02").get_crop_water_demand()["available"])
-        self.assertFalse(self.toolbox(day="2026-11-01").get_crop_water_demand()["available"])
+
+    def test_crop_water_on_a_united_states_field_names_the_missing_window_and_kc(self) -> None:
+        box = self.toolbox(field_id="381825001868504")  # Cass Field 01; the recorded window is October
+        result = box.get_crop_water_demand()
+        self.assertFalse(result["available"])
+        self.assertIn("does not cover the crop's planting window", result["abstained"]["maize"])
+        self.assertIn("no FAO-56 Kc", result["abstained"]["spring wheat"])
+        self.assertEqual(box.evidence, {})
+
+    def test_crop_water_abstains_for_a_field_outside_the_united_states(self) -> None:
+        result = self.toolbox().get_crop_water_demand()  # Santa Carmem, the Brazilian fixture
+        self.assertFalse(result["available"])
+        self.assertEqual(result["limitations"], ["region_not_supported"])
 
     def test_rain_is_compared_with_the_median_in_code(self) -> None:
         box = self.toolbox()
@@ -189,16 +192,6 @@ class ToolTests(Block6Recorded):
         self.assertAlmostEqual(box.evidence["rain_minus_median"].value, round(rain - median, 1), places=6)
         self.assertEqual(box.evidence["rain_minus_median"].basis, "derived")
 
-    def test_crop_water_registers_kc_and_pairwise_differences(self) -> None:
-        box = self.toolbox()
-        box.get_crop_water_demand()
-        crops = SNAPSHOT["crops_peak_kc"]
-        self.assertEqual(box.evidence["crop_water.maize.kc_mid"].value, crops["maize"]["kc_values"]["mid"])
-        diff = box.evidence["crop_water.diff.maize_minus_soybean"].value
-        self.assertAlmostEqual(diff, round(crops["maize"]["etc_total_mm"] - crops["soybean"]["etc_total_mm"], 1), places=6)
-        self.assertEqual(sorted(k for k in box.evidence if k.startswith("crop_water.diff.")),
-                         ["crop_water.diff.cotton_minus_maize", "crop_water.diff.cotton_minus_soybean",
-                          "crop_water.diff.maize_minus_soybean"])
 
     def test_planting_windows_match_block_7_table_f(self) -> None:
         # Block 7 spec, Table F (2026/2027, Santa Carmem, window_risk_20 envelope over soils and cycles).
@@ -358,46 +351,9 @@ class AgentTests(Block6Recorded):
         self.assertEqual(response.fallback_reason, "guard_unverified_number")
         self.assertEqual(response.evidence, [])
 
-    def test_demo_2_crop_water_comparison_cites_the_recorded_snapshot(self) -> None:
-        provider = ScriptedProvider([use("get_crop_water_demand"), submit("answered", [
-            "Resultado experimental gravado: o milho tem ETc de {{value:crop_water.maize.etc_total}} e a soja "
-            "{{value:crop_water.soybean.etc_total}}; a maior demanda estimada é de "
-            "{{value:crop_water.highest_peak_demand}}.",
-            "Chuva menos ETc ({{value:crop_water.maize.rain_minus_etc}}) é uma diferença climática, não irrigação.",
-        ], ["crop_water.et0_total"], ["needs_sowing_date"])])
-        response = self.run_agent(provider, request("Compare a demanda hídrica estimada do milho e da soja."))
-        self.assertEqual(response.mode, "agent", response.fallback_reason)
-        values = {e.id: e.value for e in response.evidence}
-        self.assertEqual(values["crop_water.maize.etc_total"], SNAPSHOT["crops_peak_kc"]["maize"]["etc_total_mm"])
-        self.assertEqual(values["crop_water.highest_peak_demand"], "maize")
-        self.assertIn("experimental_snapshot", response.limitations)
-        self.assertIn("climatic_difference_not_irrigation", response.limitations)
-        self.assertTrue(all(e.basis == "fixture" for e in response.evidence))
 
-    def test_demo_2_on_another_field_has_no_crop_water_evidence_to_cite(self) -> None:
-        provider = ScriptedProvider([use("get_crop_water_demand"), submit("answered", [
-            "O milho tem ETc de {{value:crop_water.maize.etc_total}}."], [])])
-        response = self.run_agent(provider, request("Compare a demanda hídrica", field_id="mt-santa-carmem-02"))
-        self.assertEqual(response.fallback_reason, "guard_unknown_evidence")
 
-    def test_milestone_3_water_comparison_with_kc_and_a_computed_difference_passes(self) -> None:
-        provider = ScriptedProvider([use("get_crop_water_demand"), submit("answered", [
-            "O milho precisa de {{value:crop_water.diff.maize_minus_soybean}} a mais de água que a soja em "
-            "{{period:crop_water.et0_total}}, porque seu coeficiente de cultura (Kc) no pico é "
-            "{{value:crop_water.maize.kc_mid}} contra {{value:crop_water.soybean.kc_mid}}.",
-            "A ETc é o Kc vezes a ET0, a evapotranspiração de referência, que foi {{value:crop_water.et0_total}}. "
-            "Isso não indica qual cultura produz mais.",
-        ], ["crop_water.diff.maize_minus_soybean", "crop_water.maize.kc_mid", "crop_water.soybean.kc_mid",
-            "crop_water.et0_total"], ["needs_sowing_date"])])
-        response = self.run_agent(provider, request("Compare a demanda hídrica do milho e da soja"))
-        self.assertEqual((response.mode, response.status), ("agent", "answered"))
-        self.assertIn("standard_kc", response.limitations)
 
-    def test_milestone_3_a_model_that_does_its_own_arithmetic_is_refused(self) -> None:
-        provider = ScriptedProvider([use("get_crop_water_demand"), submit("answered", [
-            "O milho precisa de cerca de 10 mm a mais que a soja."], [], [])])
-        response = self.run_agent(provider, request("Compare a demanda hídrica do milho e da soja"))
-        self.assertEqual(response.fallback_reason, "guard_unverified_number")
 
     def test_milestone_3_rain_comparison_and_planting_window_pass(self) -> None:
         provider = ScriptedProvider([use("get_environmental_indicators", "get_planting_constraints"), submit("answered", [
@@ -412,46 +368,47 @@ class AgentTests(Block6Recorded):
         self.assertIn("zarc_municipal_envelope", response.limitations)
 
     def test_demo_3_a_crop_recommendation_is_refused_by_the_guard(self) -> None:
-        provider = ScriptedProvider([use("get_crop_water_demand", "get_planting_constraints"),
+        provider = ScriptedProvider([use("get_environmental_indicators", "get_planting_constraints"),
                                      submit("answered", ["Recomendo plantar milho nesta safra."], [])])
         response = self.run_agent(provider, request("Com esses dados, qual cultura devo plantar?"))
         self.assertEqual((response.mode, response.fallback_reason), ("fallback", "guard_unsupported_claim"))
 
     def test_demo_3_an_answer_that_names_the_limits_passes_as_partial(self) -> None:
-        provider = ScriptedProvider([use("get_evidence_gaps", "get_planting_constraints", "get_crop_water_demand"),
+        provider = ScriptedProvider([use("get_evidence_gaps", "get_planting_constraints",
+                                          "get_environmental_indicators"),
                                      submit("partial", [
                                          "Esses dados não bastam para escolher uma cultura: o comparador de rotações "
                                          "não está disponível e não há registros da propriedade.",
-                                         "O que existe é a demanda hídrica estimada, que é maior para "
-                                         "{{value:crop_water.highest_peak_demand}} com coeficientes de pico, e a "
+                                         "O que existe é a chuva registrada na janela, {{value:rain_total}}, e a "
                                          "janela do ZARC de {{value:planting.soja.window}}, de "
                                          "{{period:planting.soja.window}}, que diz quando semear tem baixo risco, "
                                          "não qual cultura escolher.",
-                                     ], ["crop_water.highest_peak_demand", "planting.soja.window"],
+                                     ], ["rain_total", "planting.soja.window"],
                                          ["comparator_not_built", "planting_window_not_decision", "needs_farm_records"])])
         response = self.run_agent(provider, request("Com esses dados, qual cultura devo plantar?"))
         self.assertEqual((response.mode, response.status), ("agent", "partial"))
-        self.assertEqual(response.tools_used, ["get_evidence_gaps", "get_planting_constraints", "get_crop_water_demand"])
+        self.assertEqual(response.tools_used, ["get_evidence_gaps", "get_planting_constraints",
+                                               "get_environmental_indicators"])
         self.assertIn("comparator_not_built", response.limitations)
 
     def test_consecutive_tool_turns_and_english_follow_up_are_guarded(self) -> None:
         provider = ScriptedProvider([
             use("get_field_context"),
             use("get_evidence_gaps"),
-            use("get_crop_water_demand", "get_planting_constraints"),
+            use("get_environmental_indicators", "get_planting_constraints"),
             submit("partial", [
                 "The available evidence is not enough to choose a crop because farm records and a rotation "
                 "comparator are missing.",
-                "It does show the highest recorded experimental water demand for "
-                "{{value:crop_water.highest_peak_demand}} and the planting window for "
-                "{{value:planting.soja.window}} ({{period:planting.soja.window}}), but neither is a crop ranking.",
-            ], ["crop_water.highest_peak_demand", "planting.soja.window"],
+                "It does show the rain recorded for the window, {{value:rain_total}}, and the planting window "
+                "for {{value:planting.soja.window}} ({{period:planting.soja.window}}), but neither is a crop "
+                "ranking.",
+            ], ["rain_total", "planting.soja.window"],
                 ["needs_farm_records", "comparator_not_built", "planting_window_not_decision"]),
         ])
         response = self.run_agent(provider, request("With this information, which crop should I plant?", locale="en"))
         self.assertEqual((response.mode, response.status), ("agent", "partial"))
         self.assertEqual(response.tools_used, ["get_field_context", "get_evidence_gaps",
-                                               "get_crop_water_demand", "get_planting_constraints"])
+                                               "get_environmental_indicators", "get_planting_constraints"])
         self.assertEqual(len(provider.calls), 4)
 
     def test_provider_failures_fall_back_without_leaking_details(self) -> None:
@@ -637,6 +594,19 @@ class ProviderTests(unittest.TestCase):
 class RouteTests(Block6Recorded):
     def setUp(self) -> None:
         super().setUp()
+        # The chat route is rate limited once a key exists; the class turns it off and the one case
+        # that tests it turns it back on, so no other case spends the allowance.
+        previous = os.environ.get("FIELD_SHIFT_AI_RATE_LIMIT_REQUESTS")
+        os.environ["FIELD_SHIFT_AI_RATE_LIMIT_REQUESTS"] = "0"
+        rate_limit.reset()
+
+        def restore() -> None:
+            if previous is None:
+                os.environ.pop("FIELD_SHIFT_AI_RATE_LIMIT_REQUESTS", None)
+            else:
+                os.environ["FIELD_SHIFT_AI_RATE_LIMIT_REQUESTS"] = previous
+
+        self.addCleanup(restore)
         self.client = TestClient(main.app)
 
     def tearDown(self) -> None:
@@ -679,6 +649,21 @@ class RouteTests(Block6Recorded):
         self.assertEqual((body["mode"], body["status"], body["field_id"]), ("agent", "answered", FIELD))
         self.assertEqual(body["answer"][0][1], {"t": "value", "text": None, "evidence": "rain_total"})
         self.assertEqual(body["evidence"][0]["unit"], "mm")
+
+    def test_chat_is_rate_limited_per_client_and_never_echoes_the_key(self) -> None:
+        rate_limit.reset()
+        main.app.dependency_overrides[get_provider] = lambda: (None, "not_configured")
+        env = {"FIELD_SHIFT_AI_RATE_LIMIT_REQUESTS": "2", "FIELD_SHIFT_AI_RATE_LIMIT_WINDOW_SECONDS": "60",
+               "FIELD_SHIFT_AI_PROVIDER": "openai",
+               "FIELD_SHIFT_AI_OPENAI_API_KEY": "secret-test-key", "FIELD_SHIFT_AI_BUDGET_USD": "0.10"}
+        with patch.dict("os.environ", env):
+            first, second, third = self.post(), self.post(), self.post()
+            status = self.client.get("/experimental/field-shift-ai/status")
+        self.assertEqual([first.status_code, second.status_code, third.status_code], [200, 200, 429])
+        self.assertEqual(third.headers["Retry-After"].isdigit(), True)
+        for response in (first, second, third, status):
+            self.assertNotIn("secret-test-key", response.text)
+        self.assertNotIn("secret-test-key", json.dumps(status.json()))
 
     def test_chat_without_a_model_is_a_fallback(self) -> None:
         main.app.dependency_overrides[get_provider] = lambda: (None, "not_configured")

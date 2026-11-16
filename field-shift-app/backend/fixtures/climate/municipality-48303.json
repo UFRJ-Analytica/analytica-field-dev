@@ -1,0 +1,174 @@
+{
+  "contract_version": "fieldshift-climate-1",
+  "recorded_at": "2026-11-15T15:31:13+00:00",
+  "municipality": {
+    "code": 48303,
+    "name": "Lubbock",
+    "name_official": "Lubbock County",
+    "uf": "TX",
+    "country": "US",
+    "region_id": "us_plains",
+    "region_name": "Southern Plains (Texas)",
+    "enso_signal": "excess",
+    "centroid_lon": -101.8205,
+    "centroid_lat": 33.6102
+  },
+  "crop_year": 2027,
+  "crop_year_label": "2026/27",
+  "crop_year_enso": {
+    "enso_class": "el_nino_strong",
+    "provisional": true,
+    "forecast": true,
+    "basis": "CPC strength outlook issued 2026-11, NDJ"
+  },
+  "season_progress": {
+    "start": "2026-10-01",
+    "last_observed": "2026-11-12",
+    "rain_mm": 79.4,
+    "normal_mm": 51.2,
+    "analog_mm": 47.0,
+    "n_baseline": 30,
+    "n_analog": 5,
+    "analog_years": [
+      1983,
+      1992,
+      1998,
+      2010,
+      2016
+    ],
+    "basis": "modelled",
+    "source": "https://power.larc.nasa.gov/",
+    "support": "county centroid; POWER values are grid-cell averages (~0.5 x 0.625 deg), not station data",
+    "start_month": 10
+  },
+  "rows": [
+    {
+      "metric": "early_rain_mm_anom_pct",
+      "layer": "Rain Oct to Mar, strong El Nino years vs 1991 to 2020",
+      "value": "+34.8%",
+      "number": 34.8,
+      "unit": "%",
+      "basis": "modelled",
+      "as_of": "2026-11-12",
+      "source": "https://power.larc.nasa.gov/",
+      "support": "county centroid; POWER values are grid-cell averages (~0.5 x 0.625 deg), not station data",
+      "months": [
+        10,
+        3
+      ],
+      "n_years": 5,
+      "years": [
+        1983,
+        1992,
+        1998,
+        2010,
+        2016
+      ],
+      "crop_code": null,
+      "crop_name_en": null,
+      "assumption": false,
+      "small_sample": false
+    },
+    {
+      "metric": "late_cdd_days_anom",
+      "layer": "Longest dry spell Apr to Sep, strong El Nino years vs 1991 to 2020",
+      "value": "-2.5 days",
+      "number": -2.5,
+      "unit": "days",
+      "basis": "modelled",
+      "as_of": "2026-11-12",
+      "source": "https://power.larc.nasa.gov/",
+      "support": "county centroid; POWER values are grid-cell averages (~0.5 x 0.625 deg), not station data",
+      "months": [
+        4,
+        9
+      ],
+      "n_years": 5,
+      "years": [
+        1983,
+        1992,
+        1998,
+        2010,
+        2016
+      ],
+      "crop_code": null,
+      "crop_name_en": null,
+      "assumption": false,
+      "small_sample": false
+    },
+    {
+      "metric": "yield_anomaly_pct",
+      "layer": "Winter wheat yield vs trend, strong El Nino years",
+      "value": "+5.0%",
+      "number": 5.0,
+      "unit": "%",
+      "basis": "reported",
+      "as_of": "2025",
+      "source": "https://quickstats.nass.usda.gov/",
+      "support": "county, USDA NASS",
+      "months": null,
+      "n_years": 5,
+      "years": [
+        1983,
+        1992,
+        1998,
+        2010,
+        2016
+      ],
+      "crop_code": 840003,
+      "crop_name_en": "Winter wheat",
+      "assumption": false,
+      "small_sample": false
+    },
+    {
+      "metric": "yield_anomaly_pct",
+      "layer": "Upland cotton yield vs trend, strong El Nino years",
+      "value": "+6.8%",
+      "number": 6.8,
+      "unit": "%",
+      "basis": "reported",
+      "as_of": "2025",
+      "source": "https://quickstats.nass.usda.gov/",
+      "support": "county, USDA NASS",
+      "months": null,
+      "n_years": 5,
+      "years": [
+        1983,
+        1992,
+        1998,
+        2010,
+        2016
+      ],
+      "crop_code": 840005,
+      "crop_name_en": "Upland cotton",
+      "assumption": false,
+      "small_sample": false
+    },
+    {
+      "metric": "season_rain_to_date_mm",
+      "layer": "Rain since 1 Oct vs 1991 to 2020 normal",
+      "months": [
+        10,
+        10
+      ],
+      "value": "79 mm vs 51 mm",
+      "number": 79.4,
+      "unit": "mm",
+      "basis": "modelled",
+      "as_of": "2026-11-12",
+      "source": "https://power.larc.nasa.gov/",
+      "support": "county centroid; POWER values are grid-cell averages (~0.5 x 0.625 deg), not station data",
+      "n_years": 30,
+      "years": [],
+      "crop_code": null,
+      "crop_name_en": null,
+      "assumption": false,
+      "small_sample": false
+    }
+  ],
+  "source": {
+    "climate": "https://power.larc.nasa.gov/",
+    "yield": "https://quickstats.nass.usda.gov/",
+    "rules": "field-shift-pipeline/config/analysis.yaml"
+  }
+}

@@ -126,25 +126,26 @@ describe('dates in commands', () => {
 describe('the six publication commands, from text to the map store', () => {
   // Plan with the interpreter, run with the executor, then read the real store: the text is no proof.
   const FIELDS = [
-    { id: 'mt-santa-carmem-01', name: 'Field 01' }, { id: '381825001868504', name: 'Cass Field 01' },
-  ].map((f) => ({ ...f, location: '', coverage: 0, center: [0, 0] as [number, number], boundary: { type: 'Polygon' as const, coordinates: [[[0, 0], [1, 0], [1, 1], [0, 0]]] } }))
+    { id: '381825001868504', name: 'Cass Field 01', location: 'Cass County, North Dakota' },
+    { id: 'il-mclean-01', name: 'Field 06', location: 'McLean County (IL)' },
+  ].map((f) => ({ ...f, coverage: 0, center: [0, 0] as [number, number], boundary: { type: 'Polygon' as const, coordinates: [[[0, 0], [1, 0], [1, 1], [0, 0]]] } }))
   const runText = (text: string, topic: Parameters<typeof planCommand>[1]['topic'] = null) =>
     executePlan(planCommand(text, { defaultYear: 2026, topic }).calls, { fields: FIELDS, autoSelectField: true })
 
   beforeEach(() => {
     useMapStore.setState({
-      regionId: 'br', selectedFieldId: 'mt-santa-carmem-01', selectedPolygonId: null, polygonRing: null,
+      regionId: 'us', selectedFieldId: 'il-mclean-01', selectedPolygonId: null, polygonRing: null,
       chosenDate: '2026-11-11', axis: { start: '2015-04-01', end: '2026-11-14', default: '2026-11-14' },
       catalog: buildLayerCatalog(RECORDED_LAYERS_RESPONSE), on: {}, focusRequest: null, focusHandled: null,
     })
   })
 
-  it('opens Cass County, returns to Santa Carmem, shows layers, compares, frames and handles 30 days', () => {
-    runText('Open Cass County on the map.')
-    expect(useMapStore.getState().regionId).toBe('us')
-    runText('Volte para Santa Carmem.')
-    expect(useMapStore.getState().regionId).toBe('br')
-    useMapStore.getState().selectField('mt-santa-carmem-01')
+  it('opens Cass County, refuses Santa Carmem, shows layers, compares, frames and handles 30 days', () => {
+    expect(runText('Open Cass County on the map.').map((r) => r.code)).toEqual(['region_selected'])
+    expect(useMapStore.getState()).toMatchObject({ regionId: 'us', selectedFieldId: '381825001868504' })
+    // Brazil left the app with the team's publishing work: the command is recognised and refused.
+    expect(runText('Volte para Santa Carmem.').map((r) => r.code)).toEqual(['region_not_available'])
+    expect(useMapStore.getState()).toMatchObject({ regionId: 'us', selectedFieldId: '381825001868504' })
     expect(runText('Show soil moisture.').map((r) => r.code)).toEqual(['layer_on', 'query_requested'])
     expect(useMapStore.getState().on['smap-l3']).toBe(true)
     expect(runText('Compare rainfall with soil moisture.').map((r) => [r.code, r.analysis?.metrics])).toEqual([

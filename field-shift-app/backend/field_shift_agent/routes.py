@@ -8,12 +8,14 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, Body, Depends, HTTPException
+from fastapi import APIRouter, Body, Depends, HTTPException, Request
 
 from . import orchestrator
 from .context import AgentInputError
 from .provider import Provider, ProviderError, provider_config, provider_from_env
 from .schemas import ChatRequest, ChatResponse
+
+import rate_limit
 
 router = APIRouter(prefix="/experimental/field-shift-ai", tags=["experimental"])
 
@@ -41,9 +43,20 @@ def status() -> dict[str, Any]:
             "mode": "agent" if config.name else "deterministic"}
 
 
+def chat_rate_limit(request: Request) -> None:
+    """429 once a client has used its allowance of this window.
+
+    A separate allowance from the numbers route, because this one costs money the moment a key is
+    configured: 20 requests a minute by default, `FIELD_SHIFT_AI_RATE_LIMIT_REQUESTS=0` to turn it off.
+    """
+    rate_limit.enforce(request, scope="field-shift-ai", limit_env="FIELD_SHIFT_AI_RATE_LIMIT_REQUESTS",
+                       window_env="FIELD_SHIFT_AI_RATE_LIMIT_WINDOW_SECONDS", default_limit=20,
+                       label="Field Shift AI")
+
+
 @router.post("/chat", response_model=ChatResponse)
 def chat(body: ChatRequest = Body(...), provider: tuple[Provider | None, str | None] = Depends(get_provider),
-         runner: Any = Depends(get_runner)) -> ChatResponse:
+         runner: Any = Depends(get_runner), _limit: None = Depends(chat_rate_limit)) -> ChatResponse:
     model, reason = provider
     try:
         return runner(body, model, provider_reason=reason)

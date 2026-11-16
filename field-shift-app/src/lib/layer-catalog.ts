@@ -1,8 +1,8 @@
+import { API_BASE } from './api-base'
 import { RECORDED_LAYERS_RESPONSE } from './recorded-layers-response'
 import { en } from '@/strings/en'
 import type { TranslationKey } from '@/strings'
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'
 
 export type LayerStatus = 'on_date' | 'earlier' | 'none_in_lookback' | 'stale' | 'unavailable'
 export type LayerKind = 'tile' | 'stale'
@@ -22,6 +22,8 @@ export type LayersResponseLayer = {
   time_format: LayerTimeFormat
   optical: boolean
   window_days: number | null
+  /** "land" for products with no values over water; the map hides the sea above them. */
+  surface?: 'land' | 'any'
   status: LayerStatus
   effective_date: string | null
   age_days: number | null

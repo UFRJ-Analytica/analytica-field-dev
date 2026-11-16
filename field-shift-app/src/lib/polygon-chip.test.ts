@@ -36,11 +36,6 @@ describe('the chip a polygon selection produces (R-21, R-27, R-28)', () => {
     expect(chip?.noCdlYear).toBeNull()
   })
 
-  it('gives Brazil no year, because Brazil has no No CDL text', () => {
-    const display = classDisplay(REGION_ADAPTERS.br, null)
-    const chip = selectedPolygonChipOf(999, display, { classValue: null, area: 1 }, REGION_ADAPTERS.br, US_DATE)
-    expect(chip?.noCdlYear).toBeNull()
-  })
 
   it('keeps the unmapped colour when the class display is absent', () => {
     const chip = selectedPolygonChipOf(US_ID, null, null, REGION_ADAPTERS.us, US_DATE)

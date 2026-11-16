@@ -1,0 +1,275 @@
+# Candidate rotations and the crop parameters they need. Read by pipeline/build_scoring.py.
+#
+# What is NOT here, on purpose: yields, prices, ENSO effects. Those come from data for each
+# municipality (IBGE PAM revenue per hectare and yield anomalies by ENSO class; NASA POWER rain,
+# heavy-rain days and ET0 by ENSO class). This file only says *which* crops, *when* they occupy the
+# field, and *how much water* they use relative to the reference crop.
+#
+# Every parameter carries a source. `suposicao` = no citable source attached yet; the API flags it
+# and the UI shows a warning (project rule 3). Do not change a source without a citation.
+
+meta:
+  # Priorities the farmer weights in the UI. Defaults are equal.
+  default_weights: {soil: 1, water: 1, income: 1}
+  # Revenue per hectare: mean of the last N PAM years (production value / harvested area), nominal R$.
+  revenue_years: 5
+  # Months of the crop year in display order (Jul-Jun, labelled by harvest year; regions.yaml).
+  month_order: [7, 8, 9, 10, 11, 12, 1, 2, 3, 4, 5, 6]
+  # Scores are 0-100 within each municipality and ENSO class: 100 = best candidate on that
+  # component, 0 = worst (min-max). Total = sum(weight x score) / sum(weight).
+  normalisation: min-max across the candidates of one municipality and ENSO class
+  normalisation_source: project choice (makes the three components comparable; scores are relative)
+
+# Crop coefficients Kc (initial, mid-season, end-of-season) from FAO-56 Table 12, read from
+# https://www.fao.org/4/x0490e/x0490e0b.htm on 2026-11-14. Kc ini is the crop group's value in that
+# table. Where FAO gives a range, the midpoint is used and the range recorded.
+# Monthly use: sowing month = Kc ini; second month = (ini + mid) / 2 (FAO-56 development stage is a
+# linear rise); later months = Kc mid; harvest/termination month = Kc end.
+crops:
+  soja:
+    name_pt: Soja
+    abbr: Sj               # calendar-cell label; unique per crop
+    name_en: Soybean
+    revenue_pam_code: 2713
+    anomaly_pam_code: 2713
+    kc: {ini: 0.40, mid: 1.15, end: 0.50, fao56_row: "Soybeans (legumes group Kc ini)"}
+    root: {zr_m: 1.3, range_m: [0.6, 1.3], p: 0.5, fao56_row: "Soybeans"}
+  milho:
+    name_pt: Milho (1a safra)
+    abbr: Mi               # calendar-cell label; unique per crop
+    name_en: Maize (1st crop)
+    revenue_pam_code: 2711      # table 839 has no production value; 1612 maize total
+    anomaly_pam_code: 114253    # 1st-crop maize yield anomalies (table 839)
+    kc: {ini: 0.30, mid: 1.20, end: 0.475, range_end: [0.60, 0.35], fao56_row: "Maize, Field (grain)"}
+    root: {zr_m: 1.7, range_m: [1.0, 1.7], p: 0.55, fao56_row: "Maize, Field (grain)"}
+  trigo:
+    name_pt: Trigo
+    abbr: Tr               # calendar-cell label; unique per crop
+    name_en: Wheat
+    revenue_pam_code: 2716
+    anomaly_pam_code: 2716
+    kc: {ini: 0.30, mid: 1.15, end: 0.325, range_end: [0.25, 0.40], fao56_row: "Spring Wheat (cereals group Kc ini)"}
+    root: {zr_m: 1.5, range_m: [1.0, 1.5], p: 0.55, fao56_row: "Spring Wheat"}
+  aveia:
+    name_pt: Aveia (grão)
+    abbr: Av               # calendar-cell label; unique per crop
+    name_en: Oats (grain)
+    revenue_pam_code: 2693
+    anomaly_pam_code: 2693
+    kc: {ini: 0.30, mid: 1.15, end: 0.25, fao56_row: "Oats"}
+    root: {zr_m: 1.5, range_m: [1.0, 1.5], p: 0.55, fao56_row: "Oats"}
+  aveia_cobertura:
+    name_pt: Aveia (cobertura)
+    abbr: Ac               # calendar-cell label; unique per crop
+    name_en: Oats (cover crop)
+    cover_crop: true            # not harvested: no revenue, keeps the soil covered
+    kc: {ini: 0.30, mid: 1.15, end: 0.25, fao56_row: "Oats"}
+    root: {zr_m: 1.5, range_m: [1.0, 1.5], p: 0.55, fao56_row: "Oats"}
+  canola:
+    name_pt: Canola
+    abbr: Ca               # calendar-cell label; unique per crop
+    name_en: Canola
+    revenue_pam_code: 83384
+    anomaly_pam_code: 83384
+    kc: {ini: 0.35, mid: 1.075, end: 0.35, range_mid: [1.0, 1.15], fao56_row: "Rapeseed, Canola"}
+    root: {zr_m: 1.5, range_m: [1.0, 1.5], p: 0.6, fao56_row: "Rapeseed, Canola"}
+  sorgo:
+    name_pt: Sorgo (2a safra)
+    abbr: Sg               # calendar-cell label; unique per crop
+    name_en: Sorghum (2nd crop)
+    revenue_pam_code: 2714
+    anomaly_pam_code: 2714
+    kc: {ini: 0.30, mid: 1.05, end: 0.55, range_mid: [1.00, 1.10], fao56_row: "Sorghum - grain"}
+    root: {zr_m: 2.0, range_m: [1.0, 2.0], p: 0.55, fao56_row: "Sorghum - grain"}
+  milheto_cobertura:
+    name_pt: Milheto (cobertura)
+    abbr: Mt               # calendar-cell label; unique per crop
+    name_en: Millet (cover crop)
+    cover_crop: true
+    kc: {ini: 0.30, mid: 1.00, end: 0.30, fao56_row: "Millet"}
+    root: {zr_m: 2.0, range_m: [1.0, 2.0], p: 0.55, fao56_row: "Millet"}
+  algodao:
+    name_pt: Algodão
+    abbr: Al               # calendar-cell label; unique per crop
+    name_en: Cotton
+    revenue_pam_code: 2689
+    anomaly_pam_code: 2689
+    kc: {ini: 0.35, mid: 1.175, end: 0.60, range_mid: [1.15, 1.20], range_end: [0.70, 0.50], fao56_row: "Cotton (fibre group Kc ini)"}
+    root: {zr_m: 1.7, range_m: [1.0, 1.7], p: 0.65, fao56_row: "Cotton"}
+
+  # ---- United States (block 6). Revenue and yield anomalies come from USDA NASS (config/nass.yaml,
+  # project codes 84000x). Kc and root values are the same FAO-56 rows as the Brazilian entries;
+  # winter wheat uses its own FAO-56 Table 12 rows (Kc ini 0.4 with frozen soils, 0.7 without).
+  milho_us:
+    name_pt: Milho
+    abbr: Cn
+    name_en: Corn
+    revenue_pam_code: 840001
+    anomaly_pam_code: 840001
+    kc: {ini: 0.30, mid: 1.20, end: 0.475, range_end: [0.60, 0.35], fao56_row: "Maize, Field (grain)"}
+    root: {zr_m: 1.7, range_m: [1.0, 1.7], p: 0.55, fao56_row: "Maize, Field (grain)"}
+  soja_us:
+    name_pt: Soja
+    abbr: Sb
+    name_en: Soybean
+    revenue_pam_code: 840002
+    anomaly_pam_code: 840002
+    kc: {ini: 0.40, mid: 1.15, end: 0.50, fao56_row: "Soybeans (legumes group Kc ini)"}
+    root: {zr_m: 1.3, range_m: [0.6, 1.3], p: 0.5, fao56_row: "Soybeans"}
+  soja_safrinha_us:
+    name_pt: Soja (após o trigo)
+    abbr: Ss
+    name_en: Double-crop soybean
+    revenue_pam_code: 840002
+    anomaly_pam_code: 840002
+    kc: {ini: 0.40, mid: 1.15, end: 0.50, fao56_row: "Soybeans (legumes group Kc ini)"}
+    root: {zr_m: 1.3, range_m: [0.6, 1.3], p: 0.5, fao56_row: "Soybeans"}
+  trigo_inverno_frio:
+    name_pt: Trigo de inverno
+    abbr: Ti
+    name_en: Winter wheat
+    revenue_pam_code: 840003
+    anomaly_pam_code: 840003
+    kc: {ini: 0.40, mid: 1.15, end: 0.325, range_end: [0.25, 0.40], fao56_row: "Winter Wheat, with frozen soils"}
+    root: {zr_m: 1.8, range_m: [1.5, 1.8], p: 0.55, fao56_row: "Winter Wheat"}
+  trigo_inverno:
+    name_pt: Trigo de inverno
+    abbr: Tw
+    name_en: Winter wheat
+    revenue_pam_code: 840003
+    anomaly_pam_code: 840003
+    kc: {ini: 0.70, mid: 1.15, end: 0.325, range_end: [0.25, 0.40], fao56_row: "Winter Wheat, with non-frozen soils"}
+    root: {zr_m: 1.8, range_m: [1.5, 1.8], p: 0.55, fao56_row: "Winter Wheat"}
+  sorgo_us:
+    name_pt: Sorgo
+    abbr: So
+    name_en: Grain sorghum
+    revenue_pam_code: 840004
+    anomaly_pam_code: 840004
+    kc: {ini: 0.30, mid: 1.05, end: 0.55, range_mid: [1.00, 1.10], fao56_row: "Sorghum - grain"}
+    root: {zr_m: 2.0, range_m: [1.0, 2.0], p: 0.55, fao56_row: "Sorghum - grain"}
+  sorgo_safrinha_us:
+    name_pt: Sorgo (após o trigo)
+    abbr: Sr
+    name_en: Double-crop sorghum
+    revenue_pam_code: 840004
+    anomaly_pam_code: 840004
+    kc: {ini: 0.30, mid: 1.05, end: 0.55, range_mid: [1.00, 1.10], fao56_row: "Sorghum - grain"}
+    root: {zr_m: 2.0, range_m: [1.0, 2.0], p: 0.55, fao56_row: "Sorghum - grain"}
+  algodao_us:
+    name_pt: Algodão
+    abbr: Ag
+    name_en: Upland cotton
+    revenue_pam_code: 840005
+    anomaly_pam_code: 840005
+    kc: {ini: 0.35, mid: 1.175, end: 0.60, range_mid: [1.15, 1.20], range_end: [0.70, 0.50], fao56_row: "Cotton (fibre group Kc ini)"}
+    root: {zr_m: 1.7, range_m: [1.0, 1.7], p: 0.65, fao56_row: "Cotton"}
+
+kc_source: "FAO-56 (Allen et al., 1998), Table 12, https://www.fao.org/4/x0490e/x0490e0b.htm"
+
+# Rooting depth Zr and depletion fraction p: FAO-56 Table 22, read from
+# https://www.fao.org/4/x0490e/x0490e0e.htm on 2026-11-14. Zr is the UPPER end of each range, per
+# the table's note 1: "the larger values for Zr [are] for modeling soil water stress or for rainfed
+# conditions". p is adjusted daily for ETc (note 2): p = p_table + 0.04 (5 - ETc), 0.1 <= p <= 0.8.
+root_source: "FAO-56 (Allen et al., 1998), Table 22, https://www.fao.org/4/x0490e/x0490e0e.htm"
+
+# Daily soil water balance (pipeline/soilwater.py), FAO-56 chapters 7, 8 and 11.
+soil_water:
+  # Evaporation layer depth Ze for bare soil, Eq. 73; FAO-56 recommends 0.10-0.15 m (midpoint).
+  ze_m: 0.125
+  # Daily rain below this fraction of ET0 is ignored ("normally entirely evaporated", FAO-56 ch. 8).
+  min_rain_fraction_et0: 0.2
+  # Bare/fallow soil: Kc = Kc ini of the crop just harvested (FAO-56 ch. 11, "Kc = Kc ini").
+  fallow_kc: kc_ini_of_previous_crop
+  # Simulation: continuous from the first day with complete ET0 inputs (POWER solar radiation
+  # starts 1984-01-01); the first half crop year is spin-up and is not scored.
+  start: "1984-01-01"
+  source: >-
+    FAO-56 Eqs. 73, 80-88 and chapter 11, https://www.fao.org/4/x0490e/x0490e0e.htm. Simplified to
+    one bucket, roots at maximum depth from sowing, no runoff, and an evaporation cut-off at TEW.
+
+# Sowing and harvest (or cover-crop termination) months per region. The CONAB "Calendario de
+# Plantio e Colheita de Graos no Brasil" (2022) is the citable source to check these against:
+# https://antigo.conab.gov.br/outras-publicacoes/item/download/45710_77f0a5ee35e765e2248999f4c61e70c8
+# It could not be read from the build environment (the server's TLS certificate does not match its
+# hostname), so every window below is general agronomic knowledge and marked suposicao.
+calendars:
+  rs:
+    source: suposicao
+    soja: {sow: 11, harvest: 4}
+    milho: {sow: 9, harvest: 2}
+    trigo: {sow: 6, harvest: 11}
+    aveia: {sow: 5, harvest: 10}
+    aveia_cobertura: {sow: 5, harvest: 10}
+    canola: {sow: 5, harvest: 10}
+  matopiba:
+    source: suposicao
+    soja: {sow: 11, harvest: 3}
+    milho: {sow: 11, harvest: 4}
+    sorgo: {sow: 3, harvest: 7}
+    milheto_cobertura: {sow: 3, harvest: 6}
+    algodao: {sow: 12, harvest: 7}
+
+# Candidates per region. Each lists the crops in the order they enter the field within one crop
+# year; `override` changes one crop's window for this rotation only (e.g. a cover crop that must
+# end before an early maize sowing). Consecutive crops may share a month (harvest A, sow B).
+  # USDA NASS, Usual Planting and Harvesting Dates for U.S. Field Crops, Agricultural Handbook 628
+  # (1997), state tables. Month = the month holding the midpoint of the "most active" window.
+  # Double-crop entries are not in the handbook and carry their own `source: suposicao`.
+  us_cornbelt:
+    source: USDA NASS AH-628 (1997), Illinois
+    milho_us: {sow: 5, harvest: 10}            # Apr 30 - May 18; Oct 9 - Nov 3
+    soja_us: {sow: 5, harvest: 10}             # May 15 - Jun 9; Oct 1 - Oct 19
+    trigo_inverno_frio: {sow: 10, harvest: 7}  # Oct 13 - Oct 29; Jun 30 - Jul 8
+    soja_safrinha_us: {sow: 7, harvest: 10, source: suposicao}
+  us_plains:
+    source: USDA NASS AH-628 (1997), Texas (state level, not Lubbock County)
+    algodao_us: {sow: 5, harvest: 11}          # May 5 - Jun 6; Oct 1 - Dec 2
+    sorgo_us: {sow: 4, harvest: 8}             # Mar 22 - May 23; Jul 19 - Oct 10
+    trigo_inverno: {sow: 10, harvest: 6}       # Sep 16 - Oct 21; Jun 10 - Jun 30
+    sorgo_safrinha_us: {sow: 6, harvest: 10, source: suposicao}
+
+rotations:
+  rs:
+    - id: soja_trigo
+      crops: [soja, trigo]
+    - id: soja_aveia_cobertura
+      crops: [soja, aveia_cobertura]
+    - id: soja_aveia
+      crops: [soja, aveia]
+    - id: soja_canola
+      crops: [soja, canola]
+    - id: milho_aveia_cobertura
+      crops: [milho, aveia_cobertura]
+      override: {aveia_cobertura: {sow: 4, harvest: 8}}
+    - id: soja_pousio
+      crops: [soja]
+  matopiba:
+    - id: soja_pousio
+      crops: [soja]
+    - id: soja_milheto_cobertura
+      crops: [soja, milheto_cobertura]
+    - id: soja_sorgo
+      crops: [soja, sorgo]
+    - id: algodao
+      crops: [algodao]
+    - id: milho_pousio
+      crops: [milho]
+  us_cornbelt:
+    - id: milho_pousio
+      crops: [milho_us]
+    - id: soja_pousio
+      crops: [soja_us]
+    - id: trigo_pousio
+      crops: [trigo_inverno_frio]
+    - id: trigo_soja
+      crops: [trigo_inverno_frio, soja_safrinha_us]
+  us_plains:
+    - id: algodao
+      crops: [algodao_us]
+    - id: sorgo_pousio
+      crops: [sorgo_us]
+    - id: trigo_pousio
+      crops: [trigo_inverno]
+    - id: trigo_sorgo
+      crops: [trigo_inverno, sorgo_safrinha_us]

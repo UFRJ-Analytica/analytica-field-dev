@@ -1,0 +1,193 @@
+# Registry of candidate data sources, and one tiny request per source to prove it answers.
+#
+# `pipeline/probe_sources.py` sends each `probe` request (a few KB at most) and prints what came
+# back. It downloads nothing to data/ and is safe to run any time, e.g. from a Brazilian network
+# where IBGE localidades and INMET answer (they reset connections from outside Brazil).
+#
+# Fields:
+#   coverage   global | brazil          -- Field Phase is Brazil-only; US-only datasets
+#                                        (PRISM, NRCS, CropScape, NLCD, NAIP, CoCoRaHS, USGS
+#                                        water, Ag Data Commons) are excluded, see
+#                                        docs/data_sources.md
+#   access     api | file | scrape | portal
+#   auth       none | earthdata | ers | key
+#   use        core | phase2 | phase3 | reference
+#   verified   result from the Linux cloud probe of 2026-11-14 (see docs/data_sources.md)
+
+sources:
+  # ---- ENSO -------------------------------------------------------------------------------
+  - id: cpc_roni
+    name: NOAA CPC Relative Oceanic Nino Index (official since Feb 2026)
+    coverage: global
+    access: file
+    auth: none
+    cadence: monthly (by the 5th)
+    use: core
+    probe: https://www.cpc.ncep.noaa.gov/data/indices/RONI.ascii.txt
+    verified: ok
+  - id: cpc_oni
+    name: NOAA CPC Oceanic Nino Index
+    coverage: global
+    access: file
+    auth: none
+    cadence: monthly
+    use: core
+    probe: https://www.cpc.ncep.noaa.gov/data/indices/oni.ascii.txt
+    verified: ok
+  - id: cpc_weekly_nino
+    name: NOAA CPC weekly Nino-1+2/3/3.4/4 SST (1991-2020 base)
+    coverage: global
+    access: file
+    auth: none
+    cadence: weekly
+    use: core
+    probe: https://www.cpc.ncep.noaa.gov/data/indices/wksst9120.for
+    verified: ok
+  - id: cpc_discussion
+    name: NOAA CPC ENSO Diagnostic Discussion
+    coverage: global
+    access: scrape
+    auth: none
+    cadence: monthly (2nd Thursday)
+    use: core
+    probe: https://www.cpc.ncep.noaa.gov/products/analysis_monitoring/enso_advisory/ensodisc.shtml
+    verified: ok
+  - id: cpc_strength
+    name: NOAA CPC Official ENSO Strength Probabilities
+    coverage: global
+    access: scrape
+    auth: none
+    cadence: monthly (2nd Thursday)
+    use: core
+    probe: https://cpc.ncep.noaa.gov/products/analysis_monitoring/enso/roni/strengths/
+    verified: ok
+
+  # ---- Climate / agroclimate --------------------------------------------------------------
+  - id: nasa_power
+    name: NASA POWER daily point API (MERRA-2 / GEOS)
+    coverage: global
+    access: api
+    auth: none
+    cadence: daily, near-real-time
+    use: core
+    probe: https://power.larc.nasa.gov/api/temporal/daily/point?parameters=PRECTOTCORR&community=AG&longitude=-46.02&latitude=-12.20&start=20240101&end=20240102&format=JSON
+    verified: ok
+  - id: chirps
+    name: CHIRPS v3.0 rainfall, 0.05 deg, 1981- (UCSB CHC; Latin America subset)
+    coverage: global
+    access: file
+    auth: none
+    cadence: pentadal (prelim +2 days; final ~3rd week of next month)
+    use: phase2
+    probe: https://data.chc.ucsb.edu/products/CHIRPS/v3.0/monthly/latam/
+    verified: ok (old /products/CHIRPS-2.0/ path now 404; one HTTP 429 seen -- throttle)
+  - id: nasa_cmr
+    name: NASA CMR search (SMAP, IMERG, MODIS, SRTM metadata)
+    coverage: global
+    access: api
+    auth: none (search) / earthdata (download)
+    cadence: per product
+    use: phase2
+    probe: https://cmr.earthdata.nasa.gov/search/granules.json?short_name=SPL4SMGP&page_size=1&sort_key=-start_date
+    verified: ok (search only; downloads need Earthdata login)
+  - id: meteomatics
+    name: Meteomatics Weather API (15-day mix, ECMWF extended + seasonal ensembles)
+    coverage: global
+    access: api
+    auth: key (HTTP basic; Space Apps hackathon or free Basic account)
+    cadence: several runs per day; seasonal monthly
+    use: core
+    probe: https://api.meteomatics.com/
+    verified: ok with the hackathon account (all products in config/meteomatics.yaml); unauthenticated probe gets 401
+  - id: planetary_computer
+    name: Microsoft Planetary Computer STAC (MODIS NDVI, io-lulc land cover, Copernicus DEM)
+    coverage: global
+    access: api
+    auth: none (anonymous SAS tokens)
+    cadence: per collection (MODIS 16-day)
+    use: core
+    probe: https://planetarycomputer.microsoft.com/api/stac/v1/collections/modis-13Q1-061
+    verified: ok; data on modiseuwest / ai4edataeuwest / elevationeuwest .blob.core.windows.net
+  - id: inmet
+    name: INMET station API (Brazil)
+    coverage: brazil
+    access: api
+    auth: none / token for some endpoints
+    cadence: hourly
+    use: reference
+    probe: https://apitempo.inmet.gov.br/estacoes/T
+    verified: ok with a User-Agent header (668 automatic stations); empty reply without one
+  # ---- Yield, land use, crops -------------------------------------------------------------
+  - id: ibge_sidra
+    name: IBGE SIDRA (PAM table 1612 yield / area)
+    coverage: brazil
+    access: api
+    auth: none
+    cadence: annual
+    use: core
+    probe: https://apisidra.ibge.gov.br/values/t/1612/n6/2919553/v/112/p/2016/c81/2713
+    verified: ok
+  - id: ibge_localidades
+    name: IBGE localidades + malhas APIs
+    coverage: brazil
+    access: api
+    auth: none
+    cadence: static
+    use: core
+    probe: https://servicodados.ibge.gov.br/api/v1/localidades/municipios/2919553
+    verified: connection reset from the cloud runner -- works from Brazil (Phase 0 ran there)
+  - id: ibge_geoftp
+    name: IBGE municipal mesh, per-state shapefiles (fallback for localidades/malhas)
+    coverage: brazil
+    access: file
+    auth: none
+    cadence: annual mesh
+    use: core
+    probe: https://geoftp.ibge.gov.br/organizacao_do_territorio/malhas_territoriais/malhas_municipais/municipio_2025/UFs/RS/
+    verified: ok from the cloud runner (2025 mesh; RS 10 MB, BA 14 MB zip)
+  - id: gaez
+    name: FAO GAEZ v4 (crop suitability, attainable yield)
+    coverage: global
+    access: portal
+    auth: none
+    cadence: static
+    use: phase3
+    probe: https://gaez.fao.org/
+    verified: ok (ArcGIS Hub front end; raster access path not yet mapped)
+  # ---- Soil / terrain / imagery -----------------------------------------------------------
+  - id: soilgrids
+    name: ISRIC SoilGrids 250 m REST
+    coverage: global
+    access: api
+    auth: none
+    cadence: static
+    use: core
+    probe: https://rest.isric.org/soilgrids/v2.0/properties/query?lon=-46.02&lat=-12.20&property=wv0033&depth=0-5cm&value=mean
+    verified: ok (slow, first call timed out once)
+  - id: usgs_m2m
+    name: USGS EarthExplorer Machine-to-Machine API (Landsat, SRTM)
+    coverage: global
+    access: api
+    auth: ers
+    cadence: per product
+    use: reference
+    probe: https://m2m.cr.usgs.gov/api/api/json/stable/
+    verified: API alive (JSON 404 on the bare base; every call needs an ERS login + M2M access request)
+  - id: fao56
+    name: FAO-56 Crop evapotranspiration (Allen et al., 1998) -- Kc table and Penman-Monteith ET0
+    coverage: global
+    access: file
+    auth: none
+    cadence: static
+    use: reference
+    probe: https://www.fao.org/4/x0490e/x0490e0b.htm
+    verified: ok (www.fao.org/3/... redirects to /4/...)
+  - id: conab_calendar
+    name: CONAB Calendario de Plantio e Colheita de Graos no Brasil (2022)
+    coverage: brazil
+    access: file
+    auth: none
+    cadence: occasional
+    use: reference
+    probe: https://antigo.conab.gov.br/outras-publicacoes/item/download/45710_77f0a5ee35e765e2248999f4c61e70c8
+    verified: TLS certificate does not match antigo.conab.gov.br from the cloud runner; calendars stay suposicao

@@ -14,6 +14,13 @@ export function getLocale(): Locale {
   return localStorage.getItem(LOCALE_STORAGE_KEY) === 'pt-BR' ? 'pt-BR' : 'en'
 }
 
+/** The short month name in the app's language, from a 1 based month number. */
+export function monthName(month: number): string {
+  return new Intl.DateTimeFormat(getLocale(), { month: 'short', timeZone: 'UTC' })
+    .format(new Date(Date.UTC(2001, month - 1, 1)))
+    .replace('.', '')
+}
+
 /** The one writer of the stored locale. `fs.locale` stays the single source of truth. */
 export function setLocale(locale: Locale): void {
   if (typeof localStorage !== 'undefined') localStorage.setItem(LOCALE_STORAGE_KEY, locale)

@@ -18,7 +18,7 @@ from field_shift_agent.schemas import ChatRequest, ChatResponse
 
 
 def request(question: str = "Open Cass County on the map.") -> ChatRequest:
-    return ChatRequest(field_id="mt-santa-carmem-01", locale="en", question=question, date=date(2026, 11, 12))
+    return ChatRequest(field_id="381825001868504", locale="en", question=question, date=date(2026, 11, 12))
 
 
 def no_numbers(_ctx: Any) -> Any:
@@ -65,9 +65,9 @@ class MapActionValidation(unittest.TestCase):
             self.assertEqual(sorted(schema["required"]), sorted(schema["properties"]))
 
     def test_valid_arguments_are_accepted_as_given(self) -> None:
-        action, output = accept("show_layer", {"layer": "smap-l3"})
+        action, output = accept("show_layer", {"layer": "smap-l4-surface"})
         self.assertIsNotNone(action)
-        self.assertEqual(action.model_dump(), {"tool": "show_layer", "arguments": {"layer": "smap-l3"}})
+        self.assertEqual(action.model_dump(), {"tool": "show_layer", "arguments": {"layer": "smap-l4-surface"}})
         self.assertEqual(output["status"], "queued_for_browser")
 
     def test_unknown_tools_and_bad_arguments_are_rejected(self) -> None:
@@ -91,7 +91,7 @@ class MapActionValidation(unittest.TestCase):
 class OrchestratorMapActions(unittest.TestCase):
     def test_a_map_command_returns_validated_actions_without_reading_data(self) -> None:
         provider = Scripted([
-            calls(("select_region", {"region": "Cass County"}), ("show_layer", {"layer": "smap-l3"})),
+            calls(("select_region", {"region": "Cass County"}), ("show_layer", {"layer": "smap-l4-surface"})),
             SUBMIT,
         ])
         response = run(request(), provider, numbers_loader=no_numbers)
@@ -99,7 +99,7 @@ class OrchestratorMapActions(unittest.TestCase):
         self.assertEqual(response.mode, "agent")
         self.assertEqual([a.model_dump() for a in response.map_actions], [
             {"tool": "select_region", "arguments": {"region": "Cass County"}},
-            {"tool": "show_layer", "arguments": {"layer": "smap-l3"}},
+            {"tool": "show_layer", "arguments": {"layer": "smap-l4-surface"}},
         ])
         self.assertIn("select_region", provider.tool_names)
         self.assertTrue(all(r["status"] == "queued_for_browser" for r in provider.results))
@@ -118,7 +118,7 @@ class OrchestratorMapActions(unittest.TestCase):
 
     def test_the_tool_call_limit_bounds_the_map_actions(self) -> None:
         # The orchestrator's limit of 8 tool calls per question applies to map actions too.
-        many = [("show_layer", {"layer": "smap-l3"})] * MAX_MAP_ACTIONS
+        many = [("show_layer", {"layer": "smap-l4-surface"})] * MAX_MAP_ACTIONS
         response = run(request(), Scripted([calls(*many), SUBMIT]), numbers_loader=no_numbers)
         self.assertEqual(len(response.map_actions), MAX_MAP_ACTIONS)
         over = Scripted([calls(*many), calls(("show_layer", {"layer": "imerg-daily"})), SUBMIT])

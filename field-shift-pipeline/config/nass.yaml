@@ -1,0 +1,61 @@
+# USDA NASS Quick Stats: the US counterpart of IBGE PAM, read by pipeline/fetch_nass.py.
+#
+# API: https://quickstats.nass.usda.gov/api (GET api_GET/, key as the `key` parameter, 50 000
+# records per request). Needs a free key; set NASS_API_KEY in your own shell. The key is never
+# written to disk: responses are cached under data/raw/nass/ by county and commodity, and logged
+# URLs have the key replaced by ***.
+#
+# Rows are matched on Quick Stats columns, not on the free-text short_desc, so a renamed
+# description does not silently drop data. Every match also requires
+# prodn_practice_desc = ALL PRODUCTION PRACTICES and domain_desc = TOTAL.
+#
+# Crop codes 84000x are project identifiers (840 = ISO 3166 numeric code of the USA). They only
+# exist so US crops can sit in the same tables as the IBGE SIDRA codes; they are not NASS codes.
+
+base_url: https://quickstats.nass.usda.gov/api/api_GET/
+first_year: 1975
+# Revenue per hectare (rotation income score): county yield x the state's value of production per
+# harvested acre / the state yield, over the last N years. Uses only NASS series in the same unit,
+# so no bushel weight is needed.
+revenue_years: 5
+acre_m2: 4046.8564224   # international acre, exact by definition (NIST Handbook 44, Appendix C)
+
+crops:
+  840001:
+    name_en: Corn (grain)
+    name_pt: Milho (grão)
+    commodity_desc: CORN
+    class_desc: ALL CLASSES
+    yield_unit: BU / ACRE
+    utilization: {yield: GRAIN, area_harvested: GRAIN, area_planted: ALL UTILIZATION PRACTICES, production_value: GRAIN}
+  840002:
+    name_en: Soybeans
+    name_pt: Soja
+    commodity_desc: SOYBEANS
+    class_desc: ALL CLASSES
+    yield_unit: BU / ACRE
+    utilization: {yield: ALL UTILIZATION PRACTICES, area_harvested: ALL UTILIZATION PRACTICES, area_planted: ALL UTILIZATION PRACTICES, production_value: ALL UTILIZATION PRACTICES}
+  840003:
+    name_en: Winter wheat
+    name_pt: Trigo de inverno
+    commodity_desc: WHEAT
+    class_desc: WINTER
+    yield_unit: BU / ACRE
+    utilization: {yield: ALL UTILIZATION PRACTICES, area_harvested: ALL UTILIZATION PRACTICES, area_planted: ALL UTILIZATION PRACTICES, production_value: ALL UTILIZATION PRACTICES}
+    # NASS may publish the state value of production for all wheat only; then the all-wheat
+    # value per acre and yield stand in, and the revenue row says so.
+    value_fallback_class: ALL CLASSES
+  840004:
+    name_en: Sorghum (grain)
+    name_pt: Sorgo (grão)
+    commodity_desc: SORGHUM
+    class_desc: ALL CLASSES
+    yield_unit: BU / ACRE
+    utilization: {yield: GRAIN, area_harvested: GRAIN, area_planted: ALL UTILIZATION PRACTICES, production_value: GRAIN}
+  840005:
+    name_en: Upland cotton
+    name_pt: Algodão
+    commodity_desc: COTTON
+    class_desc: UPLAND
+    yield_unit: LB / ACRE
+    utilization: {yield: ALL UTILIZATION PRACTICES, area_harvested: ALL UTILIZATION PRACTICES, area_planted: ALL UTILIZATION PRACTICES, production_value: ALL UTILIZATION PRACTICES}

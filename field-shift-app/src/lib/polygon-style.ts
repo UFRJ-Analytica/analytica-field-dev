@@ -95,11 +95,8 @@ export function lineWidthExpression(): ExpressionSpecification {
  * prints the year actually painted, not the date's own year.
  */
 export function paintedClassYear(region: RegionAdapter, date: string, classSource?: string): number | null {
-  if (region.id === 'br') {
-    const source = classSource ?? region.classSource
-    if (source === 'mbmode24') return 2024
-    if (source === 'class_id') return 2025
-    throw new Error(`Brazil paints one class source per load, not ${source}`)
+  if (classSource !== undefined && classSource !== region.classSource) {
+    throw new Error('a load paints one class source')
   }
   const range = region.classYearRange
   if (!range) return null
@@ -111,10 +108,10 @@ export function paintedClassYear(region: RegionAdapter, date: string, classSourc
 
 /**
  * R-21, R-27, R-28 and R-37: the one rule that picks the `No CDL class for {Y}` string over
- * `class not mapped`. A United States null or absent class has no class for the year, so it gets
- * the year text, with the painted year. Every other unmapped value (a United States 0, a nonzero
- * code the table does not hold, and every Brazil value) is a gap in our table and returns null,
- * which keeps `class not mapped`. The tooltip, the fields chip and the legend all call this.
+ * `class not mapped`. A null or absent class has no class for the year, so it gets the year text,
+ * with the painted year. Every other unmapped value (a 0, and a nonzero code the table does not
+ * hold) is a gap in our table and returns null, which keeps `class not mapped`. The tooltip, the
+ * fields chip and the legend all call this.
  */
 export function noCdlYearOf(region: RegionAdapter, classValue: number | null, date: string): number | null {
   if (region.id !== 'us' || classValue !== null) return null
@@ -122,17 +119,12 @@ export function noCdlYearOf(region: RegionAdapter, classValue: number | null, da
 }
 
 /**
- * R-13 and R-18: the property the paint and the readout read. The United States uses
- * `cdl{Y}` of the clamped year, so one paint expression reads one property; Brazil uses the
- * one class property `/polygons/mode` reports for the load.
+ * R-13 and R-18: the property the paint and the readout read. It is `cdl{Y}` of the clamped year,
+ * so one paint expression reads one property and never a mix.
  */
 export function classPropertyFor(region: RegionAdapter, date: string, classSource?: string): string {
-  if (region.id === 'br') {
-    const source = classSource ?? null
-    if (source !== 'mbmode24' && source !== 'class_id') {
-      throw new Error('Brazil needs the class source the load reports; a load paints one class source')
-    }
-    return source
+  if (classSource !== undefined && classSource !== region.classSource) {
+    throw new Error('a load paints one class source')
   }
   const year = paintedClassYear(region, date)
   if (year === null) throw new Error('no class year for this region')

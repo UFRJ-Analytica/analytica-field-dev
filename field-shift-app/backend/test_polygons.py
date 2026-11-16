@@ -62,52 +62,9 @@ class PolygonModeTests(unittest.TestCase):
         self.assertEqual(response.status_code, 503)
         self.assertIn("interactive_minzoom", response.json()["detail"])
 
-    def test_brazil_reports_the_self_hosted_extract_when_both_files_exist(self) -> None:
-        with TemporaryDirectory() as temporary:
-            directory = Path(temporary)
-            (directory / "br-mt-detail.pmtiles").write_bytes(b"pmtiles")
-            (directory / "br-mt-overview.pmtiles").write_bytes(b"pmtiles")
-            with patch.object(main, "POLYGON_DIR", directory):
-                response = self.client.get("/polygons/mode", params={"region": "br"})
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(
-            response.json(),
-            {
-                "region": "br",
-                "mode": "self-hosted",
-                "classProperty": "mbmode24",
-                "detail_file": "/data/polygons/br-mt-detail.pmtiles",
-                "overview_file": "/data/polygons/br-mt-overview.pmtiles",
-            },
-        )
-
-    def test_brazil_falls_back_to_the_source_direct_url_without_the_extract(self) -> None:
-        with TemporaryDirectory() as empty:
-            with patch.object(main, "POLYGON_DIR", Path(empty)):
-                response = self.client.get("/polygons/mode", params={"region": "br"})
-        self.assertEqual(response.status_code, 200)
-        body = response.json()
-        self.assertEqual(body["mode"], "source-direct")
-        self.assertEqual(body["classProperty"], "mbmode24")
-        self.assertEqual(
-            body["detail_file"],
-            "https://data.source.coop/wri-data-lab/trazofields/trazo3-fields/trazo3.pmtiles",
-        )
-        self.assertIsNone(body["overview_file"])
-
     def test_an_unknown_region_is_rejected(self) -> None:
         response = self.client.get("/polygons/mode", params={"region": "fr"})
         self.assertEqual(response.status_code, 422)
-
-    def test_the_route_reads_no_tile(self) -> None:
-        # A tile read would reach httpx or the cache; patching them to raise proves neither runs.
-        with patch.object(main.httpx, "get", side_effect=AssertionError("a tile was read")):
-            self.assertEqual(self.client.get("/polygons/mode", params={"region": "us"}).status_code, 200)
-            self.assertEqual(self.client.get("/polygons/mode", params={"region": "br"}).status_code, 200)
-
-
-class SelectFieldGuardTests(unittest.TestCase):
-    """AM-05: the guard text names both polygon id forms, and the validator still accepts them."""
 
     def test_the_guard_names_the_fixture_field_and_the_two_polygon_forms(self) -> None:
         entry = next(item for item in main.COMMANDS if item["name"] == "select_field")

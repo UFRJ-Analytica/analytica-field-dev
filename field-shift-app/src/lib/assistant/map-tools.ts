@@ -96,38 +96,72 @@ function hasWord(text: string, phrase: string): boolean {
 
 // ----- catalogs ---------------------------------------------------------------------------------
 
-export const REGION_ALIASES: Record<RegionId, string[]> = {
-  us: ['cass county', 'condado de cass', 'cass', 'north dakota', 'dakota do norte', 'fargo', 'united states',
-    'estados unidos', 'eua', 'usa'],
-  br: ['santa carmem', 'mato grosso', 'brazil', 'brasil'],
+/**
+ * The places the app holds. Since the team's publishing work the app mounts one region, the United
+ * States, with the three Cass County fields and the McLean (IL) and Lubbock (TX) pilots, so a "region"
+ * the farmer names is one of these counties. Opening it selects its first field, which moves the map.
+ * `fieldIds` is the fallback when the `/fields` list has not loaded (its `location` is used first).
+ */
+export type PlaceId = 'cass' | 'mclean' | 'lubbock' | 'us'
+export const PLACES: Record<PlaceId, { label: string; location: string | null; fieldIds: string[]; aliases: string[] }> = {
+  cass: { label: 'Cass County', location: 'cass county', fieldIds: ['381825001868504', '381825001868512', '381825001868517'],
+    aliases: ['cass county', 'condado de cass', 'cass', 'north dakota', 'dakota do norte', 'fargo'] },
+  mclean: { label: 'McLean County', location: 'mclean county', fieldIds: ['il-mclean-01'],
+    aliases: ['mclean county', 'condado de mclean', 'mclean', 'illinois'] },
+  lubbock: { label: 'Lubbock County', location: 'lubbock county', fieldIds: ['tx-lubbock-01'],
+    aliases: ['lubbock county', 'condado de lubbock', 'lubbock', 'texas'] },
+  us: { label: 'United States', location: null, fieldIds: [], aliases: ['united states', 'estados unidos', 'eua', 'usa'] },
 }
 
-export function resolveRegion(name: string): RegionId | null {
-  const hits = (Object.keys(REGION_ALIASES) as RegionId[]).filter((id) =>
-    REGION_ALIASES[id].some((alias) => hasWord(name, alias)) || norm(name).trim() === id)
+/** Places the app no longer holds: recognised, so the answer can say so instead of guessing. */
+export const UNAVAILABLE_PLACES = ['santa carmem', 'mato grosso', 'brazil', 'brasil']
+
+/** Every place word the interpreter may meet, available or not. */
+export const REGION_ALIASES: Record<string, string[]> = {
+  ...Object.fromEntries(Object.entries(PLACES).map(([id, place]) => [id, place.aliases])),
+  unavailable: UNAVAILABLE_PLACES,
+}
+
+export function resolvePlace(name: string): PlaceId | 'unavailable' | null {
+  if (UNAVAILABLE_PLACES.some((alias) => hasWord(name, alias))) return 'unavailable'
+  const hits = (Object.keys(PLACES) as PlaceId[]).filter((id) => PLACES[id].aliases.some((alias) => hasWord(name, alias)))
   return hits.length === 1 ? hits[0] : null
 }
 
-/** Layer words, in the order they are tried, mapped to `/layers` catalog ids. */
-export const LAYER_ALIASES: [string, string[]][] = [
-  ['smap-l3', ['soil moisture', 'umidade do solo', 'umidade', 'moisture', 'smap', 'soil water', 'agua no solo']],
-  ['imerg-daily', ['precipitation', 'precipitacao', 'rainfall', 'rain', 'chuva', 'chuvas', 'imerg']],
-  ['lst-terra', ['land surface temperature', 'surface temperature', 'temperature', 'temperatura', 'lst']],
-  ['ndvi-8day', ['ndvi', 'vegetation', 'vegetacao', 'crop condition', 'crop conditions', 'condicao da lavoura']],
-  ['evi-8day', ['evi']],
-  ['grace-mascon', ['grace', 'groundwater', 'agua subterranea', 'water storage']],
+const PLACE_OPTIONS = 'Cass County, McLean County, Lubbock County'
+
+/** The fields of a place, in the region's fixture order, from `/fields` locations or the fallback ids. */
+function placeFields(place: PlaceId, regionId: RegionId, fields: readonly FieldSummary[]): string[] {
+  const ids = regionAdapter(regionId).fixtureIds
+  const { location, fieldIds } = PLACES[place]
+  if (location === null) return []
+  const byLocation = ids.filter((id) => norm(fields.find((f) => f.id === id)?.location ?? '').includes(` ${location} `))
+  return byLocation.length > 0 ? byLocation : ids.filter((id) => fieldIds.includes(id))
+}
+
+/**
+ * Layer words, in the order they are tried, mapped to `/layers` catalog ids in order of preference. The
+ * first id the active catalog holds wins, so a layer the backend dropped (SMAP L3, after the publishing
+ * work) falls back to the one it serves now (SMAP L4 surface) instead of failing or being invented.
+ */
+export const LAYER_ALIASES: [string[], string[]][] = [
+  [['smap-l3', 'smap-l4-surface', 'smap-l4-root'], ['soil moisture', 'umidade do solo', 'umidade', 'moisture', 'smap', 'soil water', 'agua no solo']],
+  [['imerg-daily', 'imerg-30min'], ['precipitation', 'precipitacao', 'rainfall', 'rain', 'chuva', 'chuvas', 'imerg']],
+  [['lst-terra', 'lst-aqua'], ['land surface temperature', 'surface temperature', 'temperature', 'temperatura', 'lst']],
+  [['ndvi-8day', 'ndvi-monthly'], ['ndvi', 'vegetation', 'vegetacao', 'crop condition', 'crop conditions', 'condicao da lavoura']],
+  [['evi-8day'], ['evi']],
+  [['grace-mascon'], ['grace', 'groundwater', 'agua subterranea', 'water storage']],
 ]
 
 export function resolveLayer(name: string): string | null {
   const catalog = useMapStore.getState().catalog
   const exact = catalog.find((entry) => entry.id === name.trim())
   if (exact) return exact.id
-  for (const [id, words] of LAYER_ALIASES) if (words.some((word) => hasWord(name, word))) return id
+  for (const [ids, words] of LAYER_ALIASES) {
+    if (!words.some((word) => hasWord(name, word))) continue
+    return ids.find((id) => catalog.some((entry) => entry.id === id)) ?? ids[0]
+  }
   return null
-}
-
-function regionPlace(id: RegionId): string {
-  return id === 'us' ? 'Cass County' : 'Santa Carmem'
 }
 
 function regionFields(regionId: RegionId, fields: readonly FieldSummary[]): { id: string; name: string }[] {
@@ -180,16 +214,30 @@ const TOOLS: Record<MapToolName, ToolSpec> = {
   select_region: {
     effect: 'visual',
     validate: (args) => (onlyKeys(args, ['region']) && str(args.region) ? null : 'region'),
-    run: (args) => {
+    run: (args, env) => {
       const name = String(args.region).trim()
-      const options = 'Cass County, Santa Carmem'
+      const options = PLACE_OPTIONS
       if (name === '') return { status: 'needs_clarification', code: 'region_ambiguous', params: { options } }
-      const id = resolveRegion(name)
-      if (id === null) return { status: 'failed', code: 'region_unknown', params: { name, options } }
+      const place = resolvePlace(name)
+      if (place === 'unavailable') return { status: 'failed', code: 'region_not_available', params: { name, options } }
+      if (place === null) return { status: 'failed', code: 'region_unknown', params: { name, options } }
       const state = useMapStore.getState()
-      if (state.regionId === id) return { status: 'success', code: 'region_already', params: { place: regionPlace(id) } }
-      state.setRegionId(id)
-      return { status: 'success', code: 'region_selected', params: { place: regionPlace(id) }, changed: true }
+      const label = PLACES[place].label
+      let changed = false
+      if (state.regionId !== 'us') {
+        state.setRegionId('us')
+        changed = true
+      }
+      // A county is opened by selecting its first field: the map flies to it and the panel reads it.
+      const inPlace = placeFields(place, 'us', env.fields)
+      const current = useMapStore.getState().selectedFieldId
+      if (inPlace.length > 0 && (current === null || !inPlace.includes(current))) {
+        useMapStore.getState().selectField(inPlace[0])
+        changed = true
+      }
+      return changed
+        ? { status: 'success', code: 'region_selected', params: { place: label }, changed: true }
+        : { status: 'success', code: 'region_already', params: { place: label } }
     },
   },
 

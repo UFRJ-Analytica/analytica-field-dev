@@ -40,7 +40,7 @@ export type LimitationCode =
   | 'evland_not_crop_demand'
   | 'palette_not_physical'
   | 'point_sample'
-  | 'experimental_snapshot'
+  | 'computed_crop_water'
   | 'standard_kc'
   | 'climatic_difference_not_irrigation'
   | 'historical_not_forecast'
@@ -127,8 +127,8 @@ export type CropWaterResult = {
 }
 
 export type CropWaterSet = {
-  /** Where the numbers come from: `experimental_snapshot` now, `api` once a route is approved. */
-  origin: 'experimental_snapshot' | 'api'
+  /** Where the numbers come from: the backend route `GET /fields/<id>/crop-water`. */
+  origin: 'api'
   fieldId: string
   point: { longitude: number; latitude: number }
   period: { start: string; end: string; chosenDate: string }

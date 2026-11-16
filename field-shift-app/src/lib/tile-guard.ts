@@ -1,6 +1,6 @@
+import { API_BASE } from './api-base'
 import type { LayerStatus } from './layer-catalog'
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'
 
 /** What the map may do with a tile, and what the rail has to say about it. */
 export type TileDecision = {

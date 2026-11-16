@@ -25,9 +25,14 @@ export type FieldSummary = {
   id: string
   name: string
   location: string
-  coverage: number
+  /** Null for a pilot field: the pipeline measured no coverage for it, so it abstains. */
+  coverage: number | null
   center: [number, number]
   boundary: { type: 'Polygon'; coordinates: number[][][] }
+  /** The county or municipality the field sits in, when the export names one. */
+  municipality_code?: number | null
+  /** True for the synthetic pilot fields the pipeline exports. */
+  synthetic?: boolean
 }
 
 /** `insetRight` keeps the framed geometry clear of a panel drawn over the right side of the map. */
@@ -147,7 +152,7 @@ type MapState = {
 const DEFAULT_ORDER = LAYER_CATALOG.map((entry) => entry.id)
 // Only the block 1 layer starts visible, so R-19 holds at first paint: a layer that is
 // off issues no tile request, and the transport sees `smap-l3` alone (AC-15).
-const DEFAULT_ON = { 'smap-l3': true }
+const DEFAULT_ON = { 'smap-l4-surface': true }
 
 export const useMapStore = create<MapState>((set, get) => ({
   selectedFieldId: null,

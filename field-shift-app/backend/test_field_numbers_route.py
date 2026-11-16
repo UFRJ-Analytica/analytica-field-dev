@@ -22,6 +22,7 @@ from fastapi.testclient import TestClient
 
 import field_numbers
 import main
+import rate_limit
 from block6_replay import ARTIFACTS, ReplayTransport, create_sidecar, fixture_rows, ring_with_area_ha
 
 # A 22.4 ha ring centred on the fixture point, so R-50 compares like with like. The spec's Table B
@@ -48,6 +49,9 @@ class RouteCase(unittest.TestCase):
             patch.object(field_numbers, "clock", lambda: self.clock["now"]),
             patch.object(field_numbers, "MAPBIOMAS_DB", self.db),
             patch.object(field_numbers, "transport", self.transport),
+            # The limiter is per client address and this module posts from the same one in every
+            # case, so it is off here; NumbersRateLimitTests turns it back on for itself.
+            patch.dict(os.environ, {"NUMBERS_RATE_LIMIT_REQUESTS": "0"}),
         ]
         for item in self.patches:
             item.start()
@@ -81,7 +85,11 @@ class RouteInventoryTests(RouteCase):
             for r in main.app.routes
             if getattr(r, "methods", None) and r.path not in ("/openapi.json", "/docs", "/docs/oauth2-redirect", "/redoc")
         )
-        self.assertEqual(len(api), 11, api)
+        # Eleven routes of the team's main, plus the three of the merged Field Phase blocks 9 and 10
+        # (ENSO, the field climate line and the static report export).
+        self.assertEqual(len(api), 15, api)
+        for route in [("GET", "/climate/enso"), ("GET", "/fields/{field_id}/climate"), ("GET", "/fieldphase/data/v1/{path:path}")]:
+            self.assertIn(route, api)
         self.assertIn(("POST", "/fields/{field_id}/numbers"), api)
 
 
@@ -517,6 +525,48 @@ class RouteLiveSmokeTests(unittest.TestCase):
         recorded = ARTIFACTS / f"live-smoke-{datetime.now(timezone.utc):%Y-%m-%d}.json"
         recorded.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
 
+
+
+class NumbersRateLimitTests(RouteCase):
+    """Item 4 of the publishing fixes: the one slow route is throttled per client address."""
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.previous = {
+            name: os.environ.get(name)
+            for name in ("NUMBERS_RATE_LIMIT_REQUESTS", "NUMBERS_RATE_LIMIT_WINDOW_SECONDS")
+        }
+        os.environ["NUMBERS_RATE_LIMIT_REQUESTS"] = "2"
+        os.environ["NUMBERS_RATE_LIMIT_WINDOW_SECONDS"] = "60"
+        rate_limit.reset()
+        self.addCleanup(self._restore)
+
+    def _restore(self) -> None:
+        for name, value in self.previous.items():
+            if value is None:
+                os.environ.pop(name, None)
+            else:
+                os.environ[name] = value
+        rate_limit.reset()
+
+    def test_the_request_after_the_window_is_429_with_retry_after(self) -> None:
+        self.assertEqual(self.post().status_code, 200)
+        self.assertEqual(self.post().status_code, 200)
+        blocked = self.post()
+        self.assertEqual(blocked.status_code, 429, blocked.text)
+        self.assertEqual(blocked.headers.get("Retry-After"), "60")
+        self.assertIn("at most 2 in 60 s", blocked.json()["detail"])
+
+    def test_a_window_of_zero_seconds_lets_the_next_request_through(self) -> None:
+        os.environ["NUMBERS_RATE_LIMIT_WINDOW_SECONDS"] = "0.001"
+        self.assertIn(self.post().status_code, (200, 429))
+        for _ in range(3):
+            self.assertEqual(self.post().status_code, 200)
+
+    def test_the_default_allowance_is_sixty_requests_a_minute_per_worker(self) -> None:
+        os.environ.pop("NUMBERS_RATE_LIMIT_REQUESTS", None)
+        os.environ.pop("NUMBERS_RATE_LIMIT_WINDOW_SECONDS", None)
+        self.assertEqual(main._numbers_rate_limit(), (60, 60.0))
 
 
 if __name__ == "__main__":

@@ -26,6 +26,10 @@ field-shift-app/artifacts/*.png
 # two small Table G records and the class tables under data/polygons stay in the
 # tree, because the app reads the manifest at load and the gate reads the records.
 field-shift-app/data/polygons/*.pmtiles
+# the two United States tiers are the app's own runtime input and are small (about 70 KB and 2 KB),
+# so they are versioned; the build copies them into dist/data/polygons. everything else stays out.
+!field-shift-app/data/polygons/us-38017-detail.pmtiles
+!field-shift-app/data/polygons/us-38017-overview.pmtiles
 field-shift-app/data/polygons/*.sqlite
 field-shift-app/data/work/
 
