@@ -190,6 +190,41 @@ class NormalsTests(unittest.TestCase):
         self.assertEqual(totals.excluded, [1999])
         self.assertEqual(len(totals.included), 34)
 
+    def test_r20_a_window_ending_on_29_february_clamps_in_a_non_leap_year(self) -> None:
+        # A window built from 1992, which is a leap year, replayed over 1991, which is not. Before
+        # the clamp this raised ValueError("day 29 must be in range 1..28 for month 2 in year 1991")
+        # inside _calendar_window, so the route answered 500 and the request hung the process.
+        window = agg.Window(start=date(1992, 1, 19), end=date(1992, 2, 29), days=42, valid_days=42,
+                            dropped_days=0, chosen=date(1992, 2, 29))
+        days = agg._calendar_window(window, 1991)
+        self.assertEqual(days[0], date(1991, 1, 19))
+        self.assertEqual(days[-1], date(1991, 2, 28))
+        self.assertEqual(len(days), 41)
+        totals = agg.normal_totals({}, window, years=[1991])
+        self.assertEqual(totals.excluded, [1991])
+
+    def test_r20_a_window_starting_on_29_february_clamps_in_a_non_leap_year(self) -> None:
+        # The other endpoint: the start clamps to 28 February and the end is untouched, so the span
+        # keeps its 42 days.
+        window = agg.Window(start=date(1992, 2, 29), end=date(1992, 4, 10), days=42, valid_days=42,
+                            dropped_days=0, chosen=date(1992, 4, 10))
+        days = agg._calendar_window(window, 1991)
+        self.assertEqual(days[0], date(1991, 2, 28))
+        self.assertEqual(days[-1], date(1991, 4, 10))
+        self.assertEqual(len(days), 42)
+        totals = agg.normal_totals({}, window, years=[1991])
+        self.assertEqual(totals.excluded, [1991])
+
+    def test_r20_a_window_crossing_the_new_year_ends_in_the_next_year(self) -> None:
+        # The one pair that clamps backwards: a December start and a January end both land in the
+        # replay year, so the end moves to the following year rather than the span collapsing.
+        window = agg.Window(start=date(2026, 12, 1), end=date(2027, 1, 11), days=42, valid_days=42,
+                            dropped_days=0, chosen=date(2027, 1, 11))
+        days = agg._calendar_window(window, 1991)
+        self.assertEqual(days[0], date(1991, 12, 1))
+        self.assertEqual(days[-1], date(1992, 1, 11))
+        self.assertEqual(len(days), 42)
+
     def test_r20_rank_abstains_when_the_current_window_is_incomplete(self) -> None:
         incomplete = agg.Window(start=date(2026, 10, 1), end=date(2026, 11, 11), days=42, valid_days=41,
                                 dropped_days=0, chosen=date(2026, 11, 11))

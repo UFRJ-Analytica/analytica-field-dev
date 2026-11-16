@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import math
 import statistics
+from calendar import monthrange
 from dataclasses import dataclass, field
 from datetime import date, timedelta
 from decimal import ROUND_HALF_UP, Decimal
@@ -179,9 +180,27 @@ def hot_days(tmax: dict[date, float], window: Window) -> tuple[int | None, int]:
 
 # --- normals over the same calendar window in earlier years (R-20, Table B2) ------------------
 
+def _clamped(year: int, month: int, day: int) -> date:
+    """The same month and day in another year, clamped to that month's last day.
+
+    The normals re-express the climate window in each earlier year by keeping its month and day, and
+    a window built from a recent year can carry 29 February. The window is a calendar span, so when
+    the day does not exist in that year the nearest valid day, the month's last, is used: that keeps
+    the span within one day of its original length, where skipping the year would throw away a
+    measurement and inventing another month or day would answer a different question.
+    """
+    return date(year, month, min(day, monthrange(year, month)[1]))
+
+
 def _calendar_window(window: Window, year: int) -> list[date]:
-    start = date(year, window.start.month, window.start.day)
-    end = date(year, window.end.month, window.end.day)
+    start = _clamped(year, window.start.month, window.start.day)
+    end = _clamped(year, window.end.month, window.end.day)
+    if end < start:
+        # The only pair that clamps backwards is a span that crosses the new year (a December start
+        # and a January end): both endpoints land in `year` and the end comes before the start. The
+        # span is the one that ends in the following year, so the end moves there instead of the
+        # window being shortened or dropped.
+        end = _clamped(year + 1, window.end.month, window.end.day)
     return _span(start, end)
 
 
