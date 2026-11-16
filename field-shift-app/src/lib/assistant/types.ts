@@ -60,6 +60,9 @@ export type Intent =
   | 'sources'
   | 'missing'
   | 'recommendation'
+  /** Map commands (Geospatial Agent Tools): two variables over one window, and the water signals. */
+  | 'compare'
+  | 'water_risk'
   | 'unsupported'
 
 export type AssistantResponse = {

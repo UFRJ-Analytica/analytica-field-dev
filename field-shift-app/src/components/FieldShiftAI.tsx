@@ -11,7 +11,7 @@
  *   team's four panels live in `PanelHost` over the scenario slot, and this panel sits beside it.
  */
 import { useEffect, useId, useMemo, useRef, useState, type FormEvent } from 'react'
-import { useMapStore, type FieldSummary } from '@/lib/map-store'
+import { chosenDateOf, useMapStore, type FieldSummary } from '@/lib/map-store'
 import { regionAdapter } from '@/lib/regions'
 import { answerIntent, classifyIntent, evidenceLabel, evidenceValue } from '@/lib/assistant/answers'
 import type { AgentChatRequest, AgentChatResponse } from '@/lib/assistant/agent-api'
@@ -19,12 +19,16 @@ import { useFieldContext } from '@/lib/assistant/context'
 import { OVERVIEW_METRICS, summaryEvidence } from '@/lib/assistant/evidence'
 import { formatDate, formatNumber, formatResolution, formatValue } from '@/lib/assistant/format'
 import { useLocale } from '@/lib/assistant/locale'
+import { planCommand } from '@/lib/assistant/map-commands'
+import { executePlan, selectionAfterPlan, type MapToolCall, type MetricVar } from '@/lib/assistant/map-tools'
+import { analysesOf, splitUnmatched, topicOf, type PlanTurn } from '@/lib/assistant/map-turn'
 import type { AssistantResponse, CropWaterSet, Evidence, Intent, LimitationCode } from '@/lib/assistant/types'
 import { fallbackReasonKey, useAgentAvailability, useAgentTurns, type AgentState } from '@/lib/assistant/use-agent'
 import { ASSISTANT_PANEL_ID, ASSISTANT_TOGGLE_ATTR, useAssistantUi } from '@/lib/assistant/ui-store'
 import { useCropWater } from '@/lib/assistant/use-crop-water'
 import { at, type AssistantKey } from '@/strings/assistant'
 import type { Locale } from '@/strings'
+import { FieldShiftAIActions } from './FieldShiftAIActions'
 import './FieldShiftAI.css'
 
 export function FieldShiftAIToggle({ onOpen }: { onOpen?: () => void }) {
@@ -47,7 +51,22 @@ export function FieldShiftAIToggle({ onOpen }: { onOpen?: () => void }) {
 }
 
 /** A suggested question keeps its catalog key, so it follows a language switch; typed text does not change. */
-type Turn = { id: string; question: string; quickKey: AssistantKey | null; intent: Intent }
+type Turn = {
+  id: string
+  question: string
+  quickKey: AssistantKey | null
+  intent: Intent
+  /** A map command: the steps it ran (Geospatial Agent Tools). */
+  plan?: PlanTurn
+  /** The field the turn's answers belong to; another field means they are no longer shown. */
+  boundFieldId?: string | null
+}
+
+/** Example commands of the map, in the order of the main demonstration. */
+const MAP_EXAMPLES: AssistantKey[] = ['mapcmd.ex1', 'mapcmd.ex2', 'mapcmd.ex3', 'mapcmd.ex4']
+
+/** How long a context change the assistant itself caused is told apart from a manual one. */
+const OWN_CHANGE_MS = 5000
 
 /** Steps 2 to 6 of the guided demo, in the order a first-time user reads a field. */
 const DEMO_STEPS: { intent: Intent; key: AssistantKey }[] = [
@@ -104,7 +123,7 @@ function statusText(kind: string, locale: Locale, status?: number): string {
   }
 }
 
-export function FieldShiftAIPanel({ selectedField }: { selectedField: FieldSummary | null }) {
+export function FieldShiftAIPanel({ selectedField, fields = [] }: { selectedField: FieldSummary | null; fields?: readonly FieldSummary[] }) {
   const open = useAssistantUi((state) => state.open)
   const setOpen = useAssistantUi((state) => state.setOpen)
   const [locale, setLocale] = useLocale()
@@ -115,6 +134,10 @@ export function FieldShiftAIPanel({ selectedField }: { selectedField: FieldSumma
   const [draft, setDraft] = useState('')
   const [contextChanged, setContextChanged] = useState(false)
   const lastKey = useRef(context.key)
+  // A change the assistant made itself (a map command) keeps the conversation; a manual change clears it.
+  const ownChange = useRef<{ regionId: string; fieldId: string | null; date: string; until: number } | null>(null)
+  const topic = useRef<MetricVar | null>(null)
+  const executedAgentPlans = useRef(new Set<string>())
   const closeRef = useRef<HTMLButtonElement | null>(null)
   const logRef = useRef<HTMLOListElement | null>(null)
   const headingId = useId()
@@ -134,9 +157,54 @@ export function FieldShiftAIPanel({ selectedField }: { selectedField: FieldSumma
   useEffect(() => {
     if (lastKey.current === context.key) return
     lastKey.current = context.key
+    const own = ownChange.current
+    // After a region switch the app selects the region's first field by itself: within the window, a
+    // field of the region the command opened is still the command's own change, and its turns adopt it.
+    const sameRegion = own !== null && context.regionId === own.regionId
+    if (own && Date.now() < own.until && sameRegion
+      && (context.fieldId === own.fieldId || context.fieldId === null || own.fieldId === null)) {
+      if (own.fieldId === null && context.fieldId !== null) {
+        const adopted = context.fieldId
+        setTurns((current) => current.map((turn) => (turn.plan && turn.boundFieldId === null ? { ...turn, boundFieldId: adopted } : turn)))
+        own.fieldId = adopted
+      }
+      // Settled only once a field is in place: right after a region switch there is briefly none.
+      if (context.fieldId !== null && context.fieldId === own.fieldId && context.date === own.date) ownChange.current = null
+      return
+    }
+    ownChange.current = null
+    topic.current = null
     setContextChanged(turnCount.current > 0)
     setTurns([])
-  }, [context.key])
+  }, [context.key, context.fieldId, context.date, context.regionId])
+
+  /** Runs map tool calls and records what they left selected, so the panel keeps its own change. */
+  const runPlan = (calls: readonly MapToolCall[], autoSelectField: boolean) => {
+    // The panel covers the right of the map on wide screens; on narrow ones it is a sheet, so no inset.
+    const panel = document.getElementById(ASSISTANT_PANEL_ID)
+    const width = panel?.getBoundingClientRect().width ?? 0
+    const insetRight = width > 0 && width < globalThis.innerWidth * 0.6 ? Math.round(width + 24) : 0
+    const results = executePlan(calls, { fields, autoSelectField, insetRight })
+    const store = useMapStore.getState()
+    ownChange.current = { regionId: store.regionId, fieldId: selectionAfterPlan(), date: chosenDateOf(store), until: Date.now() + OWN_CHANGE_MS }
+    return results
+  }
+
+  // Model mode: map actions arrive with the verified answer and run once, through the same closed
+  // registry and validation as the command interpreter. The model's arguments are never trusted as is.
+  useEffect(() => {
+    for (const [turnId, state] of Object.entries(agent.states)) {
+      if (state.kind !== 'done' || executedAgentPlans.current.has(turnId)) continue
+      const actions = state.response.map_actions ?? []
+      executedAgentPlans.current.add(turnId)
+      if (actions.length === 0) continue
+      const results = runPlan(actions, false)
+      setTurns((current) => current.map((turn) => (turn.id === turnId
+        ? { ...turn, plan: { mode: 'agent', results, unmatched: [], questions: [] }, boundFieldId: selectionAfterPlan() }
+        : turn)))
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [agent.states])
 
   useEffect(() => {
     if (open) closeRef.current?.focus()
@@ -157,9 +225,21 @@ export function FieldShiftAIPanel({ selectedField }: { selectedField: FieldSumma
     if (text === '') return
     setContextChanged(false)
     const id = `${context.key}#${turnSeq.current++}`
-    setTurns((current) => [...current, { id, question: text, quickKey, intent }])
+    const useModel = availability === 'enabled' && context.fieldId !== null
+    // Without a model, a map command runs through the command interpreter; anything else is a question.
+    if (!useModel && quickKey === null) {
+      const command = planCommand(text, { defaultYear: Number(context.date.slice(0, 4)), topic: topic.current })
+      if (command.calls.length > 0) {
+        const results = runPlan(command.calls, true)
+        const plan: PlanTurn = { mode: 'deterministic', results, ...splitUnmatched(command.unmatched) }
+        topic.current = topicOf(plan, command.topic)
+        setTurns((current) => [...current, { id, question: text, quickKey, intent: 'unsupported', plan, boundFieldId: selectionAfterPlan() }])
+        return
+      }
+    }
+    setTurns((current) => [...current, { id, question: text, quickKey, intent, boundFieldId: context.fieldId }])
     // With a model configured the question goes to the agent; otherwise the deterministic adapter answers.
-    if (availability === 'enabled' && context.fieldId !== null) {
+    if (useModel) {
       const body: AgentChatRequest = { field_id: context.fieldId, locale: askLocale, question: text, date: context.date }
       if (context.polygonGeometry) Object.assign(body, context.polygonGeometry)
       agent.start(id, body)
@@ -178,6 +258,15 @@ export function FieldShiftAIPanel({ selectedField }: { selectedField: FieldSumma
     () => turns.map((turn) => answerIntent(turn.intent, {
       context, locale, id: turn.id, question: turn.quickKey ? at(locale, turn.quickKey) : turn.question,
     })),
+    [turns, context, locale],
+  )
+  // A command's answers, computed like any answer from the context the map is in after its steps.
+  const planResponses: AssistantResponse[][] = useMemo(
+    () => turns.map((turn) => (turn.plan && turn.plan.mode === 'deterministic'
+      ? analysesOf(turn.plan).map((analysis, index) => answerIntent(analysis.intent, {
+        context, locale, id: `${turn.id}.${index}`, question: analysis.question ?? turn.question, metrics: analysis.metrics,
+      }))
+      : [])),
     [turns, context, locale],
   )
 
@@ -253,6 +342,16 @@ export function FieldShiftAIPanel({ selectedField }: { selectedField: FieldSumma
           </ol>
         </section>
 
+        <section className="fsai-section fsai-mapcmd" aria-label={at(locale, 'mapcmd.heading')}>
+          <h3>{at(locale, 'mapcmd.heading')}</h3>
+          <p className="fsai-hint">{at(locale, 'mapcmd.hint')}</p>
+          <div className="fsai-quick">
+            {MAP_EXAMPLES.map((key) => (
+              <button key={key} type="button" data-map-example={key} onClick={() => ask(at(locale, key))}>{at(locale, key)}</button>
+            ))}
+          </div>
+        </section>
+
         <section className="fsai-section" aria-label={at(locale, 'ctx.heading')}>
           <h3>{at(locale, 'ctx.heading')}</h3>
           <dl className="fsai-context">
@@ -306,13 +405,25 @@ export function FieldShiftAIPanel({ selectedField }: { selectedField: FieldSumma
             {turns.map((turn, index) => (
               <li key={turn.id} className="fsai-turn">
                 <p className="fsai-question"><span className="fsai-who">{at(locale, 'chat.you')}</span>{turn.quickKey ? at(locale, turn.quickKey) : turn.question}</p>
-                <TurnAnswer
-                  state={agent.states[turn.id]}
-                  deterministic={responses[index]}
-                  locale={locale}
-                  onCancel={() => agent.cancel(turn.id)}
-                  onRegenerate={() => ask(turn.quickKey ? at(locale, turn.quickKey) : turn.question, turn.quickKey, turn.intent, locale)}
-                />
+                {turn.plan && <FieldShiftAIActions plan={turn.plan} locale={locale} />}
+                {turn.boundFieldId !== undefined && turn.boundFieldId !== context.fieldId
+                  ? <p className="fsai-notice" data-testid="fsai-superseded">{at(locale, 'stage.superseded')}</p>
+                  : turn.plan && turn.plan.mode === 'deterministic'
+                    ? <PlanAnswers responses={planResponses[index]} numbers={context.numbers.kind} locale={locale} />
+                    // The model's data tools read the field and date of the moment it was asked (the turn id
+                    // starts with that context key); once its own map actions changed them, the answer
+                    // describes the old context and is not shown.
+                    : turn.plan?.mode === 'agent' && turn.id.slice(0, turn.id.lastIndexOf('#')) !== context.key
+                      ? <p className="fsai-notice" data-testid="fsai-superseded">{at(locale, 'stage.superseded')}</p>
+                      : (
+                      <TurnAnswer
+                        state={agent.states[turn.id]}
+                        deterministic={responses[index]}
+                        locale={locale}
+                        onCancel={() => agent.cancel(turn.id)}
+                        onRegenerate={() => ask(turn.quickKey ? at(locale, turn.quickKey) : turn.question, turn.quickKey, turn.intent, locale)}
+                      />
+                    )}
               </li>
             ))}
           </ol>
@@ -344,6 +455,19 @@ export function FieldShiftAIPanel({ selectedField }: { selectedField: FieldSumma
         <button type="submit" disabled={draft.trim() === ''}>{at(locale, 'chat.send')}</button>
       </form>
     </aside>
+  )
+}
+
+/** A command's answers, with the real stage of the evidence: still loading, or complete. */
+function PlanAnswers({ responses, numbers, locale }: { responses: AssistantResponse[]; numbers: string; locale: Locale }) {
+  if (responses.length === 0) return null
+  const loading = numbers === 'loading'
+  const stage = loading ? 'evidence' : numbers === 'error' || numbers === 'offline' ? 'failed' : 'done'
+  return (
+    <div className="fsai-plan-answers">
+      <p className="fsai-stage" role="status" data-stage={stage}>{at(locale, `stage.${stage}` as AssistantKey)}</p>
+      {!loading && responses.map((response) => <ResponseView key={response.id} response={response} locale={locale} />)}
+    </div>
   )
 }
 

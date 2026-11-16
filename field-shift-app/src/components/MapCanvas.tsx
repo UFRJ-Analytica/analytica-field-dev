@@ -419,6 +419,8 @@ export function MapCanvas({ fields, selectedField, onTileChange, children }: Map
   const decisions = useMapStore((state) => state.tileDecisions)
   const chosenDate = useMapStore(chosenDateOf)
   const regionId = useMapStore((state) => state.regionId)
+  const focusRequest = useMapStore((state) => state.focusRequest)
+  const polygonRing = useMapStore((state) => state.polygonRing)
   const basemapId = useMapStore((state) => state.basemapId)
   const polygonScene = useMapStore((state) => state.polygonMode)
   const selectedPolygonId = useMapStore((state) => state.selectedPolygonId)
@@ -543,6 +545,33 @@ export function MapCanvas({ fields, selectedField, onTileChange, children }: Map
       mapRef.current.fitBounds(bounds, { padding, maxZoom: 14, duration: 500 })
     }
   }, [selectedField, mapReady])
+
+  // Field Shift AI (experiment), focus_geometry: frames the selected field's own boundary, or the
+  // selected polygon's ring, never a coordinate from the request. While a selection is still resolving
+  // (the field list or the polygon ring not loaded yet) the request waits; with nothing selected it
+  // answers `no_selection`. Declared after the selection flyTo so the framing is the last camera move.
+  useEffect(() => {
+    const map = mapRef.current
+    if (!mapReady || !map || focusRequest === null) return
+    const store = useMapStore.getState()
+    if (store.focusHandled?.seq === focusRequest.seq) return
+    const ring = selectedField ? selectedField.boundary.coordinates[0] : selectedPolygonId !== null ? polygonRing : null
+    if (!ring || ring.length === 0) {
+      const resolving = (store.selectedFieldId !== null && !selectedField) || (selectedPolygonId !== null && polygonRing === null)
+      if (!resolving) store.markFocusHandled(focusRequest.seq, false, 'no_selection')
+      return
+    }
+    let west = Infinity, south = Infinity, east = -Infinity, north = -Infinity
+    for (const [lng, lat] of ring) {
+      west = Math.min(west, lng); east = Math.max(east, lng); south = Math.min(south, lat); north = Math.max(north, lat)
+    }
+    const p = focusRequest.padding
+    // Zoom 13 is the deepest level the basemaps draw everywhere; a field is never framed past it.
+    map.fitBounds([[west, south], [east, north]], {
+      padding: { top: p, bottom: p, left: p, right: p + focusRequest.insetRight }, maxZoom: 13, duration: 500,
+    })
+    store.markFocusHandled(focusRequest.seq, true, 'framed')
+  }, [focusRequest, selectedField, selectedPolygonId, polygonRing, mapReady])
 
   useEffect(() => {
     if (!mapReady || !mapRef.current) return

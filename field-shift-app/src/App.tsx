@@ -516,7 +516,7 @@ function App() {
       {(supportingData.isOpen || assistantOpen) && (
         <div className="overlay anchor-right-column">
           <div className="right-column-stack">
-            {assistantOpen && <FieldShiftAIPanel selectedField={selectedField} />}
+            {assistantOpen && <FieldShiftAIPanel selectedField={selectedField} fields={fields} />}
             {!assistantOpen && supportingData.isOpen && (
               <div
                 id={SUPPORTING_DATA_PANEL_ID}

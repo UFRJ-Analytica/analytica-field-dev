@@ -163,3 +163,18 @@
   .fsai-panel { animation: fsai-in 140ms ease-out; }
   @keyframes fsai-in { from { opacity: 0; transform: translateX(8px); } to { opacity: 1; transform: none; } }
 }
+
+/* Geospatial Agent Tools: the steps a map command ran, then the analysis stage. */
+.fsai-actions { margin: 6px 0 8px; padding: 8px 10px; border: 1px solid #dfe5d8; border-left: 3px solid #4d7a2e; border-radius: 8px; background: #f7f9f4; }
+.fsai-actions-head { margin: 0 0 4px; color: #3f5a2b; font-size: 11px; font-weight: 600; letter-spacing: 0.02em; text-transform: uppercase; }
+.fsai-steps-run { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; font-size: 12px; line-height: 1.4; }
+.fsai-steps-run li { display: grid; grid-template-columns: 16px 1fr; gap: 4px; }
+.fsai-steps-run li[data-status="running"] { color: #5d6b5f; }
+.fsai-steps-run li[data-status="failed"], .fsai-steps-run li[data-status="unsupported"], .fsai-steps-run li[data-status="needs_clarification"], .fsai-steps-run li[data-status="unmatched"] { color: #8a4b12; }
+.fsai-steps-run li[data-status="skipped"] { color: #7a817b; }
+.fsai-step-mark { font-weight: 700; text-align: center; }
+.fsai-actions-mode { margin: 6px 0 0; color: #6b756d; font-size: 10.5px; }
+.fsai-stage { margin: 4px 0; color: #4d7a2e; font-size: 11.5px; font-weight: 600; }
+.fsai-stage[data-stage="evidence"] { color: #5d6b5f; }
+.fsai-mapcmd .fsai-quick button { text-align: left; }
+.fsai-stage[data-stage="failed"] { color: #8a4b12; }

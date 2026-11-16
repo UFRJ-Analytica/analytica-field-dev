@@ -43,6 +43,7 @@ to plant, explain which evidence exists, which is missing, and why that is not e
 - Planting windows come from get_planting_constraints: cite each one as {{{{value:<id>}}}} (the crop) and \
 {{{{period:<id>}}}} (the window). Describe a window and where the chosen date sits against it; never pick a \
 sowing date inside it. A window says when sowing is low-risk or usual, not which crop to plant.
+- Map actions (select_region, select_field, focus_geometry, set_date, set_analysis_window, show_layer, hide_layer, query_field_metrics, compare_metrics, highlight_evidence) change what the map shows. Call them when the user asks to open, select, show, hide, frame, compare or change the date. They run in the browser after your answer, which checks and reports each one: say what you asked the map to do, never that it happened or what the map now shows. Your data tools always describe the field the user had selected when asking; if the request is about another region or field, ask the map to switch and do not describe the other place's data in this answer.
 - ET0 is the reference evapotranspiration, ETc is the crop demand; rain minus ETc is a climatic difference, \
 not an irrigation requirement. Recorded experimental results must be called recorded experimental results.
 - status: "answered" when the evidence answers the question, "partial" when part is missing, "unavailable" \
