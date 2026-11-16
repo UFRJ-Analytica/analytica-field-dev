@@ -20,7 +20,7 @@ from .fallback import fallback
 from .prompts import SUBMIT_ANSWER_TOOL, system_prompt
 from .provider import Provider, ProviderError, ProviderTurn
 from .schemas import ChatRequest, ChatResponse
-from .tools import CROP_WATER_SNAPSHOT, TOOL_DEFINITIONS, TOOL_HANDLERS, NumbersLoader, ToolBox, default_numbers_loader
+from .tools import TOOL_DEFINITIONS, TOOL_HANDLERS, NumbersLoader, ToolBox, default_numbers_loader
 
 
 @dataclass(frozen=True)
@@ -48,14 +48,14 @@ def _assistant_content(turn: ProviderTurn) -> Any:
 
 
 def run(request: ChatRequest, provider: Provider | None, *, provider_reason: str | None = None,
-        numbers_loader: NumbersLoader = default_numbers_loader, snapshot_path: Path = CROP_WATER_SNAPSHOT,
+        numbers_loader: NumbersLoader = default_numbers_loader, windows_path: Path | None = None,
         limits: Limits = Limits(), clock: Callable[[], float] = time.monotonic) -> ChatResponse:
     """Raises AgentInputError for an unknown field; every other failure is a fallback response."""
     ctx = resolve_context(request)
     if provider is None:
         return fallback(request, f"llm_{provider_reason or 'not_configured'}")
 
-    toolbox = ToolBox(ctx, numbers_loader, snapshot_path)
+    toolbox = ToolBox(ctx, numbers_loader, windows_path)
     system = system_prompt(request.locale)
     tools = [*TOOL_DEFINITIONS, SUBMIT_ANSWER_TOOL]
     messages: list[dict[str, Any]] = [{"role": "user", "content": _user_message(request)}]

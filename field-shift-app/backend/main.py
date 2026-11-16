@@ -16,6 +16,7 @@ from fastapi import Body, Depends, FastAPI, HTTPException, Query, Request, Respo
 from fastapi.middleware.cors import CORSMiddleware
 
 import field_numbers
+import rate_limit
 
 FIXTURE_PATH = Path(__file__).parent / "fixtures" / "field-scenarios.json"
 with FIXTURE_PATH.open(encoding="utf-8") as fixture_file:
@@ -234,10 +235,6 @@ app.include_router(field_shift_ai_router)
 # service and no state beyond this process. It is PER WORKER: with `uvicorn --workers N` each
 # worker keeps its own window, so the effective allowance is N times the configured one.
 
-_rate_lock = threading.Lock()
-_rate_hits: dict[str, list[float]] = {}
-
-
 def _numbers_rate_limit() -> tuple[int, float]:
     """The configured window: at most this many requests in this many seconds, per worker.
 
@@ -245,36 +242,14 @@ def _numbers_rate_limit() -> tuple[int, float]:
     loop. `NUMBERS_RATE_LIMIT_REQUESTS=0` turns the limiter off, which is what a test suite that
     calls the route in a loop from one address sets; a negative value means the same.
     """
-    limit = int(os.environ.get("NUMBERS_RATE_LIMIT_REQUESTS", "60"))
-    window = float(os.environ.get("NUMBERS_RATE_LIMIT_WINDOW_SECONDS", "60"))
-    return limit, max(window, 0.001)
+    return rate_limit.limit_of("NUMBERS_RATE_LIMIT_REQUESTS", "NUMBERS_RATE_LIMIT_WINDOW_SECONDS", 60)
 
 
 def enforce_numbers_rate_limit(request: Request) -> None:
-    """429 once a client has used its allowance of this window.
-
-    The window is counted from the oldest request still inside it, so a client that waits the
-    `Retry-After` it is given is served again. The address is the socket peer, which behind a
-    proxy is the proxy unless the proxy is trusted to set a forwarding header; that is the
-    documented limit of a limiter this small.
-    """
-    limit, window = _numbers_rate_limit()
-    if limit <= 0:
-        return
-    key = request.client.host if request.client else "unknown"
-    now = monotonic()
-    with _rate_lock:
-        hits = [hit for hit in _rate_hits.get(key, []) if now - hit < window]
-        if len(hits) >= limit:
-            _rate_hits[key] = hits
-            retry_after = max(1, math.ceil(window - (now - hits[0])))
-            raise HTTPException(
-                status_code=429,
-                detail=f"too many numbers requests: at most {limit} in {window:g} s",
-                headers={"Retry-After": str(retry_after)},
-            )
-        hits.append(now)
-        _rate_hits[key] = hits
+    """429 once a client has used its allowance of this window (see `rate_limit.enforce`)."""
+    rate_limit.enforce(request, scope="numbers", limit_env="NUMBERS_RATE_LIMIT_REQUESTS",
+                       window_env="NUMBERS_RATE_LIMIT_WINDOW_SECONDS", default_limit=60,
+                       label="numbers")
 
 
 COMMANDS: tuple[dict[str, Any], ...] = (
@@ -939,6 +914,46 @@ def get_field_climate(field_id: str) -> dict[str, Any]:
         return {"field_id": field_id, "state": "not_available", "municipality": None, "season_progress": None, "rows": []}
     data = _climate_file(f"municipality-{code}.json")
     return {"field_id": field_id, "state": "available", **data}
+
+
+@app.get("/fields/{field_id}/crop-water")
+def get_field_crop_water(field_id: str, date_value: str | None = Query(default=None, alias="date")) -> dict[str, Any]:
+    """FAO-56 crop water over each crop's own usual planting window, computed here, not recorded.
+
+    The Kc values are `crop_water.CROPS`, the windows are the NASS bulletin in
+    `artifacts/us-windows-cass-nd.json`, and the meteorology is block 6's recorded POWER series. A
+    crop with no window for the field's state or no Kc in the tree abstains and names the input.
+    """
+    from field_shift_agent.context import FieldContext
+    from field_shift_agent.tools import ToolBox, default_numbers_loader
+
+    field = _field_or_404(field_id)
+    try:
+        chosen = date.fromisoformat(date_value) if date_value else date.today()
+    except ValueError:
+        raise HTTPException(status_code=400, detail="date must be YYYY-MM-DD") from None
+    region = field.get("region")
+    if region != "us":
+        return {"field_id": field_id, "available": False, "crops": {}, "abstained": {},
+                "reason": "crop water is computed for the United States fields only",
+                "limitations": ["region_not_supported"]}
+    boundary = field.get("boundary") or {}
+    coordinates = (boundary.get("coordinates") or [[[]]])[0]
+    if not coordinates or not field.get("center"):
+        return {"field_id": field_id, "available": False, "crops": {}, "abstained": {},
+                "reason": "the field has no boundary to compute over", "limitations": ["no_ring"]}
+    request = field_numbers.NumbersRequest(ring=coordinates, centroid=list(field["center"]),
+                                           area_ha=None, date=chosen)
+    try:
+        payload = field_numbers.build_numbers(field_id, request, fixture_fields=list(all_fields()))
+    except field_numbers.NumbersError as error:
+        return {"field_id": field_id, "available": False, "crops": {}, "abstained": {},
+                "reason": f"numbers_http_{error.status}", "limitations": ["numbers_unavailable"]}
+    ctx = FieldContext(field_id=field_id, kind="fixture", region=region, name=field.get("name"),
+                       location=field.get("location"), center=(float(field["center"][0]), float(field["center"][1])),
+                       chosen_date=chosen, numbers_request=request)
+    box = ToolBox(ctx, default_numbers_loader)
+    return {"field_id": field_id, **box.get_crop_water_demand()}
 
 
 # The Field Phase contract, exported by `field-shift-pipeline` (`python -m api.export`)

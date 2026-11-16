@@ -2,7 +2,7 @@
 
 The oracles are the worked examples printed in FAO Irrigation and Drainage Paper 56 (Allen, Pereira,
 Raes and Smith, 1998). Each test names the example it reproduces. The recorded transport is the
-POWER response in artifacts/experiment, so no test reads the network.
+POWER response kept in `backend/fixtures`, so no test reads the network.
 """
 
 from __future__ import annotations
@@ -17,8 +17,7 @@ import aggregates as agg
 import crop_water as cw
 from sources import power_et0
 
-ARTIFACT = Path(__file__).resolve().parent.parent / "artifacts" / "experiment" / \
-    "power-et0-inputs-2026-07-01-2026-11-14.json"
+ARTIFACT = Path(__file__).resolve().parent / "fixtures" / "power-et0-inputs-2026-07-01-2026-11-14.json"
 
 
 class Fao56Oracles(unittest.TestCase):
@@ -305,3 +304,75 @@ class PowerEt0Source(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+class UnitedStatesCropWater(unittest.TestCase):
+    """The US path: the NASS window defines the days, the FAO-56 Table 12 Kc multiplies the ET0.
+
+    The series here is a straight line of plausible spring days; the oracle is the identity
+    ETc = Kc x ET0 over the crop's own planting window, plus the exact abstention when an input is
+    missing. The recorded POWER series is exercised through the tool, not here.
+    """
+
+    def setUp(self):
+        series = {"T2M_MAX": {}, "T2M_MIN": {}, "PRECTOTCORR": {}}
+        day = date(2026, 4, 20)
+        while day <= date(2026, 6, 10):
+            series["T2M_MAX"][day] = 24.0
+            series["T2M_MIN"][day] = 10.0
+            series["PRECTOTCORR"][day] = 2.0
+            day += timedelta(days=1)
+        self.section = {
+            "state": "available",
+            "series": {
+                "tmax_day": [{"date": d.isoformat(), "value": v} for d, v in series["T2M_MAX"].items()],
+                "tmin_day": [{"date": d.isoformat(), "value": v} for d, v in series["T2M_MIN"].items()],
+                "rain_day": [{"date": d.isoformat(), "value": v} for d, v in series["PRECTOTCORR"].items()],
+            },
+        }
+        self.window = agg.Window(start=date(2026, 4, 20), end=date(2026, 6, 10), days=52, valid_days=52,
+                                 dropped_days=0, chosen=date(2026, 6, 10))
+
+    def test_the_cass_county_crops_get_etc_from_their_own_nass_window(self):
+        result = cw.field_crop_water(self.section, latitude=46.96, window=self.window,
+                                     location="Cass County, North Dakota")
+        self.assertTrue(result["available"])
+        maize = result["crops"]["maize"]
+        self.assertEqual((maize["window"]["start"], maize["window"]["end"]), ("2026-05-02", "2026-05-28"))
+        self.assertEqual(maize["kc_mid"], cw.CROPS["maize"]["kc_mid"])
+        self.assertAlmostEqual(maize["etc_total_mm"], round(maize["kc_mid"] * maize["et0_total_mm"], 1), places=1)
+        self.assertEqual(maize["rain_total_mm"], 54.0)  # 27 days at 2 mm
+        self.assertAlmostEqual(maize["rain_minus_etc_mm"],
+                               round(maize["rain_total_mm"] - maize["etc_total_mm"], 1), places=1)
+        soybean = result["crops"]["soybean"]
+        self.assertEqual((soybean["window"]["start"], soybean["window"]["end"]), ("2026-05-14", "2026-06-03"))
+        self.assertGreater(maize["etc_total_mm"], soybean["etc_total_mm"])  # Kc mid 1.20 against 1.15
+
+    def test_a_crop_without_a_kc_in_the_tree_abstains_and_says_so(self):
+        result = cw.field_crop_water(self.section, latitude=46.96, window=self.window,
+                                     location="Cass County, North Dakota")
+        self.assertIn("no FAO-56 Kc in this repository for Spring wheat", result["abstained"]["spring wheat"])
+        self.assertIn("no FAO-56 Kc in this repository for Canola", result["abstained"]["canola"])
+
+    def test_a_state_without_a_recorded_window_abstains_instead_of_borrowing_one(self):
+        result = cw.field_crop_water(self.section, latitude=40.5, window=self.window,
+                                     location="McLean County, Illinois")
+        self.assertFalse(result["available"])
+        self.assertIn("North Dakota only", result["reason"])
+        self.assertEqual(result["limitations"], ["no_window_for_location"])
+
+    def test_a_window_that_does_not_cover_the_planting_window_abstains(self):
+        summer = agg.Window(start=date(2026, 7, 1), end=date(2026, 8, 11), days=42, valid_days=42,
+                            dropped_days=0, chosen=date(2026, 8, 11))
+        result = cw.field_crop_water(self.section, latitude=46.96, window=summer,
+                                     location="Cass County, North Dakota")
+        self.assertFalse(result["available"])
+        self.assertIn("does not cover the crop's planting window", result["abstained"]["maize"])
+
+    def test_no_invented_kc_or_window_enters_the_module(self):
+        # Every Kc in the module names FAO-56 Table 12 and every window comes from the file.
+        for crop in cw.CROPS.values():
+            self.assertIn("FAO-56 Table 12", crop["source"])
+        windows = cw.load_us_windows()
+        self.assertEqual(windows["region"]["state"], "North Dakota")
+        self.assertEqual({row["crop"] for row in windows["rows"]},
+                         {"Corn", "Soybeans", "Spring wheat", "Canola"})

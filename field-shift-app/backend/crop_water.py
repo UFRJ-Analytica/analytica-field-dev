@@ -21,8 +21,10 @@ and not calibrated for any Brazilian or United States field. The basis of every 
 
 from __future__ import annotations
 
+import json
 import math
 from datetime import date, timedelta
+from pathlib import Path
 from typing import Any
 
 import aggregates as agg
@@ -371,3 +373,166 @@ if __name__ == "__main__":  # the experiment's printout over the recorded respon
         r = crop_water(series, latitude=lat, elevation=elevation, window=window, crop_id=crop_id)
         print(f"{crop_id:8s} state={r['state']} ET0={r['et0_total']} ETc={r['etc_total']} rain={r['rain_total']} "
               f"rain-ETc={r['climatic_difference']} methods={r['methods']}")
+
+# --- the United States path -------------------------------------------------------------------
+# The recorded POWER series carries only what block 6 fetches (T2M_MAX, T2M_MIN, PRECTOTCORR), so
+# every day here is Hargreaves (eq. 52), which needs no humidity, wind, radiation or elevation. The
+# crop's own usual planting window comes from the NASS state bulletin the repository already records
+# (`artifacts/us-windows-cass-nd.json`); a crop with no window there, or no FAO-56 Kc here, abstains
+# and says which input is missing. No window and no Kc is ever invented.
+
+US_WINDOWS_PATH = Path(__file__).resolve().parents[1] / "artifacts" / "us-windows-cass-nd.json"
+# The bulletin's crop names to the FAO-56 crop ids this module carries Kc for.
+WINDOW_CROP_IDS = {"corn": "maize", "soybeans": "soybean", "cotton": "cotton"}
+SERIES_KEYS = {"tmax_day": "T2M_MAX", "tmin_day": "T2M_MIN", "rain_day": "PRECTOTCORR"}
+
+
+def load_us_windows(path: Path | None = None) -> dict[str, Any] | None:
+    """The NASS windows file, or None when it is not in the tree."""
+    try:
+        return json.loads(Path(path or US_WINDOWS_PATH).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+
+
+def _series_from_payload(section: dict[str, Any]) -> dict[str, dict[date, float]]:
+    """Block 6's recorded daily series, keyed the way this module reads POWER."""
+    out: dict[str, dict[date, float]] = {}
+    series = section.get("series") or {}
+    for payload_key, power_key in SERIES_KEYS.items():
+        days: dict[date, float] = {}
+        for entry in series.get(payload_key) or []:
+            try:
+                days[date.fromisoformat(entry["date"])] = float(entry["value"])
+            except (KeyError, TypeError, ValueError):
+                continue
+        out[power_key] = days
+    return out
+
+
+def _planting_window(month_day: dict[str, Any], year: int) -> agg.Window | None:
+    """The bulletin's `MM-DD` pair as a window in the recorded season's year."""
+    try:
+        start = date(year, int(month_day["start"][:2]), int(month_day["start"][3:]))
+        end = date(year, int(month_day["end"][:2]), int(month_day["end"][3:]))
+    except (KeyError, TypeError, ValueError):
+        return None
+    if end < start:
+        return None
+    days = (end - start).days + 1
+    return agg.Window(start=start, end=end, days=days, valid_days=days, dropped_days=0, chosen=end)
+
+
+def field_crop_water(section: dict[str, Any], *, latitude: float, window: agg.Window,
+                     location: str | None, windows_path: Path | None = None) -> dict[str, Any]:
+    """Crop water demand for one field, or an abstention naming the input that is missing.
+
+    The window the demand is summed over is the crop's own usual planting window from the NASS state
+    bulletin, in the year of the recorded block 6 window, and it must lie inside the recorded POWER
+    window; anything else abstains instead of borrowing another window.
+    """
+    series = _series_from_payload(section)
+    if not any(series.values()):
+        return {"available": False, "reason": "the recorded climate section carries no daily series",
+                "limitations": ["no_recorded_series"], "crops": {}, "abstained": {}}
+    file = load_us_windows(windows_path)
+    if file is None:
+        return {"available": False, "reason": "the NASS planting window file is not in the tree",
+                "limitations": ["no_window_source"], "crops": {}, "abstained": {}}
+    region = file.get("region") or {}
+    state = region.get("state") or ""
+    rows = {str(row.get("crop", "")).lower(): row for row in file.get("rows") or []}
+    common = {"source": SOURCE, "basis": "modelled", "resolution": RESOLUTION,
+              "window": {"start": window.start.isoformat(), "end": window.end.isoformat()}}
+    abstained: dict[str, str] = {}
+    crops: dict[str, dict[str, Any]] = {}
+    if not state or state.lower() not in (location or "").lower():
+        reason = (f"no cited planting window for this location: the tree records the NASS window for "
+                  f"{state or 'no state'} only")
+        return {"available": False, "reason": reason, "limitations": ["no_window_for_location"],
+                "crops": {}, "abstained": {crop_id: reason for crop_id in CROPS}, **common}
+    methods: dict[str, int] = {}
+    for crop_name, row in rows.items():
+        crop_id = WINDOW_CROP_IDS.get(crop_name)
+        month_day = row.get("most_active_md")
+        if crop_id is None:
+            abstained[crop_name] = (f"no FAO-56 Kc in this repository for {row.get('crop') or crop_name}; "
+                                    f"no Kc is invented")
+            continue
+        if not month_day:
+            abstained[crop_id] = (f"the NASS {state} bulletin records no usual planting window for "
+                                  f"{row.get('crop') or crop_name}")
+            continue
+        planting = _planting_window(month_day, window.start.year)
+        if planting is None:
+            abstained[crop_id] = "the recorded planting window is not a valid date pair"
+            continue
+        if planting.start < window.start or planting.end > window.end:
+            abstained[crop_id] = (f"the recorded NASA POWER window {window.start.isoformat()} to "
+                                  f"{window.end.isoformat()} does not cover the crop's planting window "
+                                  f"{planting.start.isoformat()} to {planting.end.isoformat()}")
+            continue
+        crop = CROPS[crop_id]
+        et0_sum = etc_sum = rain_sum = 0.0
+        valid = rain_days = 0
+        for day in agg.window_days(planting):
+            tmax, tmin = _value(series, "T2M_MAX", day), _value(series, "T2M_MIN", day)
+            rain = _value(series, "PRECTOTCORR", day)
+            rain_days += 1 if rain is not None and rain >= 0 else 0
+            if tmax is None or tmin is None:
+                continue
+            try:
+                tmax, tmin = _temperature_pair(tmax, tmin)
+                ra = extraterrestrial_radiation(latitude, day.timetuple().tm_yday)
+            except ValueError:
+                continue
+            et0 = et0_hargreaves(tmax, tmin, ra)
+            et0_sum += et0
+            etc_sum += et0 * crop["kc_mid"]
+            valid += 1
+            methods["hargreaves"] = methods.get("hargreaves", 0) + 1
+        entry: dict[str, Any] = {
+            "crop_id": crop_id, "crop": crop["name"], "kc_mode": "mid-season", "kc_mid": crop["kc_mid"],
+            "kc_source": crop["source"], "planting_window_text": row.get("most_active_text"),
+            "window": {"start": planting.start.isoformat(), "end": planting.end.isoformat(),
+                       "days": planting.days},
+            "valid_days": valid, "methods": dict(methods), "state": "ok", "reason": None,
+            "et0_total_mm": None, "etc_total_mm": None, "rain_total_mm": None,
+            "rain_minus_etc_mm": None,
+            "statement": ("A modelled demand from a 0.5 degree reanalysis cell with the FAO standard "
+                          "mid-season Kc over the crop's usual planting window; not a measurement, not "
+                          "calibrated for this field, and not an irrigation deficit."),
+        }
+        if not agg.covered(valid, planting.days):
+            entry.update(state="abstained",
+                         reason=(f"ET0 on {valid} of {planting.days} window days; below 80 percent, "
+                                 f"the demand abstains"))
+            abstained[crop_id] = entry["reason"]
+            crops[crop_id] = entry
+            continue
+        entry["et0_total_mm"] = agg.round_half_up(et0_sum, 1)
+        entry["etc_total_mm"] = agg.round_half_up(etc_sum, 1)
+        rain_values = [_value(series, "PRECTOTCORR", d) for d in agg.window_days(planting)]
+        if all(v is not None and v >= 0 for v in rain_values):
+            entry["rain_total_mm"] = agg.round_half_up(sum(rain_values), 1)
+            if valid == planting.days:
+                entry["rain_minus_etc_mm"] = agg.round_half_up(entry["rain_total_mm"] - etc_sum, 1)
+            else:
+                entry["reason"] = ("the climatic difference needs every window day of rain and ET0, "
+                                   "as block 6 R-22")
+        else:
+            entry["reason"] = "the recorded rain series is incomplete over the planting window"
+        crops[crop_id] = entry
+    if not crops:
+        return {"available": False, "reason": "no crop in the recorded planting window file has both a "
+                                             "window and a FAO-56 Kc",
+                "limitations": ["no_supported_crop"], "crops": {}, "abstained": abstained, **common}
+    return {"available": True, "reason": None, "crops": crops, "abstained": abstained,
+            "limitations": ["coarse_cell", "modelled_not_measured", "standard_kc",
+                            "moved_window_from_bulletin", "hargreaves_only"],
+            "method": {"name": "hargreaves",
+                       "reason": ("the recorded climate section carries tmax, tmin and rain only, so "
+                                  "FAO-56 eq. 52 is used for every day, not eq. 6")},
+            "planting_source": {"state": state, "county": region.get("county"),
+                                "retrieved": file.get("retrieved"), "grain": file.get("grain")},
+            **common}
