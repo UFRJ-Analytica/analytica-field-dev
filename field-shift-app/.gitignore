@@ -22,3 +22,9 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Local environment files. The values (an API key, a service URL) stay on the machine; the documented
+# example is versioned so a fresh clone knows what to set.
+.env
+.env.*
+!.env.example
