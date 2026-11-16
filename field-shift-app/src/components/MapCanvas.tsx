@@ -1038,7 +1038,7 @@ function ActiveLayersNote() {
   const active = catalog.filter((entry) => on[entry.id])
   if (active.length === 0) return null
   return (
-    <div className="map-overlay map-layers-note" role="status">
+    <div className="map-layers-note" role="status">
       {active.map((entry) => {
         const coarse = resolutionMetres(entry.resolution) >= 1000 && (zoom ?? 0) >= 9
         return (

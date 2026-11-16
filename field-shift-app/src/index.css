@@ -1230,7 +1230,7 @@
 .climate-evidence-note { margin: 6px 0 0; color: #6f7b6a; font-size: 8px; }
 
 /* --- block 11: the pixel size of every layer on, and the compare divider with a handle ------ */
-.map-layers-note { position: absolute; z-index: 4; top: 10px; left: 10px; display: grid; gap: 4px; max-width: min(420px, calc(100% - 70px)); padding: 6px 10px; border: 1px solid rgb(37 51 42 / 18%); border-radius: 8px; background: rgb(255 255 255 / 92%); color: #25332a; font-size: 12px; font-weight: 600; pointer-events: none; }
+.map-layers-note { position: absolute; z-index: 2; top: 64px; left: 13px; display: grid; gap: 4px; max-width: min(320px, calc(100% - 40px)); padding: 6px 10px; border: 1px solid rgb(37 51 42 / 18%); border-radius: 8px; background: rgb(255 255 255 / 92%); color: #25332a; font-size: 10px; font-weight: 600; pointer-events: none; box-shadow: 0 2px 9px #1d301014; }
 .map-layers-note p { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0; }
 .map-layers-coarse { padding: 1px 6px; border-radius: 4px; background: #f6ebe2; color: #8a4f2a; font-size: 11px; }
 
@@ -1238,3 +1238,20 @@
 .compare-line::before { content: ""; position: absolute; top: 0; bottom: 0; left: -12px; width: 27px; }
 .compare-handle { position: absolute; top: 50%; left: 50%; display: grid; width: 34px; height: 34px; place-items: center; transform: translate(-50%, -50%); border: 2px solid #fff; border-radius: 50%; background: #25332a; color: #fff; font-size: 16px; box-shadow: 0 2px 8px rgb(0 0 0 / 30%); }
 .compare-overlay:has(.compare-divider:focus-visible) .compare-handle { outline: 3px solid #ffd31a; outline-offset: 2px; }
+
+@media (max-width: 640px) {
+  /* The chip keeps its phase and strength on a phone; the index, the basis and the date would make
+     it a column of three words. */
+  .enso-chip .enso-index,
+  .enso-chip .enso-issued,
+  .enso-chip .basis-label { display: none; }
+  /* On a phone the chip takes a line of its own under the buttons instead of being squeezed into one. */
+  .topbar-meta { flex-wrap: wrap; max-width: calc(100vw - 24px); row-gap: 4px; }
+  .enso-chip { flex: 1 1 100%; flex-wrap: wrap; max-width: 100%; }
+  .map-layers-note { top: 168px; left: 10px; max-width: calc(100% - 20px); font-size: 9px; }
+}
+
+@media (min-width: 641px) and (max-width: 1023px) {
+  /* The strip spans the width here, so the layer note starts below it. */
+  .map-layers-note { top: 84px; }
+}
