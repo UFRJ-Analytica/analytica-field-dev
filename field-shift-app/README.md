@@ -37,6 +37,37 @@ separated list to allow a deployment's own origins; setting it replaces the deve
 serves no byte range of its own, so there is no `Content-Range` to expose; a `Range` request header
 is already permitted by the wildcard `allow_headers`.
 
+### The Field Report page
+
+`/report/<municipality code>` is its own page, opened from the `Field Report` control in the strip
+(next to `Field Data` and `Data Info`) in a new tab, so the map page is untouched. It is enabled only
+for a pilot field whose county has report data, and disabled with its reason in the accessible name
+otherwise. The page opens in English and carries its own Portuguese switch. Vite serves the path as
+the app's own single page, so no hosting configuration is needed.
+
+The report reads the static export under `backend/fixtures/fieldphase/data/v1/`, served read-only by
+`GET /fieldphase/data/v1/{path}`. Its sources are `GET /climate/enso` (the CPC state the strip's chip
+prints) and `GET /fields/{id}/climate` (the municipal rows of `Data Info`).
+
+### Environment variables
+
+| Variable | Where | What |
+|---|---|---|
+| `VITE_API_BASE_URL` | frontend, build time | the backend base URL, `http://localhost:8000` unset |
+| `VITE_BASEMAP_TILES`, `VITE_BASEMAP_ATTRIBUTION` | frontend, build time | the basemap the report's own county map draws |
+| `CLIMATE_FIXTURE_DIR` | backend | where `enso.json`, `pilot-fields.json` and `municipality-<code>.json` live |
+| `FIELDPHASE_FIXTURE_DIR` | backend | the Field Phase export root served under `/fieldphase` |
+| `CORS_ALLOW_ORIGINS`, `CORS_ALLOW_ORIGIN_REGEX` | backend | which origins may call the API |
+| `OUTBOUND_TIMEOUT_SECONDS`, `NUMBERS_RATE_LIMIT_REQUESTS`, `NUMBERS_RATE_LIMIT_WINDOW_SECONDS` | backend | the numbers route |
+| `NASS_API_KEY`, `METEOMATICS_USERNAME`, `METEOMATICS_PASSWORD` | pipeline only | optional downloads; the app never needs them |
+
+### The pipeline
+
+`field-shift-pipeline/` downloads NOAA, NASA POWER, IBGE PAM, USDA NASS and the optional Meteomatics
+forecasts and writes the dated JSON the backend reads. It is tooling: the app runs from the fixtures
+already in the tree, with no key and no download. `iniciar.cmd` starts everything on Windows and
+`atualizar-dados.cmd` refreshes the data.
+
 ### Request limits on `POST /fields/{id}/numbers`
 
 That route calls NASA POWER and the other sources synchronously, so it carries two protections:
