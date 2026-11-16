@@ -92,7 +92,17 @@ export const REGION_ADAPTERS: Record<RegionId, RegionAdapter> = {
     sourceString:
       'Crop Sequence Boundaries (USDA NASS and ERS), public domain; CDL (USDA NASS), public domain',
     licence: 'CSB and CDL public domain; the Table F string is a courtesy credit',
-    fixtureIds: ['381825001868504', '381825001868512', '381825001868517'],
+    /**
+   * The fixture fields the list shows: the three Cass County boundaries, then the two pilot
+   * fields the pipeline exports for McLean County (FIPS 17113) and Lubbock County (FIPS 48303).
+   */
+  fixtureIds: [
+    '381825001868504',
+    '381825001868512',
+    '381825001868517',
+    'il-mclean-01',
+    'tx-lubbock-01',
+  ],
     tileBudget: { detail: 250_000, overview: 300_000, hard: 1_000_000 },
   },
 }

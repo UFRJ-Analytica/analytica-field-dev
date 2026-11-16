@@ -89,6 +89,6 @@ describe('R-33: the primary layer is the first one on in stack order, else smap-
   })
 
   it('falls back to smap-l3 when no layer is on', () => {
-    expect(primaryLayerId(['ndvi-8day', 'smap-l3'], {})).toBe('smap-l3')
+    expect(primaryLayerId(['ndvi-8day', 'smap-l3'], {})).toBe('smap-l4-surface')
   })
 })

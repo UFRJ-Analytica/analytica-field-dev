@@ -1199,3 +1199,42 @@
 .panel-toggle[aria-disabled="true"] { opacity: 0.55; cursor: not-allowed; }
 .panel-toggle.is-open { background: #2e4520; color: #f4f6f0; }
 .editor-controls-panel { display: grid; gap: 8px; margin-top: 8px; }
+
+/* --- block 9 and 11: the ENSO chip, the climate line and the climate table of Data Info ------ */
+.enso-chip { flex-wrap: wrap; gap: 5px; max-width: min(460px, 52vw); font-size: 10px; line-height: 1.3; }
+.enso-dot { width: 7px; height: 7px; flex: 0 0 auto; border-radius: 50%; background: #c0612f; }
+.enso-chip[data-phase="la_nina"] .enso-dot { background: #3f6f9f; }
+.enso-chip[data-phase="neutral"] .enso-dot { background: #8a948a; }
+.enso-phase { font-weight: 700; }
+.enso-index { color: #5d6b58; font-weight: 600; }
+.enso-issued { color: #5d6b58; }
+
+.climate-signal { padding: 0 16px 6px; }
+.climate-signal-heading { display: flex; flex-wrap: wrap; align-items: center; gap: 3px 6px; margin-bottom: 4px; color: #4f5d4a; font-size: 9px; }
+.climate-signal-place { font-weight: 700; color: #25332a; }
+.climate-bars { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 0; padding: 0; list-style: none; }
+.climate-bar { display: grid; grid-template-columns: 1fr auto; align-items: baseline; gap: 2px 6px; min-width: 0; }
+.climate-bar-label { overflow: hidden; color: #6f7b6a; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+.climate-bar-value { color: #25332a; font-size: 10px; font-weight: 700; }
+.climate-bar-track { grid-column: 1 / -1; height: 5px; overflow: hidden; border-radius: 3px; background: #edf0e9; }
+.climate-bar-fill { display: block; height: 100%; border-radius: 3px; background: #5f86a8; transition-duration: 0s; }
+.climate-bar-normal .climate-bar-fill { background: #a2ab9b; }
+.climate-bar-analog .climate-bar-fill { background: #c0612f; }
+.climate-signal-unavailable .visual-caption { color: #6f7b6a; }
+
+.climate-evidence { margin-top: 12px; }
+.climate-evidence-title { margin: 0 0 6px; color: #25332a; font-size: 11px; }
+.climate-evidence td .climate-value { display: block; font-weight: 700; }
+.climate-note { display: block; color: #6f7b6a; font-size: 8px; }
+.climate-flag { display: inline-block; margin: 2px 4px 0 0; padding: 1px 4px; border-radius: 3px; background: #f6ebe2; color: #8a4f2a; font-size: 8px; }
+.climate-evidence-note { margin: 6px 0 0; color: #6f7b6a; font-size: 8px; }
+
+/* --- block 11: the pixel size of every layer on, and the compare divider with a handle ------ */
+.map-layers-note { position: absolute; z-index: 4; top: 10px; left: 10px; display: grid; gap: 4px; max-width: min(420px, calc(100% - 70px)); padding: 6px 10px; border: 1px solid rgb(37 51 42 / 18%); border-radius: 8px; background: rgb(255 255 255 / 92%); color: #25332a; font-size: 12px; font-weight: 600; pointer-events: none; }
+.map-layers-note p { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0; }
+.map-layers-coarse { padding: 1px 6px; border-radius: 4px; background: #f6ebe2; color: #8a4f2a; font-size: 11px; }
+
+.compare-line { position: absolute; top: 0; bottom: 0; width: 3px; margin-left: -1.5px; background: #fff; box-shadow: 0 0 0 1px rgb(31 43 34 / 35%); cursor: ew-resize; pointer-events: auto; touch-action: none; }
+.compare-line::before { content: ""; position: absolute; top: 0; bottom: 0; left: -12px; width: 27px; }
+.compare-handle { position: absolute; top: 50%; left: 50%; display: grid; width: 34px; height: 34px; place-items: center; transform: translate(-50%, -50%); border: 2px solid #fff; border-radius: 50%; background: #25332a; color: #fff; font-size: 16px; box-shadow: 0 2px 8px rgb(0 0 0 / 30%); }
+.compare-overlay:has(.compare-divider:focus-visible) .compare-handle { outline: 3px solid #ffd31a; outline-offset: 2px; }

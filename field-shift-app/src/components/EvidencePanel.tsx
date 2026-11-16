@@ -1,8 +1,10 @@
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty'
 import { Skeleton } from '@/components/ui/skeleton'
-import { t, translationKeyFor } from '@/strings'
+import type { ClimateRow } from '@/lib/climate'
+import { en } from '@/strings/en'
+import { monthName, t, translationKeyFor } from '@/strings'
 
-export type EvidenceBasis = 'observed' | 'retrieved' | 'modelled' | 'entered'
+export type EvidenceBasis = 'observed' | 'retrieved' | 'reported' | 'modelled' | 'entered'
 
 export type EvidenceRow = {
   layer: string
@@ -16,9 +18,63 @@ type EvidencePanelProps = {
   rows: EvidenceRow[]
   isLoading?: boolean
   emptyReason?: string | null
+  /** Municipal climate rows, rendered as a second table under the scenario rows. */
+  climate?: { municipality: string; rows: ClimateRow[] } | null
 }
 
-export function EvidencePanel({ rows, isLoading = false, emptyReason }: EvidencePanelProps) {
+function climateLayer(row: ClimateRow): string {
+  if (row.metric === 'yield_anomaly_pct') {
+    const crop = row.crop_name_en ?? ''
+    return t('climate.metric.yield_anomaly_pct', { crop: t(translationKeyFor(crop) ?? crop) })
+  }
+  const key = `climate.metric.${row.metric}`
+  if (!Object.hasOwn(en, key) || !row.months) return row.layer
+  const [first, last] = row.months
+  return t(key, {
+    months: t('climate.month_span', { from: monthName(first), to: monthName(last) }),
+    month: monthName(first),
+  })
+}
+
+function ClimateTable({ municipality, rows }: { municipality: string; rows: ClimateRow[] }) {
+  const title = t('climate.table.title', { municipality })
+  return (
+    <div className="climate-evidence" role="group" aria-label={title}>
+      <h3 className="climate-evidence-title">{title}</h3>
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">{t('evidence.layer')}</th>
+            <th scope="col">{t('evidence.value')}</th>
+            <th scope="col">{t('evidence.basis')}</th>
+            <th scope="col">{t('evidence.as_of')}</th>
+            <th scope="col">{t('evidence.source')}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr key={`${row.metric}-${row.crop_name_en ?? ''}`} data-metric={row.metric}>
+              <th scope="row">{climateLayer(row)}</th>
+              <td>
+                <span className="climate-value" data-dynamic-content>{row.value}</span>
+                {row.n_years !== null ? <span className="climate-note">{t('climate.row.n_years', { count: row.n_years })}</span> : null}
+                {row.small_sample ? <span className="climate-flag climate-flag-small">{t('climate.row.small_sample')}</span> : null}
+                {row.assumption ? <span className="climate-flag climate-flag-assumption">{t('climate.row.assumed_season')}</span> : null}
+                <span className="climate-note climate-support" data-dynamic-content>{row.support}</span>
+              </td>
+              <td><span className={`basis-label basis-${row.basis}`}>{t(`evidence.basis_${row.basis}`)}</span></td>
+              <td data-dynamic-content><time dateTime={row.as_of}>{row.as_of}</time></td>
+              <td data-dynamic-content><a href={row.source} target="_blank" rel="noreferrer">{row.source}</a></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p className="climate-evidence-note">{t('climate.table.note')}</p>
+    </div>
+  )
+}
+
+export function EvidencePanel({ rows, isLoading = false, emptyReason, climate = null }: EvidencePanelProps) {
   return (
     <section className="scenario-panel evidence-panel" role="region" aria-label={t('evidence.title')}>
       <div className="section-heading">
@@ -67,6 +123,9 @@ export function EvidencePanel({ rows, isLoading = false, emptyReason }: Evidence
         </tbody>
       </table>
       )}
+      {!isLoading && climate && climate.rows.length > 0 ? (
+        <ClimateTable municipality={climate.municipality} rows={climate.rows} />
+      ) : null}
     </section>
   )
 }
