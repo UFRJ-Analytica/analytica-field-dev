@@ -1,20 +1,19 @@
 /**
- * R-01 and R-02: one region adapter interface and exactly two entries.
+ * R-01 and R-02: one region adapter interface and one entry.
  *
  * Every source specific value of Data contracts Table A is a field here. A requirement
- * never writes one of them as a literal, and a third region would be one more entry plus
+ * never writes one of them as a literal, and another region would be one more entry plus
  * one more column in the table, not a rewritten requirement set.
  *
- * The zoom bounds are not constants of this module: R-05 makes the United States detail
- * floor a build measurement read from `data/polygons/us-38017.manifest.json`, and AC-03
- * fails a load that mounts a source without that manifest. Brazil's bounds are the measured
- * constants of Table B, which is why they are written here.
+ * The zoom bounds are not constants of this module: R-05 and AC-03 make every one of them a
+ * build measurement read from `data/polygons/us-38017.manifest.json`, so a load that mounts a
+ * source without that manifest fails instead of inventing a floor.
  */
 import { classTableFor, type ClassTable } from './polygon-class-tables'
 
-export type RegionId = 'us' | 'br'
+export type RegionId = 'us'
 
-export const REGION_IDS = ['us', 'br'] as const
+export const REGION_IDS = ['us'] as const
 
 /** Table A: the load default is the United States at every width (R-01). */
 export const DEFAULT_REGION_ID: RegionId = 'us'
@@ -25,8 +24,8 @@ export type RegionTiers = {
   interactiveMinzoom: number
 }
 
-/** Table A, the class source cell: the United States paints `cdl{Y}`, Brazil one tile property. */
-export type ClassSource = 'cdl-year' | 'mbmode24' | 'class_id'
+/** Table A, the class source cell: the one region paints `cdl{Y}`. */
+export type ClassSource = 'cdl-year'
 
 export type RegionAdapter = {
   id: RegionId
@@ -36,8 +35,8 @@ export type RegionAdapter = {
   /** Table A: the geometry source and its tier addresses, relative to the app origin. */
   detailFile: string
   overviewFile: string
-  /** Table G: the zoom contract file; null for Brazil, which reads no manifest (AC-03). */
-  manifestFile: string | null
+  /** Table G: the zoom contract file, read at load. */
+  manifestFile: string
   sourceLayer: 'trazo'
   /** Table A: the id property, its type and the `select_field` prefix. */
   idProperty: 'csbid' | 'Id'
@@ -52,19 +51,12 @@ export type RegionAdapter = {
   /** Table A: the area property, its unit and the two absence texts of R-25. */
   areaProperty: string
   areaUnit: 'acres' | 'ha'
-  /** Row R-25, the Brazil sidecar row carries the area, not the tile. */
-  areaFromSidecar: boolean
   basis: 'retrieved' | 'modelled'
   /** Table F: the exact source string, which the region and the attribution both print. */
   sourceString: string
   licence: string
   fixtureIds: readonly string[]
-  hosting: 'self-hosted' | 'source-direct'
-  /** Table B, Brazil only: the source-direct file of Mode B, which carries no overview level. */
-  sourceDirectUrl: string | null
   tileBudget: { detail: number; overview: number; hard: number }
-  /** Table B: the Brazil bounds, measured. The United States reads the manifest instead. */
-  measuredTiers: RegionTiers | null
 }
 
 export const REGION_ADAPTERS: Record<RegionId, RegionAdapter> = {
@@ -96,48 +88,12 @@ export const REGION_ADAPTERS: Record<RegionId, RegionAdapter> = {
     classYearRange: [2018, 2025],
     areaProperty: 'csbacres',
     areaUnit: 'acres',
-    areaFromSidecar: false,
     basis: 'retrieved',
     sourceString:
       'Crop Sequence Boundaries (USDA NASS and ERS), public domain; CDL (USDA NASS), public domain',
     licence: 'CSB and CDL public domain; the Table F string is a courtesy credit',
     fixtureIds: ['381825001868504', '381825001868512', '381825001868517'],
-    hosting: 'self-hosted',
-    sourceDirectUrl: null,
     tileBudget: { detail: 250_000, overview: 300_000, hard: 1_000_000 },
-    measuredTiers: null,
-  },
-  br: {
-    id: 'br',
-    label: 'Brazil',
-    defaultView: { center: [-55.27, -11.91], zoom: 11 },
-    detailFile: 'data/polygons/br-mt-detail.pmtiles',
-    overviewFile: 'data/polygons/br-mt-overview.pmtiles',
-    manifestFile: null,
-    sourceLayer: 'trazo',
-    idProperty: 'Id',
-    idType: 'number',
-    commandPrefix: 'trazo',
-    properties: ['Id', 'mbmode24'],
-    classTable: classTableFor('br'),
-    classSource: 'mbmode24',
-    classYearRange: null,
-    areaProperty: 'area_ha',
-    areaUnit: 'ha',
-    areaFromSidecar: true,
-    basis: 'modelled',
-    sourceString: 'Trazo3 field boundaries, WRI and ASU (Grupp et al. 2026), CC BY 4.0',
-    licence: 'Trazo3 CC BY 4.0, attribution to Trazo and WRI; MapBiomas legend for the classes',
-    fixtureIds: ['mt-santa-carmem-01', 'mt-santa-carmem-02', 'mt-santa-carmem-03'],
-    hosting: 'source-direct',
-    sourceDirectUrl:
-      'https://data.source.coop/wri-data-lab/trazofields/trazo3-fields/trazo3.pmtiles',
-    tileBudget: { detail: 250_000, overview: 300_000, hard: 1_000_000 },
-    measuredTiers: {
-      detail: { minzoom: 8, maxzoom: 12 },
-      overview: { minzoom: 5, maxzoom: 7 },
-      interactiveMinzoom: 10,
-    },
   },
 }
 
@@ -148,11 +104,12 @@ export function regionAdapter(regionId: RegionId): RegionAdapter {
 
 /**
  * R-01: the region is chosen by `?region=` alone, and an unknown or absent value leaves the
- * United States active. `br` is the only value that selects the secondary region.
+ * United States active. A value no adapter carries is treated the same way, which is what keeps
+ * a stale bookmark from failing the load.
  */
 export function regionFromSearch(search: string): RegionId {
   const value = new URLSearchParams(search.startsWith('?') ? search.slice(1) : search).get('region')
-  return value === 'br' ? 'br' : DEFAULT_REGION_ID
+  return value === DEFAULT_REGION_ID ? DEFAULT_REGION_ID : DEFAULT_REGION_ID
 }
 
 /** R-03: `?region=br` is written when Brazil is active and removed for the default. */
@@ -241,16 +198,10 @@ export function parseUsManifest(raw: unknown): UsManifest {
 }
 
 /**
- * R-05, R-06, R-20: the tier bounds in force for a load. The United States takes all three
- * from the manifest and refuses to invent one; Brazil uses the measured Table B values and
- * reads no manifest at all (AC-03).
+ * R-05, R-06, R-20: the tier bounds in force for a load. They come from the region's manifest
+ * and are never invented, so the contract file and the app cannot disagree (AC-03).
  */
-export function tiersFor(regionId: RegionId, manifest?: UsManifest | null): RegionTiers {
-  if (regionId === 'br') {
-    const measured = REGION_ADAPTERS.br.measuredTiers
-    if (!measured) throw new Error('Brazil tiers are the measured Table B values')
-    return measured
-  }
+export function tiersFor(manifest?: UsManifest | null): RegionTiers {
   if (!manifest) {
     throw new Error(
       'the United States detail tier needs data/polygons/us-38017.manifest.json; no zoom bound is invented',

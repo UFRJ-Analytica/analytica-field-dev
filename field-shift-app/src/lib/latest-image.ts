@@ -14,9 +14,9 @@
  * dates after the first hit.
  */
 
+import { API_BASE } from './api-base'
 import { addDays } from './timeline'
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'
 
 /** OD-11: a body above this many bytes is imagery; at or below it the tile is blank. */
 export const LATEST_IMAGE_THRESHOLD_BYTES = 5000

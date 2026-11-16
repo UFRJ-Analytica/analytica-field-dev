@@ -2,12 +2,13 @@
  * R-04, R-06, R-07, R-09, R-12 and R-20: the polygon sources and layers of the map surface.
  *
  * The module holds no zoom bound of its own (Expected Interface): the United States bounds
- * come from `data/polygons/us-38017.manifest.json` through `regions.ts`, Brazil's from Table
- * B, and the hosting mode from `GET /polygons/mode?region=`, read once per load.
+ * come from `data/polygons/us-38017.manifest.json` through `regions.ts`, and the hosting mode
+ * from `GET /polygons/mode?region=`, read once per load.
  *
  * The paint is built from the active region's class table and the constants of R-14; the
  * feature state drives hover and selection. Nothing here writes a class hex or a fill opacity.
  */
+import { API_BASE } from './api-base'
 import type { ExpressionSpecification } from 'maplibre-gl'
 import {
   classTableFor,
@@ -65,8 +66,6 @@ export type PolygonModeDeps = {
   apiBase?: string
 }
 
-/** R-09: the source-direct fallback of Brazil, which answers HTTP 206 to a range request (M-01). */
-const DEFAULT_API_BASE = 'http://localhost:8000'
 
 /**
  * R-04: the `pmtiles` protocol tile template. The source declares this as its `tiles` array and
@@ -80,7 +79,7 @@ export function pmtilesSourceUrl(fileOrUrl: string): string {
   return `pmtiles://${base}/{z}/{x}/{y}`
 }
 
-/** R-11: which of the two reason lines a region prints when it has no tier. */
+/** R-11: the reason line a region prints when it has no tier. */
 export function polygonFailureFor(region: RegionAdapter): PolygonFailureKey {
   return region.id === 'us' ? 'polygon.build_not_available' : 'polygon.source_unavailable'
 }
@@ -120,7 +119,7 @@ async function readJson(response: Response): Promise<unknown> {
  */
 export async function polygonMode(region: RegionAdapter, deps: PolygonModeDeps = {}): Promise<PolygonScene> {
   const fetchImpl = deps.fetch ?? globalThis.fetch
-  const apiBase = deps.apiBase ?? (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? DEFAULT_API_BASE
+  const apiBase = deps.apiBase ?? API_BASE
   let body: ModeBody
   try {
     body = (await readJson(await fetchImpl(`${apiBase}/polygons/mode?region=${region.id}`))) as ModeBody
@@ -150,43 +149,13 @@ export async function polygonMode(region: RegionAdapter, deps: PolygonModeDeps =
       regionId: 'us',
       mode: 'self-hosted',
       classSource: 'cdl-year',
-      tiers: tiersFor('us', manifest),
+      tiers: tiersFor(manifest),
       detailUrl: pmtilesSourceUrl(region.detailFile),
       overviewUrl: pmtilesSourceUrl(region.overviewFile),
       failure: null,
     }
   }
 
-  const classSource = body.classProperty === 'class_id' ? 'class_id' : body.classProperty === 'mbmode24' ? 'mbmode24' : null
-  if (classSource === null) {
-    // R-18: a load that names no single class property cannot paint, and guessing one would mix two.
-    throw new Error('the Brazil mode response must name mbmode24 or class_id as the one class property')
-  }
-  if (body.mode === 'self-hosted') {
-    return {
-      regionId: 'br',
-      mode: 'self-hosted',
-      classSource,
-      tiers: tiersFor('br'),
-      detailUrl: pmtilesSourceUrl(region.detailFile),
-      overviewUrl: pmtilesSourceUrl(region.overviewFile),
-      failure: null,
-    }
-  }
-  if (body.mode === 'source-direct') {
-    const sourceUrl = region.sourceDirectUrl
-    if (!sourceUrl) return emptyScene(region, 'polygon.source_unavailable')
-    return {
-      regionId: 'br',
-      mode: 'source-direct',
-      classSource,
-      tiers: tiersFor('br'),
-      detailUrl: pmtilesSourceUrl(sourceUrl),
-      // The source file carries no overview level (M-02), so Mode B mounts no overview tier.
-      overviewUrl: null,
-      failure: null,
-    }
-  }
   return emptyScene(region, 'polygon.source_unavailable')
 }
 

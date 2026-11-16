@@ -3,9 +3,10 @@
  * Table B). It sends the body of Table B and returns the payload unchanged; the surface prints
  * what the payload says and nothing else (R-06 and R-42 forbid a fetch on resize, and a reword).
  */
+import { API_BASE } from './api-base'
 import type { NumbersPayload, NumbersRequest } from './numbers'
 
-export const NUMBERS_API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'
+export const NUMBERS_API_BASE = API_BASE
 
 /** A non 200 answer. The route answers 400, 404 and 422 with a status the surface names (R-46). */
 export class NumbersHttpError extends Error {

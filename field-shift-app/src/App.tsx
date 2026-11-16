@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { API_BASE } from '@/lib/api-base'
 import { MapCanvas } from '@/components/MapCanvas'
 import { LayerRail } from '@/components/LayerRail'
 import type { RotationScenario } from '@/components/ScenarioCards'
@@ -31,7 +32,6 @@ import {
 } from '@/lib/viewport'
 import { t, translationKeyFor } from '@/strings'
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'
 
 type FieldResponse = { fields: FieldSummary[]; seasons: string[]; default_season: string }
 type ScenarioResponse = {

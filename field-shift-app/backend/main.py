@@ -4,13 +4,14 @@ import json
 import math
 import os
 import threading
+from time import monotonic
 from dataclasses import dataclass, field
 from datetime import date, datetime, time, timedelta, timezone
 from pathlib import Path
 from typing import Any, Callable, Literal
 
 import httpx
-from fastapi import Body, FastAPI, HTTPException, Query, Response
+from fastapi import Body, Depends, FastAPI, HTTPException, Query, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 
 import field_numbers
@@ -30,9 +31,6 @@ AXIS_START = date(2015, 4, 1)
 # manifest of Table G is read here so the mode response and the app cannot disagree about a
 # zoom bound. `POLYGON_DIR` is the one configured path (Expected Interface).
 POLYGON_DIR = Path(os.getenv("POLYGON_DIR", str(BACKEND_DIR.parent / "data" / "polygons")))
-POLYGON_SOURCE_DIRECT_URL = (
-    "https://data.source.coop/wri-data-lab/trazofields/trazo3-fields/trazo3.pmtiles"
-)
 TABLE_G_KEYS = (
     "schema_version",
     "region",
@@ -138,15 +136,80 @@ LAYER_ALIASES: dict[str, str] = {"smap-soil-moisture": "smap-l3"}
 _upstream_requests = 0
 _tile_lock = threading.RLock()
 
+# --- CORS -----------------------------------------------------------------------------------
+# Every origin in `CORS_ALLOW_ORIGINS` (comma separated) is allowed. Left unset the list is empty
+# and only the development regex below matches, which is exactly what the local frontend needs.
+# `CORS_ALLOW_ORIGIN_REGEX` overrides that regex; an empty value disables it, which is what a
+# deployment that wants only its own origin should set.
+CORS_ALLOW_ORIGINS: list[str] = [
+    origin.strip() for origin in os.environ.get("CORS_ALLOW_ORIGINS", "").split(",") if origin.strip()
+]
+CORS_ALLOW_ORIGIN_REGEX: str = os.environ.get(
+    "CORS_ALLOW_ORIGIN_REGEX", "" if CORS_ALLOW_ORIGINS else r"http://(localhost|127\.0\.0\.1):\d+"
+)
+
 app = FastAPI(title="Field Shift API", version="0.1.0")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[],
-    allow_origin_regex=r"http://(localhost|127\.0\.0\.1):\d+",
+    allow_origins=CORS_ALLOW_ORIGINS,
+    allow_origin_regex=CORS_ALLOW_ORIGIN_REGEX or None,
     allow_methods=["*"],
+    # The wildcard already lets a preflight ask for `Range`, which is the only request header a
+    # PMTiles reader adds. This backend serves no byte range of its own (no range response, no
+    # partial content), so there is no `Content-Range` to expose; a PMTiles archive fetched from a
+    # CDN cross origin is that host's CORS to configure, not this one's.
     allow_headers=["*"],
     expose_headers=["X-Tile-Source", "X-Tile-Fallback", "X-Tile-Date", "X-Tile-Status"],
 )
+
+# --- abuse control on the one slow route ----------------------------------------------------
+# `POST /fields/{id}/numbers` fans out to NASA POWER and friends, so it is the route worth
+# throttling. A sliding window of timestamps per client address is enough here: it needs no
+# service and no state beyond this process. It is PER WORKER: with `uvicorn --workers N` each
+# worker keeps its own window, so the effective allowance is N times the configured one.
+
+_rate_lock = threading.Lock()
+_rate_hits: dict[str, list[float]] = {}
+
+
+def _numbers_rate_limit() -> tuple[int, float]:
+    """The configured window: at most this many requests in this many seconds, per worker.
+
+    The default allows a user to work through a field without ever meeting it while still capping a
+    loop. `NUMBERS_RATE_LIMIT_REQUESTS=0` turns the limiter off, which is what a test suite that
+    calls the route in a loop from one address sets; a negative value means the same.
+    """
+    limit = int(os.environ.get("NUMBERS_RATE_LIMIT_REQUESTS", "60"))
+    window = float(os.environ.get("NUMBERS_RATE_LIMIT_WINDOW_SECONDS", "60"))
+    return limit, max(window, 0.001)
+
+
+def enforce_numbers_rate_limit(request: Request) -> None:
+    """429 once a client has used its allowance of this window.
+
+    The window is counted from the oldest request still inside it, so a client that waits the
+    `Retry-After` it is given is served again. The address is the socket peer, which behind a
+    proxy is the proxy unless the proxy is trusted to set a forwarding header; that is the
+    documented limit of a limiter this small.
+    """
+    limit, window = _numbers_rate_limit()
+    if limit <= 0:
+        return
+    key = request.client.host if request.client else "unknown"
+    now = monotonic()
+    with _rate_lock:
+        hits = [hit for hit in _rate_hits.get(key, []) if now - hit < window]
+        if len(hits) >= limit:
+            _rate_hits[key] = hits
+            retry_after = max(1, math.ceil(window - (now - hits[0])))
+            raise HTTPException(
+                status_code=429,
+                detail=f"too many numbers requests: at most {limit} in {window:g} s",
+                headers={"Retry-After": str(retry_after)},
+            )
+        hits.append(now)
+        _rate_hits[key] = hits
+
 
 COMMANDS: tuple[dict[str, Any], ...] = (
     {
@@ -705,40 +768,28 @@ def _read_us_manifest() -> dict[str, Any]:
 
 
 @app.get("/polygons/mode")
-def polygon_mode(region: Literal["us", "br"] = Query(description="us or br")) -> dict[str, Any]:
-    """R-09: the one hosting mode read of a load, per region. No tile is read here.
+def polygon_mode(region: Literal["us"] = Query(description="us, the only region the app mounts")) -> dict[str, Any]:
+    """R-09: the one hosting mode read of a load. No tile is read here.
 
-    The United States is self-hosted only and its zoom values are the manifest's (Table G),
-    so this response and the app cannot disagree. Brazil keeps the two modes of R-09: the
-    self-hosted extract when both files exist, the source-direct URL otherwise. Every load
-    reports `mbmode24` as the one class property (R-18), because the extract preserves it.
+    The United States is self-hosted only and its zoom values are the manifest's (Table G), so
+    this response and the app cannot disagree. Nothing else is served: the Brazilian extract was
+    removed with its adapter, its class table and its sidecar, and a request for another region is
+    refused by the query type rather than answered with an empty scene.
     """
-    if region == "us":
-        manifest = _read_us_manifest()
-        return {
-            "region": "us",
-            "mode": "self-hosted",
-            "classProperty": None,
-            "class_property_pattern": "cdl{year}",
-            "class_year_range": [2018, 2025],
-            "detail_minzoom": manifest["detail_minzoom"],
-            "detail_maxzoom": manifest["detail_maxzoom"],
-            "overview_minzoom": manifest["overview_minzoom"],
-            "overview_maxzoom": manifest["overview_maxzoom"],
-            "interactive_minzoom": manifest["interactive_minzoom"],
-            "detail_file": "/data/polygons/us-38017-detail.pmtiles",
-            "overview_file": "/data/polygons/us-38017-overview.pmtiles",
-        }
-
-    detail = POLYGON_DIR / "br-mt-detail.pmtiles"
-    overview = POLYGON_DIR / "br-mt-overview.pmtiles"
-    self_hosted = detail.exists() and overview.exists()
+    manifest = _read_us_manifest()
     return {
-        "region": "br",
-        "mode": "self-hosted" if self_hosted else "source-direct",
-        "classProperty": "mbmode24",
-        "detail_file": "/data/polygons/br-mt-detail.pmtiles" if self_hosted else POLYGON_SOURCE_DIRECT_URL,
-        "overview_file": "/data/polygons/br-mt-overview.pmtiles" if self_hosted else None,
+        "region": "us",
+        "mode": "self-hosted",
+        "classProperty": None,
+        "class_property_pattern": "cdl{year}",
+        "class_year_range": [2018, 2025],
+        "detail_minzoom": manifest["detail_minzoom"],
+        "detail_maxzoom": manifest["detail_maxzoom"],
+        "overview_minzoom": manifest["overview_minzoom"],
+        "overview_maxzoom": manifest["overview_maxzoom"],
+        "interactive_minzoom": manifest["interactive_minzoom"],
+        "detail_file": "/data/polygons/us-38017-detail.pmtiles",
+        "overview_file": "/data/polygons/us-38017-overview.pmtiles",
     }
 
 
@@ -771,9 +822,9 @@ def get_scenarios(field_id: str) -> dict[str, Any]:
     }
 
 
-@app.post("/fields/{field_id}/numbers")
+@app.post("/fields/{field_id}/numbers", dependencies=[Depends(enforce_numbers_rate_limit)])
 def post_field_numbers(field_id: str, body: field_numbers.NumbersRequest = Body(...)) -> dict[str, Any]:
-    """Block 6 R-45: the one numbers route. Refusals are 400 and 404; a body that misses the schema is 422."""
+    """Block 6 R-45: the one numbers route. Refusals are 400, 404 and 429; a body that misses the schema is 422."""
     try:
         return field_numbers.build_numbers(field_id, body, fixture_fields=FIXTURE["fields"])
     except field_numbers.NumbersError as error:

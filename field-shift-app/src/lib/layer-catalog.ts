@@ -1,8 +1,8 @@
+import { API_BASE } from './api-base'
 import { RECORDED_LAYERS_RESPONSE } from './recorded-layers-response'
 import { en } from '@/strings/en'
 import type { TranslationKey } from '@/strings'
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'
 
 export type LayerStatus = 'on_date' | 'earlier' | 'none_in_lookback' | 'stale' | 'unavailable'
 export type LayerKind = 'tile' | 'stale'

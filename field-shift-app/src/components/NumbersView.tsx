@@ -8,7 +8,7 @@
  */
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { chosenDateOf, useMapStore, type FieldSummary } from '@/lib/map-store'
-import { fetchPolygonArea, readoutRows, type SidecarArea } from '@/lib/polygon-readout'
+import { readoutRows } from '@/lib/polygon-readout'
 import { commandFieldId } from '@/lib/polygon-selection'
 import { regionAdapter } from '@/lib/regions'
 import {
@@ -855,23 +855,8 @@ export function NumbersView({ selectedField, scenarios = [] }: NumbersViewProps)
   const chosenDate = useMapStore(chosenDateOf)
   const setNumbersLastRead = useMapStore((state) => state.setNumbersLastRead)
   const region = regionAdapter(regionId)
-  const [sidecar, setSidecar] = useState<SidecarArea>({ status: 'idle' })
   const [load, setLoad] = useState<Load>({ kind: 'idle' })
 
-
-  // Block 5's Brazil area is read from the sidecar for the selected polygon (R-25 of block 5).
-  useEffect(() => {
-    if (!region.areaFromSidecar || selectedPolygonId === null) {
-      setSidecar({ status: 'idle' })
-      return
-    }
-    const controller = new AbortController()
-    setSidecar({ status: 'loading' })
-    fetchPolygonArea(region, selectedPolygonId, { signal: controller.signal }).then((next) => {
-      if (!controller.signal.aborted) setSidecar(next)
-    })
-    return () => controller.abort()
-  }, [region, selectedPolygonId])
 
   const isPolygon = selectedPolygonId !== null
   const fieldId: string | null = isPolygon
@@ -879,22 +864,20 @@ export function NumbersView({ selectedField, scenarios = [] }: NumbersViewProps)
     : selectedField?.id ?? null
 
   // The request of Table B: a fixture field sends its own boundary and centre, a polygon sends
-  // the outline the map rendered and an interior point of it. The area is null for a fixture and
-  // for a United States polygon (its feature carries acres only), and the sidecar's hectares for
-  // Brazil, which waits for the sidecar to answer.
+  // the outline the map rendered and an interior point of it. The area is null for both, because
+  // the route takes the hectares from the polygon the client reports only when it has them.
   const request: Request | 'ring_missing' | 'waiting' | null = useMemo(() => {
     if (fieldId === null) return null
     if (isPolygon) {
       if (polygonRing === null) return 'ring_missing'
       const centre = interiorPoint(polygonRing)
       if (centre === null) return 'ring_missing'
-      if (region.areaFromSidecar && (sidecar.status === 'idle' || sidecar.status === 'loading')) return 'waiting'
       return {
         fieldId,
         body: {
           ring: polygonRing,
           centroid: centre,
-          area_ha: region.areaFromSidecar && sidecar.status === 'found' ? sidecar.areaHa : null,
+          area_ha: null,
           date: chosenDate,
         },
       }
@@ -909,7 +892,7 @@ export function NumbersView({ selectedField, scenarios = [] }: NumbersViewProps)
         date: chosenDate,
       },
     }
-  }, [fieldId, isPolygon, polygonRing, region, sidecar, selectedField, chosenDate])
+  }, [fieldId, isPolygon, polygonRing, region, selectedField, chosenDate])
 
   const requestKey = typeof request === 'object' && request !== null
     ? JSON.stringify([request.fieldId, request.body])
@@ -964,7 +947,6 @@ export function NumbersView({ selectedField, scenarios = [] }: NumbersViewProps)
       raw: polygonRaw,
       date: chosenDate,
       classSource: polygonMode?.classSource ?? null,
-      sidecar,
     }).rows
     : []
   const classText = isPolygon ? (readout.find((row) => row.key === 'class')?.value ?? '') : t('numbers.header.no_class_source')
@@ -976,7 +958,7 @@ export function NumbersView({ selectedField, scenarios = [] }: NumbersViewProps)
     body = <p className="numbers-empty">{t('numbers.no_field')}</p>
   } else if (request === 'ring_missing') {
     body = <p className="numbers-abstain">{t('numbers.header.polygon_ring_missing')}</p>
-  } else if (request === 'waiting' || load.kind === 'idle' || load.kind === 'loading') {
+  } else if (load.kind === 'idle' || load.kind === 'loading') {
     body = <p className="numbers-loading">{t('numbers.loading')}</p>
   } else if (load.kind === 'error') {
     body = <p className="error-notice numbers-error" role="alert">{t('numbers.request_failed', { status: load.status })}</p>
