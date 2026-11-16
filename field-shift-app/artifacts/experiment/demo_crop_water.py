@@ -274,7 +274,7 @@ def _markdown(results: dict[str, Any]) -> str:
     lines.extend(["", "## Critérios de abstenção", ""] + [f"- {item}" for item in results["abstention_criteria"]])
     lines.extend(["", "## Reprodução", "", "```powershell",
                   "cd field-shift-app/artifacts/experiment", "python demo_crop_water.py", "```", "",
-                  f"Snapshot ET0 SHA-256: `{results['reproducibility']['et0_snapshot_sha256']}`  ",
+                  f"Snapshot ET0 SHA-256: `{results['reproducibility']['et0_snapshot_sha256']}`", "",
                   f"Snapshot Bloco 6 SHA-256: `{results['reproducibility']['block6_snapshot_sha256']}`", ""])
     return "\n".join(lines)
 

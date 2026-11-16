@@ -112,5 +112,6 @@ cd field-shift-app/artifacts/experiment
 python demo_crop_water.py
 ```
 
-Snapshot ET0 SHA-256: `c753da79c08ae1267a3022685b4cd8e317fd73d30f0e64b20ec1619fd3e0f1c1`  
+Snapshot ET0 SHA-256: `c753da79c08ae1267a3022685b4cd8e317fd73d30f0e64b20ec1619fd3e0f1c1`
+
 Snapshot Bloco 6 SHA-256: `133e5bca15988a9f54d1a9c67828f919427635e407258355ba6b77fe55b50cb5`
