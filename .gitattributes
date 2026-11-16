@@ -1,0 +1,10 @@
+# Keep LF line endings in the working tree on every OS. Some tests hash data files
+# (the ZARC snapshot), and a CRLF checkout on Windows changes the bytes they check.
+* text=auto eol=lf
+*.cmd text eol=crlf
+*.png binary
+*.pmtiles binary
+*.pdf binary
+*.webp binary
+# Gate logs are kept byte for byte as the team recorded them.
+field-shift-app/artifacts/*.txt -text

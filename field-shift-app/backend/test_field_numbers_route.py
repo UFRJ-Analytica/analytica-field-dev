@@ -22,6 +22,7 @@ from fastapi.testclient import TestClient
 
 import field_numbers
 import main
+import rate_limit
 from block6_replay import ARTIFACTS, ReplayTransport, create_sidecar, fixture_rows, ring_with_area_ha
 
 # A 22.4 ha ring centred on the fixture point, so R-50 compares like with like. The spec's Table B
@@ -84,7 +85,11 @@ class RouteInventoryTests(RouteCase):
             for r in main.app.routes
             if getattr(r, "methods", None) and r.path not in ("/openapi.json", "/docs", "/docs/oauth2-redirect", "/redoc")
         )
-        self.assertEqual(len(api), 11, api)
+        # Eleven routes of the team's main, plus the three of the merged Field Phase blocks 9 and 10
+        # (ENSO, the field climate line and the static report export).
+        self.assertEqual(len(api), 15, api)
+        for route in [("GET", "/climate/enso"), ("GET", "/fields/{field_id}/climate"), ("GET", "/fieldphase/data/v1/{path:path}")]:
+            self.assertIn(route, api)
         self.assertIn(("POST", "/fields/{field_id}/numbers"), api)
 
 
@@ -533,7 +538,7 @@ class NumbersRateLimitTests(RouteCase):
         }
         os.environ["NUMBERS_RATE_LIMIT_REQUESTS"] = "2"
         os.environ["NUMBERS_RATE_LIMIT_WINDOW_SECONDS"] = "60"
-        main._rate_hits.clear()
+        rate_limit.reset()
         self.addCleanup(self._restore)
 
     def _restore(self) -> None:
@@ -542,7 +547,7 @@ class NumbersRateLimitTests(RouteCase):
                 os.environ.pop(name, None)
             else:
                 os.environ[name] = value
-        main._rate_hits.clear()
+        rate_limit.reset()
 
     def test_the_request_after_the_window_is_429_with_retry_after(self) -> None:
         self.assertEqual(self.post().status_code, 200)

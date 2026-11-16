@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
 import {
   AttributionControl,
   Map as MapLibre,
@@ -121,7 +121,9 @@ function compareBounds(map: MapLibreMap, divider: number): { a: [number, number,
  * points once the raster sat below the polygons (artifacts/AC-11-alpha.json).
  */
 function imageryAnchor(map: MapLibreMap): string | undefined {
-  return map.getLayer(POLYGON_FILL_LAYER_ID) ? POLYGON_FILL_LAYER_ID : firstSymbolId(map)
+  // The first polygon layer present, so imagery and the water mask stay under every crop layer
+  // (the overview pair and the detail pair) and never between them.
+  return POLYGON_LAYER_IDS.find((id) => map.getLayer(id)) ?? firstSymbolId(map)
 }
 
 /**
@@ -171,10 +173,20 @@ function ensureRaster(
       id: layerId,
       type: 'raster',
       source: sourceId,
-      paint: { 'raster-opacity': 0 },
+      // A coarse product (SMAP is 9 km) is drawn as hard squares: smoothing it would suggest
+      // detail the measurement does not have.
+      paint: { 'raster-opacity': 0, ...(resolutionMetres(entry.resolution) >= 1000 ? { 'raster-resampling': 'nearest' as const } : {}) },
     }, imageryAnchor(map))
   }
   return created
+}
+
+/** Metres in a layer's resolution label (`9 km`, `250 m`, `about 11 km`); 0 when it cannot be read. */
+export function resolutionMetres(label: string): number {
+  const match = label.match(/([\d.]+)\s*(km|m)\b/i)
+  if (!match) return 0
+  const value = Number(match[1])
+  return match[2].toLowerCase() === 'km' ? value * 1000 : value
 }
 
 function ensureFieldBoundaries(map: MapLibreMap, fields: FieldSummary[]) {
@@ -205,6 +217,55 @@ function applyComposition(map: MapLibreMap, composition: CompositionPreset) {
   for (const layer of map.getStyle().layers ?? []) {
     if (layer.type === 'symbol') {
       map.setLayoutProperty(layer.id, 'visibility', showLabels ? 'visible' : 'none')
+    }
+  }
+}
+
+export const WATER_MASK_LAYER_ID = 'land-only-water-mask'
+const SATELLITE_WATER = '#17324a'
+
+/**
+ * Land-only products (soil moisture, vegetation, land surface temperature) have kilometre
+ * pixels, and a pixel on the coast spills its colour over the sea when zoomed in. The basemap's
+ * own water polygons are drawn above those layers as a mask; layers that do have values over
+ * water (rain, reflectance) are raised above the mask again, in their stack order.
+ */
+export function placeWaterMask(
+  map: MapLibreMap,
+  catalog: readonly LayerCatalogEntry[],
+  stack: string[],
+  composition: CompositionPreset,
+) {
+  const landOn = stack.some((id) => catalog.find((entry) => entry.id === id)?.surface === 'land')
+  const water = (map.getStyle().layers ?? []).find(
+    (layer) => layer.type === 'fill' && (layer as { 'source-layer'?: string })['source-layer'] === 'water',
+  ) as { id: string; source?: string; filter?: unknown } | undefined
+  if (!landOn || !water?.source) {
+    if (map.getLayer(WATER_MASK_LAYER_ID)) map.removeLayer(WATER_MASK_LAYER_ID)
+    return
+  }
+  const colour = composition === 'map'
+    ? (map.getPaintProperty(water.id, 'fill-color') as string | undefined) ?? '#a0c8f0'
+    : SATELLITE_WATER
+  if (!map.getLayer(WATER_MASK_LAYER_ID)) {
+    map.addLayer({
+      id: WATER_MASK_LAYER_ID,
+      type: 'fill',
+      source: water.source,
+      'source-layer': 'water',
+      ...(water.filter ? { filter: water.filter as never } : {}),
+      paint: { 'fill-color': colour, 'fill-opacity': 1 },
+    })
+  } else {
+    map.setPaintProperty(WATER_MASK_LAYER_ID, 'fill-color', colour)
+  }
+  const ceiling = imageryAnchor(map)
+  map.moveLayer(WATER_MASK_LAYER_ID, ceiling)
+  for (let index = stack.length - 1; index >= 0; index -= 1) {
+    const id = stack[index]
+    if (catalog.find((entry) => entry.id === id)?.surface === 'land') continue
+    for (const key of [rasterLayerId(id), `${rasterLayerId(id)}${COMPARE_SUFFIX.a}`, `${rasterLayerId(id)}${COMPARE_SUFFIX.b}`]) {
+      if (map.getLayer(key)) map.moveLayer(key, ceiling)
     }
   }
 }
@@ -470,7 +531,17 @@ export function MapCanvas({ fields, selectedField, onTileChange, children }: Map
 
   useEffect(() => {
     if (!mapReady || !mapRef.current || !selectedField || !didSetInitialFieldRef.current) return
-    mapRef.current.flyTo({ center: selectedField.center, zoom: 11, duration: 500 })
+    const bounds: [[number, number], [number, number]] = selectedField.boundary.coordinates[0].reduce(
+      (box, [lng, lat]) => [
+        [Math.min(box[0][0], lng), Math.min(box[0][1], lat)],
+        [Math.max(box[1][0], lng), Math.max(box[1][1], lat)],
+      ],
+      [[selectedField.center[0], selectedField.center[1]], [selectedField.center[0], selectedField.center[1]]],
+    )
+    if (typeof mapRef.current.fitBounds === 'function') {
+      const padding = 48
+      mapRef.current.fitBounds(bounds, { padding, maxZoom: 14, duration: 500 })
+    }
   }, [selectedField, mapReady])
 
   useEffect(() => {
@@ -934,6 +1005,8 @@ export function MapCanvas({ fields, selectedField, onTileChange, children }: Map
 
     // R-18: only the layers still on the map take part in the stack order.
     applyOrder(map, order.filter((id) => visibleIds.has(id)))
+    // The land only products get the basemap's water drawn over them, under the crop polygons.
+    placeWaterMask(map, catalog, order.filter((id) => visibleIds.has(id)), composition)
     // R-36: whatever raster was just inserted, the polygon pair stays above the imagery.
     raisePolygonLayers(map)
   }, [mapReady, catalog, layerOn, opacity, order, pinnedDates, compare, decisions])
@@ -947,9 +1020,36 @@ export function MapCanvas({ fields, selectedField, onTileChange, children }: Map
       </div>
       {children}
       {tooltip && <PolygonTooltip left={tooltip.left} text={tooltip.text} top={tooltip.top} />}
+      <ActiveLayersNote />
       <CompareOverlay chosenDate={chosenDate} />
       <OfflineOverlay />
     </section>
+  )
+}
+
+/**
+ * Names the layers drawn on the map with their pixel size, and warns when a pixel is larger
+ * than a field at the current zoom, so a coarse product is not read as field detail.
+ */
+function ActiveLayersNote() {
+  const catalog = useMapStore((state) => state.catalog)
+  const on = useMapStore((state) => state.on)
+  const zoom = useMapStore((state) => state.mapZoom)
+  const active = catalog.filter((entry) => on[entry.id])
+  if (active.length === 0) return null
+  return (
+    <div className="map-layers-note" role="status">
+      {active.map((entry) => {
+        const coarse = resolutionMetres(entry.resolution) >= 1000 && (zoom ?? 0) >= 9
+        return (
+          <p key={entry.id}>
+            <span className="map-live-dot" aria-hidden="true" />
+            <span>{t('map.layer_pixel', { name: t(entry.labelKey ?? entry.label), resolution: entry.resolution })}</span>
+            {coarse ? <span className="map-layers-coarse">{t('map.layer_coarse')}</span> : null}
+          </p>
+        )
+      })}
+    </div>
   )
 }
 
@@ -965,8 +1065,35 @@ function CompareOverlay({ chosenDate }: { chosenDate: string }) {
   const sideA = decisions[active.id]?.date ?? chosenDate
   const sideB = decisions[`${active.id}${COMPARE_DECISION_SUFFIX}`]?.date ?? pair.date ?? ''
 
+  // Dragging anywhere on the handle moves the split; the range input under it keeps the keyboard contract.
+  const dragFrom = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const overlay = event.currentTarget.parentElement
+    if (!overlay) return
+    event.preventDefault()
+    event.currentTarget.setPointerCapture?.(event.pointerId)
+    const move = (clientX: number) => {
+      const box = overlay.getBoundingClientRect()
+      if (box.width <= 0) return
+      setCompareDivider(active.id, Math.min(1, Math.max(0, (clientX - box.left) / box.width)))
+    }
+    move(event.clientX)
+    const target = event.currentTarget
+    const onMove = (next: PointerEvent) => move(next.clientX)
+    const onUp = () => {
+      target.removeEventListener('pointermove', onMove)
+      target.removeEventListener('pointerup', onUp)
+      target.removeEventListener('pointercancel', onUp)
+    }
+    target.addEventListener('pointermove', onMove)
+    target.addEventListener('pointerup', onUp)
+    target.addEventListener('pointercancel', onUp)
+  }
+
   return (
     <div className="compare-overlay">
+      <div aria-hidden="true" className="compare-line" onPointerDown={dragFrom} style={{ left: `${pair.divider * 100}%` }}>
+        <span className="compare-handle">⇆</span>
+      </div>
       <span className="compare-side compare-side-a" data-dynamic-content>
         {t('layers.compare_side', { date: sideA, age: ageText(sideA, chosenDate) })}
       </span>

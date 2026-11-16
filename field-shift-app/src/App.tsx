@@ -12,7 +12,13 @@ import { PanelHost, type PanelSpec } from '@/components/PanelHost'
 import { PANEL_TOGGLE_ATTR, usePanelStore, type PanelId } from '@/lib/panel-store'
 import { SUPPORTING_DATA_PANEL_ID, SupportingDataToggle, useSupportingDataToggle } from '@/components/SupportingDataToggle'
 import { NumbersToggle } from '@/components/NumbersToggle'
+import { EnsoChip } from '@/components/EnsoChip'
+import { ReportButton } from '@/components/ReportButton'
+import { ClimateSignal } from '@/components/ClimateSignal'
+import { ensoSchema, fieldClimateSchema, loadParsed, type EnsoState, type FieldClimate, type Loadable } from '@/lib/climate'
 import { NumbersView } from '@/components/NumbersView'
+import { FieldShiftAIPanel, FieldShiftAIToggle } from '@/components/FieldShiftAI'
+import { useAssistantUi } from '@/lib/assistant/ui-store'
 import { chosenDateOf, useMapStore, type FieldSummary } from '@/lib/map-store'
 import { loadFields, loadProducer } from '@/lib/producer-store'
 import { useLayers } from '@/lib/use-layers'
@@ -86,6 +92,10 @@ function App() {
   const polygonDate = useMapStore(chosenDateOf)
   const panelOpen = usePanelStore((state) => state.open)
   const supportingData = useSupportingDataToggle()
+  // Item 3 of the Field Shift AI integration: the two panels of the right column are exclusive, so
+  // opening one closes the other and neither can be drawn over the other.
+  const assistantOpen = useAssistantUi((state) => state.open)
+  const setAssistantOpen = useAssistantUi((state) => state.setOpen)
   const [fields, setFields] = useState<FieldSummary[]>([])
   const [mapTile, setMapTile] = useState<{ z: number; x: number; y: number } | null>(null)
   const [scenarios, setScenarios] = useState<RotationScenario[]>([])
@@ -97,6 +107,11 @@ function App() {
   const [fieldsRequest, setFieldsRequest] = useState(0)
   const [isLoadingFields, setIsLoadingFields] = useState(true)
   const [isLoadingScenarios, setIsLoadingScenarios] = useState(false)
+  // The CPC ENSO state is one read per page; the municipal climate line follows the field.
+  const [enso, setEnso] = useState<Loadable<EnsoState>>({ status: 'loading' })
+  const [climate, setClimate] = useState<Loadable<FieldClimate> | null>(null)
+  // The municipality codes the report export carries; a field without one has no report.
+  const [reportCodes, setReportCodes] = useState<Set<number> | null>(null)
   // The fixture's own season, written by the `/fields` response; the note that printed it lived in the
   // rotation panel, so only the setter is kept.
   const [, setFixtureSeason] = useState('2025/26')
@@ -289,6 +304,38 @@ function App() {
   }, [fieldsRequest])
 
   useEffect(() => {
+    const controller = new AbortController()
+    fetch(`${API_BASE}/fieldphase/data/v1/municipalities.json`, { signal: controller.signal })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((body: { municipalities?: { code: number }[] } | null) => {
+        if (!controller.signal.aborted) setReportCodes(new Set((body?.municipalities ?? []).map((entry) => entry.code)))
+      })
+      .catch(() => undefined)
+    return () => controller.abort()
+  }, [])
+
+  useEffect(() => {
+    const controller = new AbortController()
+    loadParsed(`${API_BASE}/climate/enso`, ensoSchema, controller.signal)
+      .then((next) => { if (!controller.signal.aborted) setEnso(next) })
+      .catch(() => undefined)
+    return () => controller.abort()
+  }, [])
+
+  useEffect(() => {
+    if (!selectedFieldId) {
+      setClimate(null)
+      return
+    }
+    const controller = new AbortController()
+    setClimate({ status: 'loading' })
+    loadParsed(`${API_BASE}/fields/${selectedFieldId}/climate`, fieldClimateSchema, controller.signal)
+      .then((next) => { if (!controller.signal.aborted) setClimate(next) })
+      .catch(() => undefined)
+    return () => controller.abort()
+  }, [selectedFieldId])
+
+  useEffect(() => {
     if (!selectedFieldId) return
     const controller = new AbortController()
     setIsLoadingScenarios(true)
@@ -335,6 +382,7 @@ function App() {
   }, [])
 
   const handleToggleSupportingData = useCallback(() => {
+    setAssistantOpen(false)
     supportingData.toggle()
   }, [supportingData])
 
@@ -358,6 +406,11 @@ function App() {
   // Block 5.5, B1: the map screen is never hidden. The shell carries no state class for a panel,
   // because a panel is a box inside the map screen and not a screen over it.
   const shellClass = 'app-shell'
+
+  const reportCode = (() => {
+    const code = selectedField?.municipality_code ?? null
+    return reportCodes !== null && code !== null && reportCodes.has(code) ? code : null
+  })()
 
   const shellStyle = {
     '--fs-notice-block': `${hasNotice ? noticeHeight + 8 : 0}px`,
@@ -392,11 +445,15 @@ function App() {
         <div className="overlay-interactive topbar-meta">
           <span className="top-chip workspace-label">{t('map.field_intelligence')}</span>
           <span className="top-chip profile-avatar" aria-label={t('map.grower_profile')}>GM</span>
+          <EnsoChip enso={enso} />
           <SupportingDataToggle isOpen={supportingData.isOpen} onToggle={handleToggleSupportingData} />
           {/* Block 5.5, W3 and block 7 revision 10 R-08: the four buttons in the fixed order
               `Rotation outlook`, `Field numbers`, `Planting calendar`, `Field record`, to the
               right of `Supporting data`, which block 4 R-41 freezes as the anchor. */}
           <NumbersToggle hasSelection={hasSelection} />
+          <ReportButton code={reportCode} />
+          {/* Field Shift AI (PR 44): a button of the strip like `Data Info`, not a floating launcher. */}
+          <FieldShiftAIToggle onOpen={() => { setAssistantOpen(true); if (supportingData.isOpen) supportingData.close() }} />
         </div>
       </div>
 
@@ -456,16 +513,24 @@ function App() {
         </div>
       </div>
 
-      {supportingData.isOpen && (
+      {(supportingData.isOpen || assistantOpen) && (
         <div className="overlay anchor-right-column">
           <div className="right-column-stack">
-            {supportingData.isOpen && (
+            {assistantOpen && <FieldShiftAIPanel selectedField={selectedField} />}
+            {!assistantOpen && supportingData.isOpen && (
               <div
                 id={SUPPORTING_DATA_PANEL_ID}
                 className="overlay-interactive panel-surface evidence-anchor layer-evidence"
                 style={{ zIndex: ZOrder.evidence }}
               >
+                <ClimateSignal climate={climate} />
                 <EvidencePanel
+                  climate={climate && climate.status === 'ready'
+                    ? {
+                      municipality: `${climate.data.municipality.name_official} (${climate.data.municipality.uf})`,
+                      rows: climate.data.rows,
+                    }
+                    : null}
                   rows={evidenceRows}
                   isLoading={isLoadingFields || isLoadingScenarios}
                   emptyReason={isLoadingFields || isLoadingScenarios
@@ -477,6 +542,7 @@ function App() {
           </div>
         </div>
       )}
+
 
       {/* Block 5.5, B1: nothing is mounted over the map any more. The four panels live in the
           host above, and the map screen is the screen. */}

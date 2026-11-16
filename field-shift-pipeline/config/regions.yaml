@@ -1,0 +1,117 @@
+# Pilot regions and municipalities.
+#
+# Human-authored, declarative. Derived values (centroids, mesh geometry) are NOT stored here --
+# pipeline/fetch_regions.py computes them from the IBGE malhas API and writes
+# data/processed/regions.parquet. IBGE codes below were read from the IBGE localidades API.
+
+meta:
+  # Baseline used for every monthly climatology and anomaly in the project.
+  climatology_baseline: [1991, 2020]
+  # Crop year runs Jul-Jun and is labelled by its harvest year, to align with IBGE PAM.
+  crop_year_start_month: 7
+  # Months composited for the ENSO signal: the Brazilian summer-crop season.
+  season_months: [9, 10, 11, 12, 1, 2, 3, 4]
+
+regions:
+  - id: rs
+    name: Rio Grande do Sul
+    name_en: Rio Grande do Sul
+    enso_signal: excess          # El Nino -> rainfall surplus Sep-Dec
+    signal_label_pt: Excesso hidrico no El Nino
+    signal_label_en: Water excess under El Nino
+    # Dominant mechanisms of loss, used to word the explanations.
+    hazards: [waterlogging, erosion, delayed_planting, harvest_rain]
+    municipalities:
+      - code: 4322202
+        name: Tupancireta
+        uf: RS
+        # Largest soybean area in Rio Grande do Sul; classic soy-wheat/oat system.
+        mesoregion: Centro Ocidental Rio-grandense
+        source_code: IBGE localidades API
+
+  - id: matopiba
+    name: MATOPIBA
+    name_en: MATOPIBA
+    enso_signal: deficit         # El Nino -> rainfall deficit and mid-season dry spells
+    signal_label_pt: Deficit hidrico no El Nino
+    signal_label_en: Water deficit under El Nino
+    hazards: [drought, veranico, late_onset, safrinha_failure]
+    municipalities:
+      - code: 2919553
+        name: Luis Eduardo Magalhaes
+        uf: BA
+        # Core of the western Bahia cerrado frontier; soy-safrinha maize and cotton.
+        mesoregion: Extremo Oeste Baiano
+        source_code: IBGE localidades API
+
+  # Santa Carmem carries the Field Shift rotation fields (ADR 0001). No source in the research pack
+  # states the sign of the El Nino rainfall signal there, so it is `unclassified`: the analog-year
+  # composites show the signal empirically instead of a hand-written claim.
+  - id: mt
+    name: Mato Grosso
+    name_en: Mato Grosso
+    enso_signal: unclassified
+    signal_label_pt: Sinal do El Nino nao classificado
+    signal_label_en: El Nino signal not classified
+    hazards: []
+    municipalities:
+      - code: 5107248
+        name: Santa Carmem
+        uf: MT
+        # Code and mesoregion read from the IBGE localidades API on 2026-11-14.
+        mesoregion: Norte Mato-grossense
+        source_code: IBGE localidades API
+
+  # ---- United States (block 6) ------------------------------------------------------------------
+  # The US regions use the water year instead of the Brazilian Jul-Jun crop year: Oct-Sep, labelled
+  # by harvest year (USGS water-year convention). The cold season Oct-Mar is where the US ENSO
+  # signal lives; Apr-Sep is the growing season. With this window crop year Y still contains the
+  # NDJ season that labels Y, so the ENSO classification is shared with Brazil.
+  # FIPS codes and names were read from the Census 2023 cartographic boundary file
+  # (cb_2023_us_county_500k.zip) on 2026-11-15.
+  - id: us_cornbelt
+    country: US
+    name: Corn Belt (Illinois)
+    name_en: Corn Belt (Illinois)
+    # Not classified. NOAA CPC's North American Winter Features describe "less stormy conditions
+    # across the northern part of the country" but do not name Illinois, and the NASA POWER record
+    # at the McLean centroid shows the opposite: Oct-Mar rain +21.5% in the 5 strong El Nino crop
+    # years against 1991-2020 (build_evidence, 2026-11-15). The composites show the signal instead.
+    enso_signal: unclassified
+    signal_label_pt: Sinal do El Nino nao classificado
+    signal_label_en: El Nino signal not classified
+    hazards: []
+    calendar: &us_calendar
+      crop_year_start_month: 10
+      season_months: [10, 11, 12, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+      sub_seasons: {early: [10, 11, 12, 1, 2, 3], late: [4, 5, 6, 7, 8, 9]}
+      ndvi_peak_months: [7, 8]
+      source: >-
+        project choice: USGS water year (Oct-Sep); cold season Oct-Mar for the ENSO signal, Apr-Sep
+        for the summer crops; NDVI peak Jul-Aug for corn and soybean.
+    municipalities:
+      - code: 17113
+        name: McLean
+        uf: IL
+        mesoregion: McLean County, Illinois
+        source_code: Census cartographic boundary file 2023
+
+  - id: us_plains
+    country: US
+    name: Southern Plains (Texas)
+    name_en: Southern Plains (Texas)
+    enso_signal: excess
+    signal_label_pt: Inverno mais chuvoso no El Nino
+    signal_label_en: Wetter winter under El Nino
+    signal_source: >-
+      NOAA CPC, North American Winter Features: El Nino brings "increased precipitation across
+      California and the southern U.S."
+      https://www.cpc.ncep.noaa.gov/products/analysis_monitoring/ensocycle/nawinter.shtml
+    hazards: []
+    calendar: *us_calendar
+    municipalities:
+      - code: 48303
+        name: Lubbock
+        uf: TX
+        mesoregion: Lubbock County, Texas
+        source_code: Census cartographic boundary file 2023

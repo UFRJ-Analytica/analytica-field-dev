@@ -1,0 +1,52 @@
+[project]
+name = "field-shift-pipeline"
+version = "0.1.0"
+description = "ENSO-conditioned crop rotation advisor built on NASA Earth observations"
+requires-python = ">=3.11"
+dependencies = [
+    "pandas>=2.2",
+    "pyarrow>=16.0",
+    "numpy>=1.26",
+    "requests>=2.32",
+    "pyyaml>=6.0",
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "pydantic>=2.8",
+    "truststore>=0.10.5",
+    "beautifulsoup4>=4.12",
+    "pyshp>=2.3",
+    "shapely>=2.0",
+]
+
+[project.optional-dependencies]
+# Phase 2+: satellite stack. Kept separate so Phase 1 installs fast and
+# without NASA Earthdata credentials.
+satellite = [
+    "earthaccess>=0.11",
+    "xarray>=2024.6",
+    "rioxarray>=0.17",
+    "netcdf4>=1.7",
+    "geopandas>=1.0",
+    "shapely>=2.0",
+]
+
+# Microsoft Planetary Computer (MODIS NDVI, land cover, elevation). No credentials needed:
+# public STAC search + short-lived SAS tokens issued anonymously by planetarycomputer.microsoft.com.
+planetary = [
+    "pystac-client>=0.8",
+    "planetary-computer>=1.0",
+    "rasterio>=1.4",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "httpx>=0.27",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.uv]
+package = false

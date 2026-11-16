@@ -4,6 +4,7 @@ import json
 import math
 import os
 import threading
+from concurrent.futures import ThreadPoolExecutor
 from time import monotonic
 from dataclasses import dataclass, field
 from datetime import date, datetime, time, timedelta, timezone
@@ -15,12 +16,63 @@ from fastapi import Body, Depends, FastAPI, HTTPException, Query, Request, Respo
 from fastapi.middleware.cors import CORSMiddleware
 
 import field_numbers
+import rate_limit
 
 FIXTURE_PATH = Path(__file__).parent / "fixtures" / "field-scenarios.json"
 with FIXTURE_PATH.open(encoding="utf-8") as fixture_file:
     FIXTURE: dict[str, Any] = json.load(fixture_file)
 
 BACKEND_DIR = Path(__file__).parent
+
+# Dated climate fixtures written by field-shift-pipeline/pipeline/export_fieldshift.py.
+# The backend only reads them; a missing file answers 503 on the climate endpoints and never
+# takes /fields down.
+CLIMATE_DIR = Path(os.getenv("CLIMATE_FIXTURE_DIR", str(BACKEND_DIR / "fixtures" / "climate")))
+
+
+_json_cache: dict[Path, tuple[float, Any]] = {}
+
+
+def _read_json(path: Path) -> Any:
+    """A parsed JSON file, parsed again only when the file's modification time changes."""
+    mtime = path.stat().st_mtime
+    cached = _json_cache.get(path)
+    if cached is not None and cached[0] == mtime:
+        return cached[1]
+    with path.open(encoding="utf-8") as handle:
+        value = json.load(handle)
+    _json_cache[path] = (mtime, value)
+    return value
+
+
+def _load_pilot_fields() -> list[dict[str, Any]]:
+    try:
+        return list(_read_json(CLIMATE_DIR / "pilot-fields.json")["fields"])
+    except (FileNotFoundError, json.JSONDecodeError, KeyError):
+        return []
+
+
+def all_fields() -> list[dict[str, Any]]:
+    """The fixture fields, then the pilot fields the pipeline exports."""
+    return [*FIXTURE["fields"], *_load_pilot_fields()]
+
+
+def _field_or_404(field_id: str) -> dict[str, Any]:
+    field = next((entry for entry in all_fields() if entry["id"] == field_id), None)
+    if field is None:
+        raise HTTPException(status_code=404, detail="Field not found")
+    return field
+
+
+def _climate_file(name: str) -> dict[str, Any]:
+    try:
+        return _read_json(CLIMATE_DIR / name)
+    except FileNotFoundError:
+        raise HTTPException(status_code=503, detail=f"Climate fixture {name} is missing; run the pipeline exporter") from None
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=503, detail=f"Climate fixture {name} is unreadable") from None
+
+
 TILE_CACHE_DIR = Path(os.getenv("TILE_CACHE_DIR", str(BACKEND_DIR / ".tile-cache")))
 TILE_CACHE_TTL = timedelta(hours=24)
 GIBS_BASE_URL = "https://gibs.earthdata.nasa.gov/wmts/epsg3857/best"
@@ -60,6 +112,8 @@ def _layer(
     optical: bool,
     reserve: str | None = None,
     window_days: float | int | None = None,
+    surface: str = "any",
+    shown: bool = True,
 ) -> dict[str, Any]:
     """One registry entry, with the fields fixed by the Data contracts section."""
     return {
@@ -80,6 +134,12 @@ def _layer(
         "blank_threshold_bytes": 5000 if optical else None,
         "reserve": reserve,
         "window_days": window_days,
+        # "land" for products with no values over water (soil moisture, vegetation, land surface
+        # temperature); the map hides the sea above them. "any" for rain and reflectance.
+        "surface": surface,
+        # False keeps the entry (its tiles and the block 4 evidence still resolve) but leaves it
+        # out of /layers, so the app does not offer it.
+        "shown": shown,
     }
 
 
@@ -90,13 +150,15 @@ LAYER_REGISTRY: dict[str, dict[str, Any]] = {
     for entry in (
         _layer("smap-l3", "SMAP_L3_Passive_Enhanced_Day_Soil_Moisture", "GoogleMapsCompatible_Level6", 6,
                "SMAP soil moisture", "retrieved", "9 km", "P1D", 7, "date", "2015-03-31", "2026-11-11", "tile", False,
-               reserve="backend/reserve/smap-soil-moisture.png", window_days=1),
+               reserve="backend/reserve/smap-soil-moisture.png", window_days=1, surface="land",
+               # Swath product: each day covers strips of the globe only. L4 surface is the gap-free version.
+               shown=False),
         _layer("smap-l4-surface", "SMAP_L4_Analyzed_Surface_Soil_Moisture", "GoogleMapsCompatible_Level6", 6,
                "SMAP L4 surface soil moisture", "modelled", "9 km", "P1D", 7, "date", "2015-03-31", "2026-11-10", "tile", False,
-               window_days=1),
+               window_days=1, surface="land"),
         _layer("smap-l4-root", "SMAP_L4_Analyzed_Root_Zone_Soil_Moisture", "GoogleMapsCompatible_Level6", 6,
                "SMAP L4 root-zone soil moisture", "modelled", "9 km", "P1D", 7, "date", "2015-03-31", "2026-11-10", "tile", False,
-               window_days=1),
+               window_days=1, surface="land"),
         _layer("imerg-daily", "IMERG_Precipitation_Rate", "GoogleMapsCompatible_Level6", 6,
                "IMERG precipitation, daily", "retrieved", "about 11 km", "P1D", 7, "date", "2000-06-01", "2026-11-13", "tile", False,
                window_days=1),
@@ -105,25 +167,26 @@ LAYER_REGISTRY: dict[str, dict[str, Any]] = {
                "2026-01-19T20:30:00Z", "2026-11-14T12:30:00Z", "tile", False, window_days=0.02),
         _layer("ndvi-8day", "MODIS_Terra_NDVI_8Day", "GoogleMapsCompatible_Level9", 9,
                "MODIS NDVI, 8 day", "retrieved", "250 m", "P1D", 16, "date", "2025-02-12", "2026-11-13", "tile", False,
-               window_days=8),
+               window_days=8, surface="land"),
         _layer("evi-8day", "MODIS_Terra_EVI_8Day", "GoogleMapsCompatible_Level9", 9,
                "MODIS EVI, 8 day", "retrieved", "250 m", "P1D", 16, "date", "2025-02-12", "2026-11-13", "tile", False,
-               window_days=8),
+               window_days=8, surface="land"),
         _layer("ndvi-monthly", "MODIS_Terra_L3_NDVI_Monthly", "GoogleMapsCompatible_Level7", 7,
-               "MODIS NDVI, monthly", "retrieved", "250 m", "P1M", 62, "date", "2000-03-01", "2026-10-01", "tile", False,
-               window_days=31),
+               "MODIS NDVI, monthly", "retrieved", "1 km", "P1M", 62, "date", "2000-03-01", "2026-10-01", "tile", False,
+               window_days=31, surface="land"),
         _layer("lst-terra", "MODIS_Terra_L3_Land_Surface_Temp_Daily_Day", "GoogleMapsCompatible_Level7", 7,
                "MODIS land surface temperature, Terra", "retrieved", "1 km", "P1D", 7, "date", "2000-02-25", "2026-11-13", "tile", False,
-               window_days=1),
+               window_days=1, surface="land"),
         _layer("lst-aqua", "MODIS_Aqua_Land_Surface_Temp_Day", "GoogleMapsCompatible_Level7", 7,
                "MODIS land surface temperature, Aqua", "retrieved", "1 km", "P1D", 7, "date", "2002-07-03", "2026-11-14", "tile", False,
-               window_days=1),
+               window_days=1, surface="land"),
         _layer("hls-l30", "HLS_L30_Nadir_BRDF_Adjusted_Reflectance", "GoogleMapsCompatible_Level12", 12,
                "HLS Landsat reflectance, 30 m", "retrieved", "30 m", "P1D", 30, "date", "2013-03-22", "2026-11-06", "tile", True,
-               window_days=1),
+               # Scene-based: a date shows only the scenes acquired that day, patches of the map.
+               window_days=1, shown=False),
         _layer("hls-s30", "HLS_S30_Nadir_BRDF_Adjusted_Reflectance", "GoogleMapsCompatible_Level12", 12,
                "HLS Sentinel-2 reflectance, 30 m", "retrieved", "30 m", "P1D", 30, "date", "2015-11-28", "2026-11-06", "tile", True,
-               window_days=1),
+               window_days=1, shown=False),
         _layer("grace-mascon", "GRACE_Tellus_Liquid_Water_Equivalent_Thickness_Mascon_CRI", "GoogleMapsCompatible_Level6", 6,
                "GRACE water storage, stale", "retrieved", "about 300 km, mascon", "mixed P28D, P17D, P1M", None, "date",
                "2002-04-04", "2022-07-01", "stale", False),
@@ -161,16 +224,16 @@ app.add_middleware(
     allow_headers=["*"],
     expose_headers=["X-Tile-Source", "X-Tile-Fallback", "X-Tile-Date", "X-Tile-Status"],
 )
+# Field Shift AI (experiment): routes under /experimental/field-shift-ai only; no existing route changes.
+from field_shift_agent.routes import router as field_shift_ai_router  # noqa: E402
+
+app.include_router(field_shift_ai_router)
 
 # --- abuse control on the one slow route ----------------------------------------------------
 # `POST /fields/{id}/numbers` fans out to NASA POWER and friends, so it is the route worth
 # throttling. A sliding window of timestamps per client address is enough here: it needs no
 # service and no state beyond this process. It is PER WORKER: with `uvicorn --workers N` each
 # worker keeps its own window, so the effective allowance is N times the configured one.
-
-_rate_lock = threading.Lock()
-_rate_hits: dict[str, list[float]] = {}
-
 
 def _numbers_rate_limit() -> tuple[int, float]:
     """The configured window: at most this many requests in this many seconds, per worker.
@@ -179,36 +242,14 @@ def _numbers_rate_limit() -> tuple[int, float]:
     loop. `NUMBERS_RATE_LIMIT_REQUESTS=0` turns the limiter off, which is what a test suite that
     calls the route in a loop from one address sets; a negative value means the same.
     """
-    limit = int(os.environ.get("NUMBERS_RATE_LIMIT_REQUESTS", "60"))
-    window = float(os.environ.get("NUMBERS_RATE_LIMIT_WINDOW_SECONDS", "60"))
-    return limit, max(window, 0.001)
+    return rate_limit.limit_of("NUMBERS_RATE_LIMIT_REQUESTS", "NUMBERS_RATE_LIMIT_WINDOW_SECONDS", 60)
 
 
 def enforce_numbers_rate_limit(request: Request) -> None:
-    """429 once a client has used its allowance of this window.
-
-    The window is counted from the oldest request still inside it, so a client that waits the
-    `Retry-After` it is given is served again. The address is the socket peer, which behind a
-    proxy is the proxy unless the proxy is trusted to set a forwarding header; that is the
-    documented limit of a limiter this small.
-    """
-    limit, window = _numbers_rate_limit()
-    if limit <= 0:
-        return
-    key = request.client.host if request.client else "unknown"
-    now = monotonic()
-    with _rate_lock:
-        hits = [hit for hit in _rate_hits.get(key, []) if now - hit < window]
-        if len(hits) >= limit:
-            _rate_hits[key] = hits
-            retry_after = max(1, math.ceil(window - (now - hits[0])))
-            raise HTTPException(
-                status_code=429,
-                detail=f"too many numbers requests: at most {limit} in {window:g} s",
-                headers={"Retry-After": str(retry_after)},
-            )
-        hits.append(now)
-        _rate_hits[key] = hits
+    """429 once a client has used its allowance of this window (see `rate_limit.enforce`)."""
+    rate_limit.enforce(request, scope="numbers", limit_env="NUMBERS_RATE_LIMIT_REQUESTS",
+                       window_env="NUMBERS_RATE_LIMIT_WINDOW_SECONDS", default_limit=60,
+                       label="numbers")
 
 
 COMMANDS: tuple[dict[str, Any], ...] = (
@@ -384,12 +425,20 @@ class TileResolution:
     attempts: list[str] = field(default_factory=list)
 
 
+# One pooled client for every upstream call. Opening a new HTTPS connection per tile cost about
+# 0.3 s on top of the request itself. httpx.Client is safe to share between threads.
+_upstream_client = httpx.Client(
+    timeout=httpx.Timeout(10.0, connect=5.0),
+    follow_redirects=True,
+    limits=httpx.Limits(max_connections=32, max_keepalive_connections=16),
+)
+
+
 def _http_fetch(url: str) -> httpx.Response:
     global _upstream_requests
     with _tile_lock:
         _upstream_requests += 1
-    with httpx.Client(timeout=10.0, follow_redirects=True) as client:
-        return client.get(url)
+    return _upstream_client.get(url)
 
 
 # Tests replace this hook with a recorded transport (the spec's mock transports).
@@ -441,12 +490,22 @@ def resolve_effective_date(
     chosen_day = chosen.date() if isinstance(chosen, datetime) else chosen
     attempts: list[str] = []
     for token in _candidate_tokens(entry, chosen_day):
+        # A 400 or 404 means GIBS has no granule for that date at all, whatever the tile, so a
+        # date already found missing is skipped for every other tile of the layer.
+        if (entry["id"], token) in _missing_dates:
+            continue
         attempts.append(token)
+        url = _upstream_url(entry, token, z, x, y)
         try:
-            response = fetch(_upstream_url(entry, token, z, x, y))
+            response = fetch(url)
+            # GIBS answers an occasional 5xx that a second request a moment later does not repeat.
+            if response.status_code >= 500:
+                response = fetch(url)
         except httpx.HTTPError:
             return TileResolution(status="unavailable", attempts=attempts)
         status = response.status_code
+        if status in (400, 404):
+            _missing_dates.add((entry["id"], token))
         if status == 200:
             threshold = entry["blank_threshold_bytes"]
             if threshold is not None and len(response.content) <= threshold:
@@ -466,10 +525,13 @@ def resolve_effective_date(
 
 
 _resolution_cache: dict[tuple[str, str, int, int, int], tuple[datetime, TileResolution]] = {}
+# (layer id, date token) pairs GIBS answered 400 or 404 for. Cleared with the resolution cache.
+_missing_dates: set[tuple[str, str]] = set()
 
 
 def _clear_resolution_cache() -> None:
     _resolution_cache.clear()
+    _missing_dates.clear()
 
 
 def _resolve_cached(entry: dict[str, Any], chosen: date, z: int, x: int, y: int) -> TileResolution:
@@ -479,7 +541,10 @@ def _resolve_cached(entry: dict[str, Any], chosen: date, z: int, x: int, y: int)
     if cached is not None and now - cached[0] < TILE_CACHE_TTL:
         return cached[1]
     resolution = resolve_effective_date(entry, chosen, z=z, x=x, y=y)
-    _resolution_cache[key] = (now, resolution)
+    # An upstream failure is not remembered: one bad answer would otherwise mark the layer
+    # unavailable for the whole day.
+    if resolution.status != "unavailable":
+        _resolution_cache[key] = (now, resolution)
     return resolution
 
 
@@ -598,6 +663,7 @@ def _layer_row(entry: dict[str, Any], chosen: date, z: int, x: int, y: int) -> d
         "time_format": entry["time_format"],
         "optical": entry["optical"],
         "window_days": entry["window_days"],
+        "surface": entry["surface"],
         "status": status,
         "effective_date": effective_date,
         "age_days": age_days,
@@ -622,10 +688,15 @@ def list_layers(
         raise HTTPException(status_code=400, detail="Invalid tile coordinates")
 
     chosen_day = _parse_chosen(chosen)
+    # Each layer walks its own dates against GIBS; done one after another a cold date took about
+    # 10 s, so the layers are resolved side by side. The response keeps the registry order.
+    entries = [entry for entry in LAYER_REGISTRY.values() if entry["shown"]]
+    with ThreadPoolExecutor(max_workers=len(entries)) as pool:
+        rows = list(pool.map(lambda entry: _layer_row(entry, chosen_day, z, x, y), entries))
     return {
         "chosen_date": chosen_day.isoformat(),
         "axis": dict(AXIS),
-        "layers": [_layer_row(entry, chosen_day, z, x, y) for entry in LAYER_REGISTRY.values()],
+        "layers": rows,
     }
 
 
@@ -799,19 +870,25 @@ def list_fields() -> dict[str, Any]:
         "seasons": FIXTURE["seasons"],
         "default_season": FIXTURE["default_season"],
         "fields": [
-            {key: value for key, value in field.items() if key != "scenarios"}
-            for field in FIXTURE["fields"]
+            {
+                **{key: value for key, value in field.items() if key != "scenarios"},
+                "municipality_code": field.get("municipality_code"),
+                "synthetic": bool(field.get("synthetic", False)),
+            }
+            for field in all_fields()
         ],
     }
 
 
 @app.get("/fields/{field_id}/scenarios")
 def get_scenarios(field_id: str) -> dict[str, Any]:
-    field = next((entry for entry in FIXTURE["fields"] if entry["id"] == field_id), None)
-    if field is None:
-        raise HTTPException(status_code=404, detail="Field not found")
+    field = _field_or_404(field_id)
 
-    threshold = "coverage_below_80_percent" if field["coverage"] < 80 else None
+    # A field with no coverage measurement abstains; abstention is a result, not an error.
+    if field["coverage"] is None:
+        threshold: str | None = "coverage_not_measured"
+    else:
+        threshold = "coverage_below_80_percent" if field["coverage"] < 80 else None
     return {
         "field_id": field["id"],
         "season": FIXTURE["default_season"],
@@ -820,6 +897,81 @@ def get_scenarios(field_id: str) -> dict[str, Any]:
         "coverage": field["coverage"],
         "scenarios": field["scenarios"],
     }
+
+
+@app.get("/climate/enso")
+def get_enso() -> dict[str, Any]:
+    """Current CPC ENSO state and strength outlook, as a dated fixture."""
+    return _climate_file("enso.json")
+
+
+@app.get("/fields/{field_id}/climate")
+def get_field_climate(field_id: str) -> dict[str, Any]:
+    """The municipal climate evidence of the field's municipality."""
+    field = _field_or_404(field_id)
+    code = field.get("municipality_code")
+    if code is None:
+        return {"field_id": field_id, "state": "not_available", "municipality": None, "season_progress": None, "rows": []}
+    data = _climate_file(f"municipality-{code}.json")
+    return {"field_id": field_id, "state": "available", **data}
+
+
+@app.get("/fields/{field_id}/crop-water")
+def get_field_crop_water(field_id: str, date_value: str | None = Query(default=None, alias="date")) -> dict[str, Any]:
+    """FAO-56 crop water over each crop's own usual planting window, computed here, not recorded.
+
+    The Kc values are `crop_water.CROPS`, the windows are the NASS bulletin in
+    `artifacts/us-windows-cass-nd.json`, and the meteorology is block 6's recorded POWER series. A
+    crop with no window for the field's state or no Kc in the tree abstains and names the input.
+    """
+    from field_shift_agent.context import FieldContext
+    from field_shift_agent.tools import ToolBox, default_numbers_loader
+
+    field = _field_or_404(field_id)
+    try:
+        chosen = date.fromisoformat(date_value) if date_value else date.today()
+    except ValueError:
+        raise HTTPException(status_code=400, detail="date must be YYYY-MM-DD") from None
+    region = field.get("region")
+    if region != "us":
+        return {"field_id": field_id, "available": False, "crops": {}, "abstained": {},
+                "reason": "crop water is computed for the United States fields only",
+                "limitations": ["region_not_supported"]}
+    boundary = field.get("boundary") or {}
+    coordinates = (boundary.get("coordinates") or [[[]]])[0]
+    if not coordinates or not field.get("center"):
+        return {"field_id": field_id, "available": False, "crops": {}, "abstained": {},
+                "reason": "the field has no boundary to compute over", "limitations": ["no_ring"]}
+    request = field_numbers.NumbersRequest(ring=coordinates, centroid=list(field["center"]),
+                                           area_ha=None, date=chosen)
+    try:
+        payload = field_numbers.build_numbers(field_id, request, fixture_fields=list(all_fields()))
+    except field_numbers.NumbersError as error:
+        return {"field_id": field_id, "available": False, "crops": {}, "abstained": {},
+                "reason": f"numbers_http_{error.status}", "limitations": ["numbers_unavailable"]}
+    ctx = FieldContext(field_id=field_id, kind="fixture", region=region, name=field.get("name"),
+                       location=field.get("location"), center=(float(field["center"][0]), float(field["center"][1])),
+                       chosen_date=chosen, numbers_request=request)
+    box = ToolBox(ctx, default_numbers_loader)
+    return {"field_id": field_id, **box.get_crop_water_demand()}
+
+
+# The Field Phase contract, exported by `field-shift-pipeline` (`python -m api.export`)
+# as static JSON, served read-only for the report page.
+FIELDPHASE_DIR = Path(os.getenv("FIELDPHASE_FIXTURE_DIR", str(BACKEND_DIR / "fixtures" / "fieldphase")))
+
+
+@app.get("/fieldphase/data/v1/{path:path}")
+def get_fieldphase_file(path: str) -> Response:
+    root = (FIELDPHASE_DIR / "data" / "v1").resolve()
+    target = (root / path).resolve()
+    if not path.endswith(".json") or not target.is_relative_to(root):
+        raise HTTPException(status_code=404, detail="Not found")
+    try:
+        content = target.read_bytes()
+    except FileNotFoundError:
+        raise HTTPException(status_code=503, detail=f"Field Phase export {path} is missing; run the pipeline exporter") from None
+    return Response(content=content, media_type="application/json")
 
 
 @app.post("/fields/{field_id}/numbers", dependencies=[Depends(enforce_numbers_rate_limit)])
