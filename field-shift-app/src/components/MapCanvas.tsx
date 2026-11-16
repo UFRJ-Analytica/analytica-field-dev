@@ -20,7 +20,6 @@ import {
   type CompositionPreset,
   type FieldSummary,
 } from '@/lib/map-store'
-import { usePanelStore } from '@/lib/panel-store'
 import { activeBasemapAdapter, BASEMAP_ADAPTERS, type BasemapAdapter } from '@/lib/basemap-adapters'
 import { probeLayerTile } from '@/lib/tile-guard'
 import { regionAdapter, regionFromSearch, type RegionAdapter } from '@/lib/regions'
@@ -680,6 +679,9 @@ export function MapCanvas({ fields, selectedField, onTileChange, children }: Map
   useEffect(() => {
     const map = mapRef.current
     if (!mapReady || !map) return
+    // The one press the layer scoped handler has already spoken for. A fresh press carries a fresh
+    // `originalEvent`, so a stale value can never swallow a later empty click.
+    const handledPressRef: { current: Event | null } = { current: null }
     type PolygonFeature = { id?: string | number; properties?: Record<string, unknown> | null }
     type PolygonEvent = MapMouseEvent & { features?: PolygonFeature[] }
 
@@ -743,9 +745,9 @@ export function MapCanvas({ fields, selectedField, onTileChange, children }: Map
     }
     const handleLeave = () => clearHover()
     const handleClick = (event: PolygonEvent) => {
-      // Block 7 revision 10 R-63: while the boundary drawing mode takes the pointer events, a press
-      // on the map adds a vertex and never selects the polygon under it.
-      if (usePanelStore.getState().draft !== null) return
+      // Block 5.5 W6: this listener only runs when a fill layer feature is under the press, so it
+      // tells the map level handler that this press is spoken for, whatever `currentFeature` decides.
+      handledPressRef.current = event.originalEvent ?? null
       const found = currentFeature(event)
       if (!found) return
       // R-22: the map handler runs the command and never calls the store action itself.
@@ -753,21 +755,25 @@ export function MapCanvas({ fields, selectedField, onTileChange, children }: Map
     }
 
     /**
-     * Block 5.5, U5 and B8: a press on the map that lands on no polygon clears the selection. The
-     * layer scoped handler above only runs when the press hits the fill layer, so a press on empty
-     * map, on the basemap or on a label never deselected anything.
+     * Block 5.5, U4, U5 and W6. The two handlers share one fact instead of each running its own hit
+     * test: the layer scoped `handleClick` runs only when a feature of the fill layer is under the
+     * press, so "the layer handler ran" IS the hit test. It records the press it handled and the map
+     * level handler returns at once for that same press.
+     *
+     * Neither handler may read `event.features`: MapLibre sets that field only for a layer scoped
+     * listener and deletes it the moment that listener returns, so the map level handler never sees
+     * it. A `queryRenderedFeatures(event.point, ...)` in this handler was tried and still cleared a
+     * press that did select, which is why the shared press is used rather than a second query.
      */
     const handleMapClick = (event: PolygonEvent) => {
-      const store = useMapStore.getState()
-      if (usePanelStore.getState().draft !== null) {
-        usePanelStore.getState().addVertex([event.lngLat.lng, event.lngLat.lat])
+      const original = event.originalEvent ?? null
+      if (original !== null && original === handledPressRef.current) {
+        handledPressRef.current = null
         return
       }
+      const store = useMapStore.getState()
       if (store.selectedPolygonId === null) return
-      // The same feature reader the layer scoped handler uses, so the two agree on what the press
-      // hit: a press with no polygon under it clears, and a press on one never clears what the
-      // command just selected.
-      if (!currentFeature(event)) store.clearPolygonSelection()
+      store.clearPolygonSelection()
     }
 
     map.on('mousemove', POLYGON_FILL_LAYER_ID, handleMove)
